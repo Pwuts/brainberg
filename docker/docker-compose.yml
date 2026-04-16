@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: techpulse-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://techpulse:${DB_PASSWORD}@db:5432/techpulse
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL:-http://localhost:3000}
+      - CRON_SECRET=${CRON_SECRET}
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - techpulse-net
+
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: techpulse-db
+    restart: always
+    environment:
+      POSTGRES_DB: techpulse
+      POSTGRES_USER: techpulse
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techpulse -d techpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - techpulse-net
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  techpulse-net:
+    driver: bridge
