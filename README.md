@@ -1,8 +1,8 @@
-# TechPulse 🔮
+# Brainberg 🔮
 
 **Discover AI & Tech Events Across Europe**
 
-TechPulse is an open-source event aggregator for the European tech scene — think [Cerebral Valley](https://cerebralvalley.ai), but for all of Europe. Find AI meetups, startup conferences, hackathons, workshops, and more.
+Brainberg is an open-source event aggregator for the European tech scene — think [Cerebral Valley](https://cerebralvalley.ai), but for all of Europe. Find AI meetups, startup conferences, hackathons, workshops, and more.
 
 ## Features
 
@@ -34,7 +34,7 @@ TechPulse is an open-source event aggregator for the European tech scene — thi
 
 ```bash
 git clone https://github.com/Pwuts/techpulse.git
-cd techpulse
+cd brainberg
 npm install
 ```
 
@@ -45,8 +45,8 @@ docker compose -f docker/docker-compose.dev.yml up -d
 ```
 
 This starts a PostGIS-enabled PostgreSQL on port 5432 with:
-- Database: `techpulse_dev`
-- User: `techpulse`
+- Database: `brainberg_dev`
+- User: `brainberg`
 - Password: `devpassword`
 
 ### 3. Set up environment

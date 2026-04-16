@@ -9,7 +9,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-primary" />
-              <span className="font-bold">TechPulse</span>
+              <span className="font-bold">Brainberg</span>
             </Link>
             <p className="mt-3 text-sm text-muted-foreground">
               Discover AI &amp; tech events across Europe. Never miss the next
@@ -46,7 +46,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} TechPulse. Open source under MIT.
+          © {new Date().getFullYear()} Brainberg. Open source under MIT.
         </div>
       </div>
     </footer>

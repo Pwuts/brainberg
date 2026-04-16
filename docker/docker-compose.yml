@@ -3,12 +3,12 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: techpulse-app
+    container_name: brainberg-app
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      - DATABASE_URL=postgresql://techpulse:${DB_PASSWORD}@db:5432/techpulse
+      - DATABASE_URL=postgresql://brainberg:${DB_PASSWORD}@db:5432/brainberg
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_URL=${AUTH_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET}
@@ -17,15 +17,15 @@ services:
       db:
         condition: service_healthy
     networks:
-      - techpulse-net
+      - brainberg-net
 
   db:
     image: postgis/postgis:16-3.4-alpine
-    container_name: techpulse-db
+    container_name: brainberg-db
     restart: always
     environment:
-      POSTGRES_DB: techpulse
-      POSTGRES_USER: techpulse
+      POSTGRES_DB: brainberg
+      POSTGRES_USER: brainberg
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -33,17 +33,17 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techpulse -d techpulse"]
+      test: ["CMD-SHELL", "pg_isready -U brainberg -d brainberg"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - techpulse-net
+      - brainberg-net
 
 volumes:
   pgdata:
     driver: local
 
 networks:
-  techpulse-net:
+  brainberg-net:
     driver: bridge

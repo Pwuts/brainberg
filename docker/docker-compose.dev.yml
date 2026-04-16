@@ -1,11 +1,11 @@
 services:
   db:
     image: postgis/postgis:16-3.4-alpine
-    container_name: techpulse-db
+    container_name: brainberg-db
     restart: always
     environment:
-      POSTGRES_DB: techpulse_dev
-      POSTGRES_USER: techpulse
+      POSTGRES_DB: brainberg_dev
+      POSTGRES_USER: brainberg
       POSTGRES_PASSWORD: devpassword
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techpulse -d techpulse_dev"]
+      test: ["CMD-SHELL", "pg_isready -U brainberg -d brainberg_dev"]
       interval: 5s
       timeout: 5s
       retries: 5

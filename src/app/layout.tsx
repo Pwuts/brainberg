@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "TechPulse — AI & Tech Events Across Europe",
-    template: "%s | TechPulse",
+    default: "Brainberg — AI & Tech Events Across Europe",
+    template: "%s | Brainberg",
   },
   description:
     "Discover AI meetups, tech conferences, hackathons, and startup events across Europe. Filter by country, category, size, and date.",
   openGraph: {
-    title: "TechPulse — AI & Tech Events Across Europe",
+    title: "Brainberg — AI & Tech Events Across Europe",
     description:
       "Discover AI meetups, tech conferences, hackathons, and startup events across Europe.",
     type: "website",
