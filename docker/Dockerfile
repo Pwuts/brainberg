@@ -10,8 +10,17 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Build-time env vars (required for Next.js build)
+ARG DATABASE_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_APP_NAME
+ENV DATABASE_URL=$DATABASE_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
 RUN npm run db:generate
 RUN npm run build
 
