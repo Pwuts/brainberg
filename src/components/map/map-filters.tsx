@@ -2,11 +2,26 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { Dropdown } from "@/components/ui/dropdown";
 import { X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
+
+const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
+  value,
+  label,
+  detail: CATEGORY_DESCRIPTIONS[value],
+}));
+
+const TYPE_OPTIONS = Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+const SIZE_OPTIONS = Object.entries(SIZE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export function MapFilters() {
   const router = useRouter();
@@ -43,77 +58,80 @@ export function MapFilters() {
   const hasFilters = searchParams.toString().length > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Select
-        value={searchParams.get("category") ?? ""}
-        onChange={(e) => setFilter("category", e.target.value)}
-        className="w-[160px]"
-      >
-        <option value="">All Categories</option>
-        {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-          <option key={value} value={value} title={CATEGORY_DESCRIPTIONS[value]}>
-            {label}
-          </option>
-        ))}
-      </Select>
-
-      <Select
-        value={searchParams.get("type") ?? ""}
-        onChange={(e) => setFilter("type", e.target.value)}
-        className="w-[160px]"
-      >
-        <option value="">All Types</option>
-        {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </Select>
-
-      <Select
-        value={searchParams.get("size") ?? ""}
-        onChange={(e) => setFilter("size", e.target.value)}
-        className="w-[140px]"
-      >
-        <option value="">Any Size</option>
-        {Object.entries(SIZE_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label} attendees
-          </option>
-        ))}
-      </Select>
-
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Timespan */}
       <DateRangeFilter
         from={searchParams.get("from") ?? ""}
         to={searchParams.get("to") ?? ""}
         onChange={setDateRange}
       />
 
-      <Button
-        variant={searchParams.get("free") === "1" ? "default" : "outline"}
-        size="sm"
+      {/* Category */}
+      <Dropdown
+        value={searchParams.get("category") ?? ""}
+        options={CATEGORY_OPTIONS}
+        placeholder="Category"
+        onChange={(v) => setFilter("category", v)}
+        className="w-28"
+        panelWidth="w-80"
+      />
+
+      {/* Type */}
+      <Dropdown
+        value={searchParams.get("type") ?? ""}
+        options={TYPE_OPTIONS}
+        placeholder="Type"
+        onChange={(v) => setFilter("type", v)}
+        className="w-24"
+        panelWidth="w-40"
+      />
+
+      {/* Size */}
+      <Dropdown
+        value={searchParams.get("size") ?? ""}
+        options={SIZE_OPTIONS}
+        placeholder="Size"
+        onChange={(v) => setFilter("size", v)}
+        className="w-24"
+        panelWidth="w-36"
+      />
+
+      {/* Free */}
+      <button
         onClick={() =>
           setFilter("free", searchParams.get("free") === "1" ? "" : "1")
         }
+        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+          searchParams.get("free") === "1"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-input bg-background hover:bg-accent"
+        }`}
       >
-        Free Only
-      </Button>
+        Free
+      </button>
 
-      <Button
-        variant={searchParams.get("online") === "1" ? "default" : "outline"}
-        size="sm"
+      {/* Online */}
+      <button
         onClick={() =>
           setFilter("online", searchParams.get("online") === "1" ? "" : "1")
         }
+        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+          searchParams.get("online") === "1"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-input bg-background hover:bg-accent"
+        }`}
       >
         Online
-      </Button>
+      </button>
 
+      {/* Clear */}
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll}>
-          <X className="mr-1 h-3.5 w-3.5" />
-          Clear
-        </Button>
+        <button
+          onClick={clearAll}
+          className="h-9 shrink-0 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       )}
     </div>
   );

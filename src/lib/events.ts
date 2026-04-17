@@ -213,6 +213,7 @@ export interface MapEvent {
   id: string;
   title: string;
   slug: string;
+  description: string | null;
   category: string;
   eventType: string;
   size: string | null;
@@ -273,6 +274,7 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
       id: events.id,
       title: events.title,
       slug: events.slug,
+      description: events.shortDescription,
       category: events.category,
       eventType: events.eventType,
       size: events.size,

@@ -166,18 +166,23 @@ function FitBounds({ events }: { events: MapEvent[] }) {
   return null;
 }
 
-export function EventMap() {
+export function EventMap({
+  onVisibleEventsChange,
+}: {
+  onVisibleEventsChange?: (events: MapEvent[]) => void;
+}) {
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [clusters, setClusters] =
     useState<{ lat: number; lng: number; events: MapEvent[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
+  const onVisibleRef = useRef(onVisibleEventsChange);
+  onVisibleRef.current = onVisibleEventsChange;
 
   // Fetch events whenever filters change
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/events/map?${params.toString()}`)
       .then((r) => r.json())
@@ -188,14 +193,22 @@ export function EventMap() {
       .finally(() => setLoading(false));
   }, [searchParams]);
 
-  // Recluster when events change or map moves
+  // Recluster + compute visible events when map moves or events change
   const recluster = useCallback(() => {
     if (!mapRef.current || events.length === 0) {
       setClusters([]);
+      onVisibleRef.current?.([]);
       return;
     }
     const { clusters } = clusterMarkers(events, mapRef.current);
     setClusters(clusters);
+
+    // Filter to events within current viewport
+    const bounds = mapRef.current.getBounds();
+    const visible = events.filter((e) =>
+      bounds.contains([e.latitude, e.longitude])
+    );
+    onVisibleRef.current?.(visible);
   }, [events]);
 
   useEffect(() => {
