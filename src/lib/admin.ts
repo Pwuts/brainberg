@@ -81,6 +81,8 @@ export async function listEvents(params: ListEventsParams) {
     case "-title": orderBy = desc(events.title); break;
     case "created": orderBy = asc(events.createdAt); break;
     case "-created": orderBy = desc(events.createdAt); break;
+    case "updated": orderBy = asc(events.updatedAt); break;
+    case "-updated": orderBy = desc(events.updatedAt); break;
     default: orderBy = desc(events.createdAt);
   }
 

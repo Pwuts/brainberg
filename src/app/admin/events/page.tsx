@@ -256,7 +256,9 @@ export default function AdminEventsPage() {
               <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("created")}>
                 Created{sortIcon("created")}
               </th>
-              <th className="px-3 py-2 text-left font-medium">Updated</th>
+              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("updated")}>
+                Updated{sortIcon("updated")}
+              </th>
             </tr>
           </thead>
           <tbody>
