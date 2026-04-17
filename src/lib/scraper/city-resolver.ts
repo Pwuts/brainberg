@@ -94,10 +94,9 @@ interface NominatimResult {
   display_name: string;
 }
 
-/** Geocode a city via OpenStreetMap Nominatim. Returns null if not found. */
-async function geocodeCity(
-  cityName: string,
-  countryCode?: string,
+async function nominatimSearch(
+  query: string,
+  options?: { countryCode?: string; featuretype?: string },
 ): Promise<{ latitude: number; longitude: number } | null> {
   // Rate limit: 1 req/sec
   const now = Date.now();
@@ -106,12 +105,12 @@ async function geocodeCity(
   lastGeocode = Date.now();
 
   const params = new URLSearchParams({
-    q: cityName,
+    q: query,
     format: "json",
     limit: "1",
-    featuretype: "city",
   });
-  if (countryCode) params.set("countrycodes", countryCode.toLowerCase());
+  if (options?.featuretype) params.set("featuretype", options.featuretype);
+  if (options?.countryCode) params.set("countrycodes", options.countryCode.toLowerCase());
 
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
@@ -127,6 +126,16 @@ async function geocodeCity(
   } catch {
     return null;
   }
+}
+
+/** Geocode a specific address. Returns null if not found. */
+export async function geocodeAddress(
+  address: string,
+  cityName?: string,
+  countryCode?: string,
+): Promise<{ latitude: number; longitude: number } | null> {
+  const query = [address, cityName].filter(Boolean).join(", ");
+  return nominatimSearch(query, { countryCode });
 }
 
 /** Resolve city name + country code to IDs. Geocodes and inserts unknown cities. */
@@ -149,7 +158,7 @@ export async function resolveLocation(
 
   // If city not found, geocode and insert it
   if (!city && cityName) {
-    const geo = await geocodeCity(cityName, countryCode);
+    const geo = await nominatimSearch(cityName, { countryCode, featuretype: "city" });
     if (geo) {
       const countryId = country?.id ?? null;
       const timezone = country?.timezone ?? "Europe/London";

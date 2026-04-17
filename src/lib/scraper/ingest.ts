@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { events, eventSources, eventFingerprints } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import slugify from "slugify";
-import { resolveLocation } from "./city-resolver";
+import { resolveLocation, geocodeAddress } from "./city-resolver";
 import { checkDuplicate } from "./dedup";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint } from "./fingerprint";
@@ -41,6 +41,17 @@ export async function ingestEvents(
 async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
   // 1. Resolve location
   const location = await resolveLocation(event.cityName, event.countryCode);
+
+  // 1b. Geocode venue address for precise coordinates
+  let eventLat = event.latitude ?? location.latitude;
+  let eventLng = event.longitude ?? location.longitude;
+  if (!event.latitude && event.venueAddress) {
+    const precise = await geocodeAddress(event.venueAddress, event.cityName, event.countryCode);
+    if (precise) {
+      eventLat = precise.latitude;
+      eventLng = precise.longitude;
+    }
+  }
 
   // 2. Check for duplicates
   const dedup = await checkDuplicate(event);
@@ -82,8 +93,8 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
       countryId: location.countryId,
       venueName: event.venueName,
       venueAddress: event.venueAddress,
-      latitude: event.latitude ?? location.latitude,
-      longitude: event.longitude ?? location.longitude,
+      latitude: eventLat,
+      longitude: eventLng,
       isOnline: event.isOnline,
       isHybrid: event.isHybrid ?? false,
       onlineUrl: event.onlineUrl,

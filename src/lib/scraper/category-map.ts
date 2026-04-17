@@ -5,10 +5,22 @@ import type { EventCategory, EventType } from "./types";
 // ============================================================
 
 export const AI_KEYWORD_REGEX =
-  /\b(artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning)\b/i;
+  /\b(AI|artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning|MLOps|MLcon)\b/i;
 
 export const HACKER_MAKER_REGEX =
   /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab)\b/i;
+
+export const WEB3_KEYWORD_REGEX =
+  /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
+
+export const DEVOPS_KEYWORD_REGEX =
+  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering)\b/i;
+
+export const SECURITY_KEYWORD_REGEX =
+  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC)\b/i;
+
+export const UX_KEYWORD_REGEX =
+  /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf)\b/i;
 
 // ============================================================
 // confs.tech — filename → category
@@ -29,7 +41,7 @@ export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
   javascript: "general_tech",
   kotlin: "general_tech",
   leadership: "startup",
-  networking: "cloud_infra",
+  networking: "general_tech",
   php: "general_tech",
   product: "startup",
   python: "general_tech",
@@ -132,6 +144,17 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 // Category resolution with title-based overrides
 // ============================================================
 
+/** Check title against all keyword regexes. Returns a category override or null. */
+function titleOverride(title: string): EventCategory | null {
+  if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker_community";
+  if (AI_KEYWORD_REGEX.test(title)) return "ai_ml";
+  if (WEB3_KEYWORD_REGEX.test(title)) return "blockchain_web3";
+  if (SECURITY_KEYWORD_REGEX.test(title)) return "cybersecurity";
+  if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
+  if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_infra";
+  return null;
+}
+
 /** Resolve category from a lookup map + title keywords. */
 export function resolveCategory(
   lookupKey: string | undefined,
@@ -139,8 +162,8 @@ export function resolveCategory(
   title: string,
 ): EventCategory {
   // Title-based overrides take priority
-  if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker_community";
-  if (AI_KEYWORD_REGEX.test(title)) return "ai_ml";
+  const override = titleOverride(title);
+  if (override) return override;
 
   if (lookupKey && lookupMap[lookupKey]) return lookupMap[lookupKey];
 
@@ -154,8 +177,8 @@ export function resolveCategoryFromTags(
   title: string,
 ): EventCategory {
   // Title-based overrides take priority
-  if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker_community";
-  if (AI_KEYWORD_REGEX.test(title)) return "ai_ml";
+  const override = titleOverride(title);
+  if (override) return override;
 
   for (const tag of tags) {
     if (lookupMap[tag]) return lookupMap[tag];
