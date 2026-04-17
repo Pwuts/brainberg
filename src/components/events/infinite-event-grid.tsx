@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { EventCard } from "./event-card";
 
 interface EventRow {
@@ -88,9 +89,9 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or{" "}
-          <a href="/events" className="text-primary hover:underline">
+          <Link href="/events" className="text-primary hover:underline">
             clear all
-          </a>
+          </Link>
           .
         </p>
       </div>

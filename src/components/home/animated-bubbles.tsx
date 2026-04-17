@@ -130,7 +130,6 @@ export function AnimatedBubbles({ items }: { items: BubbleItem[] }) {
   const [positions, setPositions] = useState<{ x: number; y: number }[]>([]);
   const animRef = useRef<number>(0);
   const bubblesRef = useRef<Bubble[]>([]);
-  // Mutable positions for physics sim (avoid allocating new arrays each frame)
   const simPos = useRef<{ x: number; y: number }[]>([]);
 
   // Measure container
@@ -148,7 +147,7 @@ export function AnimatedBubbles({ items }: { items: BubbleItem[] }) {
   // Repack when size or items change
   useEffect(() => {
     const packed = packBubbles(items, size.w, size.h);
-    setBubbles(packed);
+    setBubbles(packed); // eslint-disable-line react-hooks/set-state-in-effect -- initializing physics sim
     bubblesRef.current = packed;
     simPos.current = packed.map((b) => ({ x: b.x, y: b.y }));
     setPositions(simPos.current.map((p) => ({ ...p })));

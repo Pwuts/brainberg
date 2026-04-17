@@ -87,9 +87,12 @@ export function LocationFilter({
   const hasLocation = !!latitude && !!longitude;
   const hasValue = hasLocation || !!country || isOnline;
 
-  useEffect(() => {
-    setInput(displayValue);
-  }, [displayValue]);
+  // Sync input when external value changes (e.g. clear button)
+  const [prevDisplay, setPrevDisplay] = useState(displayValue);
+  if (prevDisplay !== displayValue) {
+    setPrevDisplay(displayValue);
+    if (input !== displayValue) setInput(displayValue);
+  }
 
   // Build suggestions: matching countries first, then geocoded places
   const search = useCallback(

@@ -178,12 +178,16 @@ export function EventMap({
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const onVisibleRef = useRef(onVisibleEventsChange);
-  onVisibleRef.current = onVisibleEventsChange;
+
+  // Keep callback ref fresh without triggering re-renders
+  useEffect(() => {
+    onVisibleRef.current = onVisibleEventsChange;
+  });
 
   // Fetch events whenever filters change
   useEffect(() => {
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- data fetch
     const params = new URLSearchParams(searchParams.toString());
-    setLoading(true);
     fetch(`/api/events/map?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
