@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Zap, Menu } from "lucide-react";
+import { Zap } from "lucide-react";
+import { MobileMenu } from "./mobile-menu";
 
 export function Header() {
   return (
@@ -37,10 +38,7 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Mobile menu button */}
-        <button className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden">
-          <Menu className="h-5 w-5" />
-        </button>
+        <MobileMenu />
       </div>
     </header>
   );
