@@ -80,7 +80,7 @@ export async function runAllScrapers(
   options?: ScraperOptions,
 ): Promise<Record<string, IngestStats>> {
   const results: Record<string, IngestStats> = {};
-  const order: EventSource[] = ["manual", "confs_tech", "dev_events", "meetup", "eventbrite", "luma"];
+  const order: EventSource[] = ["confs_tech", "dev_events", "meetup", "eventbrite", "luma", "manual"];
 
   for (const source of order) {
     try {

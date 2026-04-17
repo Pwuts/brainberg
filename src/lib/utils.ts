@@ -68,7 +68,7 @@ export const SIZE_LABELS: Record<string, string> = {
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
-  manual: "Manual",
+  manual: "Hardcoded",
   community: "Community",
   luma: "Luma",
   eventbrite: "Eventbrite",
