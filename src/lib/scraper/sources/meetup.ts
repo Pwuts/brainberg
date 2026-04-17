@@ -1,27 +1,22 @@
+import { db } from "@/lib/db";
+import { cities, countries } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { MEETUP_TOPIC_MAP, resolveCategoryFromTags } from "../category-map";
 import { stripHtml, truncate } from "../html-utils";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventSize } from "../types";
 
-// Major European tech hubs to search
-const SEARCH_CITIES: { name: string; lat: number; lng: number }[] = [
-  { name: "London", lat: 51.5074, lng: -0.1278 },
-  { name: "Berlin", lat: 52.52, lng: 13.405 },
-  { name: "Amsterdam", lat: 52.3676, lng: 4.9041 },
-  { name: "Paris", lat: 48.8566, lng: 2.3522 },
-  { name: "Barcelona", lat: 41.3874, lng: 2.1686 },
-  { name: "Munich", lat: 48.1351, lng: 11.582 },
-  { name: "Stockholm", lat: 59.3293, lng: 18.0686 },
-  { name: "Dublin", lat: 53.3498, lng: -6.2603 },
-  { name: "Lisbon", lat: 38.7223, lng: -9.1393 },
-  { name: "Zurich", lat: 47.3769, lng: 8.5417 },
-  { name: "Copenhagen", lat: 55.6761, lng: 12.5683 },
-  { name: "Vienna", lat: 48.2082, lng: 16.3738 },
-  { name: "Prague", lat: 50.0755, lng: 14.4378 },
-  { name: "Warsaw", lat: 52.2297, lng: 21.0122 },
-  { name: "Helsinki", lat: 60.1699, lng: 24.9384 },
-  { name: "Brussels", lat: 50.8503, lng: 4.3517 },
-  { name: "Milan", lat: 45.4642, lng: 9.19 },
-];
+/** Load all cities from the DB with their country codes for Meetup search. */
+async function getSearchCities(): Promise<{ name: string; countryCode: string }[]> {
+  const results = await db
+    .select({ cityName: cities.name, countryCode: countries.code })
+    .from(cities)
+    .innerJoin(countries, eq(cities.countryId, countries.id));
+
+  return results.map((r) => ({
+    name: r.cityName,
+    countryCode: r.countryCode.toLowerCase(),
+  }));
+}
 
 interface MeetupEvent {
   id: string;
@@ -109,18 +104,23 @@ export const meetupScraper: Scraper = {
   name: "meetup",
 
   async *scrape(options?: ScraperOptions): AsyncGenerator<NormalizedEvent> {
-    for (const city of SEARCH_CITIES) {
+    const searchCities = await getSearchCities();
+    console.log(`[meetup] Searching ${searchCities.length} cities`);
+
+    for (const city of searchCities) {
       // Rate limit between cities
       await sleep(2500);
 
-      const searchUrl = `https://www.meetup.com/find/?location=${encodeURIComponent(city.name)}&source=EVENTS&eventType=upcoming&categoryId=546`; // 546 = Technology
+      // Meetup requires {countrycode}--{city} format for correct geo-targeting
+      const locationParam = `${city.countryCode}--${city.name}`;
+      const searchUrl = `https://www.meetup.com/find/?location=${encodeURIComponent(locationParam)}&source=EVENTS&eventType=upcoming&categoryId=546`;
 
       let html: string;
       try {
         const res = await fetch(searchUrl, {
           headers: {
-            "User-Agent": "Brainberg/1.0 (https://brainberg.eu)",
-            Accept: "text/html",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml",
           },
         });
         if (!res.ok) {
