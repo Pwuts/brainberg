@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
         description: events.description,
         category: events.category,
         eventType: events.eventType,
+        status: events.status,
+        rejectionReason: events.rejectionReason,
         categoryLocked: events.categoryLocked,
         source: events.source,
         tags: events.tags,
@@ -68,6 +70,12 @@ export async function POST(request: NextRequest) {
       const updates: Record<string, unknown> = {};
 
       if (useAi) {
+        // Build description with moderation context for the AI
+        const descParts = [];
+        if (event.description) descParts.push(event.description);
+        if (event.status !== "approved") descParts.push(`[Current status: ${event.status}]`);
+        if (event.rejectionReason) descParts.push(`[Human moderator note: ${event.rejectionReason}]`);
+
         const normalized: NormalizedEvent = {
           title: event.title,
           category: event.category,
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
           source: event.source,
           sourceId: event.id,
           tags: event.tags ?? undefined,
-          description: event.description ?? undefined,
+          description: descParts.length > 0 ? descParts.join("\n\n") : undefined,
           isOnline: event.isOnline,
           startsAt: new Date(),
           timezone: "UTC",
