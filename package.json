@@ -14,31 +14,32 @@
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "class-variance-authority": "^0.7",
+    "clsx": "^2.1",
+    "date-fns": "^4.1",
+    "drizzle-orm": "^0.39",
+    "lucide-react": "^0.470",
     "next": "16.2.4",
+    "postgres": "^3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "drizzle-orm": "^0.39",
-    "postgres": "^3.4",
-    "zod": "^3.24",
-    "date-fns": "^4.1",
     "slugify": "^1.6",
-    "lucide-react": "^0.470",
     "tailwind-merge": "^2.6",
-    "clsx": "^2.1",
-    "class-variance-authority": "^0.7"
+    "zod": "^3.24"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.30",
+    "esbuild": "^0.28.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "drizzle-kit": "^0.30",
     "tsx": "^4.19",
-    "@tailwindcss/typography": "^0.5"
+    "typescript": "^5"
   },
   "packageManager": "pnpm@10.27.0"
 }

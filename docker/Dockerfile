@@ -27,8 +27,8 @@ RUN pnpm run db:generate
 RUN pnpm run build
 
 # Bundle the migration runner into a single file for the production image
-RUN npx esbuild src/lib/db/migrate.ts --bundle --platform=node --target=node20 \
-    --format=cjs --outfile=migrate.js --external:pg-native
+RUN pnpm exec esbuild src/lib/db/migrate.ts --bundle --platform=node \
+    --target=node20 --format=cjs --outfile=migrate.js --external:pg-native
 
 # Stage 3: Production runner
 FROM node:20-alpine AS runner
