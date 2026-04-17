@@ -33,6 +33,18 @@ export default function AdminScrapersPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const runAll = async () => {
+    setRunning("all");
+    try {
+      await fetchAdmin("/api/admin/scrapers/run-all", { method: "POST" });
+      await load();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRunning(null);
+    }
+  };
+
   const runNow = async (source: string) => {
     setRunning(source);
     try {
@@ -50,7 +62,12 @@ export default function AdminScrapersPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Scrapers</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Scrapers</h1>
+        <Button onClick={runAll} disabled={running !== null}>
+          {running === "all" ? "Running All..." : "Run All Scrapers"}
+        </Button>
+      </div>
 
       {/* Scraper cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
