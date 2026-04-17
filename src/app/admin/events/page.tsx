@@ -27,6 +27,7 @@ interface EventRow {
     eventType: string;
     startsAt: string;
     createdAt: string;
+    updatedAt: string;
   };
   city: { name: string } | null;
   country: { code: string; name: string } | null;
@@ -251,6 +252,10 @@ export default function AdminEventsPage() {
               <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("date")}>
                 Date{sortIcon("date")}
               </th>
+              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("created")}>
+                Created{sortIcon("created")}
+              </th>
+              <th className="px-3 py-2 text-left font-medium">Updated</th>
             </tr>
           </thead>
           <tbody>
@@ -294,11 +299,17 @@ export default function AdminEventsPage() {
                 <td className="px-3 py-2 text-muted-foreground">
                   {new Date(row.event.startsAt).toLocaleDateString()}
                 </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {new Date(row.event.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {new Date(row.event.updatedAt).toLocaleDateString()}
+                </td>
               </tr>
             ))}
             {events.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   No events found.
                 </td>
               </tr>
