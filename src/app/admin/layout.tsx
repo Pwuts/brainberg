@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AdminAuthProvider } from "@/components/admin/admin-auth-provider";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
@@ -15,7 +16,9 @@ export default function AdminLayout({
     <AdminAuthProvider>
       <div className="flex h-[calc(100vh-4rem)]">
         <AdminSidebar />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          <Suspense>{children}</Suspense>
+        </main>
       </div>
     </AdminAuthProvider>
   );
