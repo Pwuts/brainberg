@@ -134,9 +134,15 @@ export async function getEvent(id: string) {
 }
 
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
+  // Convert date strings to Date objects for timestamp columns
+  const processed = { ...data };
+  if (typeof processed.startsAt === "string") processed.startsAt = new Date(processed.startsAt);
+  if (typeof processed.endsAt === "string") processed.endsAt = new Date(processed.endsAt as string);
+  if (typeof processed.approvedAt === "string") processed.approvedAt = new Date(processed.approvedAt);
+
   await db
     .update(events)
-    .set({ ...data, updatedAt: new Date() })
+    .set({ ...processed, updatedAt: new Date() })
     .where(eq(events.id, id));
 }
 

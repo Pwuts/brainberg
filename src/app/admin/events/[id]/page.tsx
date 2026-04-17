@@ -47,8 +47,11 @@ export default function AdminEventDetailPage({
       .catch(() => {});
   }, [fetchAdmin, id]);
 
+  const [saving, setSaving] = useState<string | null>(null);
+
   const patchField = async (field: string, value: string) => {
     if (!id) return;
+    setSaving(field);
     const body: Record<string, unknown> = { [field]: value };
     // Lock category when manually changed so re-categorize won't overwrite it
     if (field === "category") body.categoryLocked = true;
@@ -56,6 +59,7 @@ export default function AdminEventDetailPage({
       method: "PATCH",
       body: JSON.stringify(body),
     });
+    setTimeout(() => setSaving(null), 800);
     setData((prev) =>
       prev ? { ...prev, event: { ...prev.event, [field]: value } } : prev,
     );
@@ -113,6 +117,11 @@ export default function AdminEventDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {saving && (
+        <div className="fixed right-6 top-20 z-50 animate-in fade-in rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-lg">
+          Saved
+        </div>
+      )}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">{ev.title as string}</h1>
