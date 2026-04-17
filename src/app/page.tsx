@@ -16,7 +16,7 @@ export default async function HomePage() {
   const threeMonths = new Date();
   threeMonths.setMonth(threeMonths.getMonth() + 3);
 
-  const [groups, [statsRow3m], [statsRow], [cityCountRow]] = await Promise.all([
+  const [groups, [statsRow], [statsRow3m], [cityCountRow]] = await Promise.all([
     getEventsByTimeGroup(),
     db
       .select({ count: count() })
