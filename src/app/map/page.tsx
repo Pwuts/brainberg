@@ -1,26 +1,33 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Globe } from "lucide-react";
+import { Suspense } from "react";
+import { MapFilters } from "@/components/map/map-filters";
+import { MapShell } from "./map-shell";
 
-export const metadata = { title: "Map View" };
+export const dynamic = "force-dynamic";
+
+export const metadata = {
+  title: "Map View",
+  description: "See tech events on a map of Europe",
+};
 
 export default function MapPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight">Map View</h1>
-      <p className="mt-1 text-muted-foreground">
-        See tech events on a map of Europe
-      </p>
-      <Card className="mt-8">
-        <CardContent className="flex flex-col items-center justify-center py-24">
-          <Globe className="h-16 w-16 text-muted-foreground/40" />
-          <p className="mt-4 text-lg font-medium text-muted-foreground">
-            Map view coming soon
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Interactive Leaflet + OpenStreetMap integration is on the roadmap.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex h-[calc(100vh-4rem)] flex-col">
+      <div className="shrink-0 border-b bg-background px-4 py-3 sm:px-6">
+        <Suspense>
+          <MapFilters />
+        </Suspense>
+      </div>
+      <div className="relative flex-1">
+        <Suspense
+          fallback={
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              Loading map...
+            </div>
+          }
+        >
+          <MapShell />
+        </Suspense>
+      </div>
     </div>
   );
 }
