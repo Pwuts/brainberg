@@ -354,9 +354,12 @@ export const lumaScraper: Scraper = {
           const host = detail?.hosts?.[0] ?? entry.hosts?.[0];
           const organizerName = host?.name ?? source.name;
 
-          const lumaUrl = `https://lu.ma/${event.url}`;
-          const title = event.name;
+          // event.url can be a slug ("abc123") or a full external URL
+          const isExternalUrl = event.url.startsWith("http");
+          const lumaUrl = isExternalUrl ? `https://lu.ma/${event.api_id}` : `https://lu.ma/${event.url}`;
+          const websiteUrl = isExternalUrl ? event.url : lumaUrl;
 
+          const title = event.name;
           const category = resolveCategory(undefined, {}, title);
 
           eventsFound++;
@@ -378,7 +381,7 @@ export const lumaScraper: Scraper = {
             longitude: event.coordinate?.longitude,
             isOnline: event.location_type === "online",
             isHybrid: event.location_type === "hybrid",
-            websiteUrl: lumaUrl,
+            websiteUrl,
             registrationUrl: lumaUrl,
             lumaUrl,
             imageUrl: event.cover_url,
