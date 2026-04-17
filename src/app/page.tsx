@@ -16,8 +16,17 @@ export default async function HomePage() {
   const threeMonths = new Date();
   threeMonths.setMonth(threeMonths.getMonth() + 3);
 
-  const [groups, [statsRow], [cityCountRow]] = await Promise.all([
+  const [groups, [statsRow3m], [statsRow], [cityCountRow]] = await Promise.all([
     getEventsByTimeGroup(),
+    db
+      .select({ count: count() })
+      .from(events)
+      .where(
+        and(
+          eq(events.status, "approved"),
+          gte(events.startsAt, new Date()),
+        ),
+      ),
     db
       .select({ count: count() })
       .from(events)
@@ -33,7 +42,7 @@ export default async function HomePage() {
       .from(cities),
   ]);
 
-  const eventsNext3m = statsRow?.count ?? 0;
+  const eventsNext3m = statsRow3m?.count ?? 0;
   const cityCount = cityCountRow?.count ?? 0;
 
   // Cap to ~30 items (10 rows × 3 columns) across all groups
@@ -44,7 +53,7 @@ export default async function HomePage() {
   const thisWeek = groups.thisWeek.slice(0, remaining);
   remaining -= thisWeek.length;
   const upcoming = groups.upcoming.slice(0, remaining);
-  const totalEvents = eventsNext3m;
+  const totalUpcomingEvents = statsRow?.count ?? 0;
 
   return (
     <div>
@@ -61,7 +70,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-2xl text-center *:pointer-events-auto">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
               <Zap className="h-3.5 w-3.5" />
-              {totalEvents} upcoming events across Europe
+              {totalUpcomingEvents} upcoming events across Europe
             </div>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Discover Tech Events
@@ -142,7 +151,7 @@ export default async function HomePage() {
           <EventList title="📅 This Week" events={thisWeek} />
           <EventList title="🚀 Upcoming" events={upcoming} />
 
-          {totalEvents === 0 && (
+          {totalUpcomingEvents === 0 && (
             <div className="rounded-lg border border-dashed border-border py-16 text-center">
               <p className="text-lg text-muted-foreground">
                 No upcoming events yet.
@@ -161,7 +170,7 @@ export default async function HomePage() {
           )}
         </div>
 
-        {totalEvents > 0 && (
+        {totalUpcomingEvents > 0 && (
           <div className="mt-10 text-center">
             <Link href="/events">
               <Button variant="outline" size="lg">
