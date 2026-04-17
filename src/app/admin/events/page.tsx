@@ -88,8 +88,13 @@ export default function AdminEventsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
+  // Always read live query string from window.location to avoid stale closures
+  // (React Compiler memoizes callbacks across renders, so captured searchParams
+  // can diverge from the actual URL after navigations).
+  const currentParams = () => new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+
   const setFilter = (key: string, value: string | boolean) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = currentParams();
     if (value) {
       params.set(key, typeof value === "boolean" ? "1" : value);
     } else {
@@ -104,7 +109,7 @@ export default function AdminEventsPage() {
   };
 
   const setOffset = (newOffset: number) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = currentParams();
     if (newOffset > 0) params.set("offset", String(newOffset));
     else params.delete("offset");
     router.push(`${pathname}?${params.toString()}`);
@@ -122,7 +127,7 @@ export default function AdminEventsPage() {
   const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.q;
 
   const toggleSort = (field: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = currentParams();
     const current = params.get("sort") ?? "-date";
     params.set("sort", current === field ? `-${field}` : field);
     params.delete("offset");
