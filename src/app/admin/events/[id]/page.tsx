@@ -6,7 +6,7 @@ import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, Sparkles } from "lucide-react";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
   countryFlag, formatEventDate,
@@ -48,6 +48,7 @@ export default function AdminEventDetailPage({
   }, [fetchAdmin, id]);
 
   const [saving, setSaving] = useState<string | null>(null);
+  const [remoderating, setRemoderating] = useState(false);
 
   const patchField = async (field: string, value: string) => {
     if (!id) return;
@@ -107,6 +108,26 @@ export default function AdminEventDetailPage({
       body: JSON.stringify({ reason: (ev.aiModerationReason as string) ?? "Rejected during review" }),
     });
     await goToNextPending();
+  };
+
+  const handleRemoderate = async () => {
+    if (!id) return;
+    setRemoderating(true);
+    try {
+      const res = await fetchAdmin(`/api/admin/events/recategorize`, {
+        method: "POST",
+        body: JSON.stringify({ eventIds: [id] }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(`Failed: ${result.message ?? result.error ?? "Unknown error"}`);
+        return;
+      }
+      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+      setData(refreshed);
+    } finally {
+      setRemoderating(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -303,6 +324,16 @@ export default function AdminEventDetailPage({
                   <Button size="lg" className="border-green-300 text-green-700 hover:bg-green-50" variant="outline" onClick={handleApprove}>Approve</Button>
                 </>
               )}
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={handleRemoderate}
+                disabled={remoderating}
+                title="Re-run AI moderation on this event"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {remoderating ? "Moderating..." : "Re-moderate"}
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2">
               {status !== "approved" && status !== "rejected" && (

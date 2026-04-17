@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       country: params.get("country") ?? undefined,
       search: params.get("q") ?? undefined,
       noLocation: params.get("noLocation") === "1",
+      moderated: params.get("moderated") ?? undefined,
       sort: params.get("sort") ?? undefined,
       limit: parseInt(params.get("limit") ?? "50"),
       offset: parseInt(params.get("offset") ?? "0"),

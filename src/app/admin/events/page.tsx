@@ -54,6 +54,7 @@ export default function AdminEventsPage() {
     size: searchParams.get("size") ?? "",
     country: searchParams.get("country") ?? "",
     noLocation: searchParams.get("noLocation") === "1",
+    moderated: searchParams.get("moderated") ?? "",
     q: searchParams.get("q") ?? "",
     sort: searchParams.get("sort") ?? "-date",
   };
@@ -117,7 +118,7 @@ export default function AdminEventsPage() {
     searchTimer.current = setTimeout(() => setFilter("q", val), 300);
   };
 
-  const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.q;
+  const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.q;
 
   const toggleSort = (field: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -217,6 +218,11 @@ export default function AdminEventsPage() {
         >
           No Location
         </Button>
+        <Select value={filters.moderated} onChange={(e) => setFilter("moderated", e.target.value)} className="w-[150px]">
+          <option value="">Any AI state</option>
+          <option value="ai">AI-moderated</option>
+          <option value="not_ai">Not AI-moderated</option>
+        </Select>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="mr-1 h-3.5 w-3.5" />

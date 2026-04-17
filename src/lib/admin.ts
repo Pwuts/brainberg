@@ -28,6 +28,7 @@ interface ListEventsParams {
   country?: string;
   search?: string;
   noLocation?: boolean;
+  moderated?: string; // "ai", "not_ai"
   sort?: string; // "date", "-date", "title", "-title", "created", "-created"
   limit?: number;
   offset?: number;
@@ -56,6 +57,11 @@ export async function listEvents(params: ListEventsParams) {
   }
   if (params.noLocation) {
     conditions.push(and(isNull(events.cityId), isNull(events.latitude))!);
+  }
+  if (params.moderated === "ai") {
+    conditions.push(eq(events.moderatedByAI, true));
+  } else if (params.moderated === "not_ai") {
+    conditions.push(eq(events.moderatedByAI, false));
   }
   if (params.search) {
     // Use ILIKE for partial matching (admin search), not full-text search
