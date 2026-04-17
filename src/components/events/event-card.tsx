@@ -101,7 +101,6 @@ export function EventCard({ event, city, country }: EventCardProps) {
               href={event.websiteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
               className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               <ExternalLink className="h-4 w-4" />
