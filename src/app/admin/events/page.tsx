@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -35,38 +35,34 @@ interface EventRow {
 export default function AdminEventsPage() {
   const { fetchAdmin } = useAdminAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [events, setEvents] = useState<EventRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [filters, setFilters] = useState({
-    status: "",
-    source: "",
-    category: "",
-    type: "",
-    size: "",
-    country: "",
-    noLocation: false,
-    q: "",
-    sort: "-date",
-  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([]);
 
+  // Read filters from URL
+  const filters = {
+    status: searchParams.get("status") ?? "",
+    source: searchParams.get("source") ?? "",
+    category: searchParams.get("category") ?? "",
+    type: searchParams.get("type") ?? "",
+    size: searchParams.get("size") ?? "",
+    country: searchParams.get("country") ?? "",
+    noLocation: searchParams.get("noLocation") === "1",
+    q: searchParams.get("q") ?? "",
+    sort: searchParams.get("sort") ?? "-date",
+  };
+  const offset = parseInt(searchParams.get("offset") ?? "0");
   const limit = 50;
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (filters.status) params.set("status", filters.status);
-    if (filters.source) params.set("source", filters.source);
-    if (filters.category) params.set("category", filters.category);
-    if (filters.type) params.set("type", filters.type);
-    if (filters.size) params.set("size", filters.size);
-    if (filters.country) params.set("country", filters.country);
-    if (filters.noLocation) params.set("noLocation", "1");
-    if (filters.q) params.set("q", filters.q);
-    if (filters.sort) params.set("sort", filters.sort);
+    // Build API query from current URL params
+    const params = new URLSearchParams(searchParams.toString());
+    if (!params.has("sort")) params.set("sort", "-date");
     params.set("limit", String(limit));
-    params.set("offset", String(offset));
 
     const res = await fetchAdmin(`/api/admin/events?${params.toString()}`);
     const data = await res.json();
@@ -83,29 +79,50 @@ export default function AdminEventsPage() {
         setCountries([...unique.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name)));
       }
     }
-  }, [fetchAdmin, filters, offset, countries.length]);
+  }, [fetchAdmin, searchParams, countries.length]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const setFilter = (key: string, value: string | boolean) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setOffset(0);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, String(value));
+    } else {
+      params.delete(key);
+    }
+    params.delete("offset"); // reset pagination on filter change
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const clearFilters = () => {
-    setFilters({ status: "", source: "", category: "", type: "", size: "", country: "", noLocation: false, q: "", sort: "-date" });
-    setOffset(0);
+    router.push(pathname);
+  };
+
+  const setOffset = (newOffset: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newOffset > 0) params.set("offset", String(newOffset));
+    else params.delete("offset");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  // Debounced search
+  const [searchInput, setSearchInput] = useState(filters.q);
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleSearch = (val: string) => {
+    setSearchInput(val);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setFilter("q", val), 300);
   };
 
   const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.q;
 
   const toggleSort = (field: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      sort: prev.sort === field ? `-${field}` : field,
-    }));
-    setOffset(0);
+    const params = new URLSearchParams(searchParams.toString());
+    const current = params.get("sort") ?? "-date";
+    params.set("sort", current === field ? `-${field}` : field);
+    params.delete("offset");
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const sortIcon = (field: string) => {
@@ -147,8 +164,8 @@ export default function AdminEventsPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          value={filters.q}
-          onChange={(e) => setFilter("q", e.target.value)}
+          value={searchInput}
+          onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search title, city, organizer..."
           className="w-[220px]"
         />
