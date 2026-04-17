@@ -189,7 +189,7 @@ export const hackerCampsScraper: Scraper = {
         title: entry.title,
         description: entry.description,
         shortDescription: entry.description.slice(0, 200) + "…",
-        category: "hacker_maker_community",
+        category: "hacker_maker",
         eventType: "conference",
         size: entry.size,
         tags: entry.tags,

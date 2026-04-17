@@ -1,17 +1,22 @@
 import type { EventCategory, EventType } from "./types";
 
 // ============================================================
-// AI keyword regex — applied as override on titles
+// Title keyword regexes — applied as overrides
 // ============================================================
 
-export const AI_KEYWORD_REGEX =
-  /\b(AI|artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning|MLOps|MLcon|Agentic|Copilot)\b/i;
+/** AI/ML research & engineering: building models, training, MLOps */
+export const AI_RESEARCH_REGEX =
+  /\b(machine.learning|deep.learning|neural.net|NLP|computer.vision|MLOps|MLcon|PyTorch|HuggingFace|training.model|fine.?tun|pre.?train|reinforcement.learning|diffusion.model|transformer)\b/i;
+
+/** AI-powered development: using AI to build things, integrating AI */
+export const AI_DEV_REGEX =
+  /\b(AI|artificial.intelligence|LLM|GPT|generative.ai|gen.?ai|Agentic|Copilot|vibe.?cod|AI.agent|Claude|ChatGPT|DeepSeek|Mistral)\b/i;
 
 export const DATA_KEYWORD_REGEX =
-  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh)\b/i;
+  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh|dbt)\b/i;
 
 export const HACKER_MAKER_REGEX =
-  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs)\b/i;
+  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs|repair.caf|OpenLab|electronics.workshop)\b/i;
 
 export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
@@ -25,35 +30,38 @@ export const SECURITY_KEYWORD_REGEX =
 export const UX_KEYWORD_REGEX =
   /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX)\b/i;
 
+export const ENTREPRENEURSHIP_REGEX =
+  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator)\b/i;
+
 // ============================================================
 // confs.tech — filename → category
 // ============================================================
 
 export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
-  android: "general_tech",
+  android: "software_dev",
   css: "design_ux",
-  data: "general_tech", // Too broad — title keywords handle AI/data_science/etc
-  devops: "cloud_infra",
-  dotnet: "general_tech",
-  elixir: "general_tech",
-  general: "general_tech",
-  golang: "general_tech",
-  graphql: "devtools",
-  ios: "general_tech",
-  java: "general_tech",
-  javascript: "general_tech",
-  kotlin: "general_tech",
-  leadership: "general_tech", // Engineering leadership, not startup
-  networking: "general_tech",
-  php: "general_tech",
-  product: "startup",
-  python: "general_tech",
-  ruby: "general_tech",
-  rust: "general_tech",
-  scala: "general_tech",
-  security: "cybersecurity",
-  "tech-comm": "general_tech",
-  typescript: "general_tech",
+  data: "software_dev", // Too broad — title keywords handle AI/data/etc
+  devops: "cloud_devops",
+  dotnet: "software_dev",
+  elixir: "software_dev",
+  general: "software_dev",
+  golang: "software_dev",
+  graphql: "software_dev",
+  ios: "software_dev",
+  java: "software_dev",
+  javascript: "software_dev",
+  kotlin: "software_dev",
+  leadership: "software_dev",
+  networking: "software_dev",
+  php: "software_dev",
+  product: "entrepreneurship",
+  python: "software_dev",
+  ruby: "software_dev",
+  rust: "software_dev",
+  scala: "software_dev",
+  security: "security",
+  "tech-comm": "software_dev",
+  typescript: "software_dev",
   ux: "design_ux",
 };
 
@@ -62,26 +70,26 @@ export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
 // ============================================================
 
 export const DEVEVENTS_CATEGORY_MAP: Record<string, EventCategory> = {
-  "Artificial Intelligence (AI)": "ai_ml",
-  "Machine Learning": "ai_ml",
-  "Deep Learning": "ai_ml",
-  Cloud: "cloud_infra",
-  DevOps: "cloud_infra",
-  "Docker / Kubernetes": "cloud_infra",
-  Serverless: "cloud_infra",
-  Microservices: "cloud_infra",
+  "Artificial Intelligence (AI)": "ai_powered_dev",
+  "Machine Learning": "ai_ml_research",
+  "Deep Learning": "ai_ml_research",
+  Cloud: "cloud_devops",
+  DevOps: "cloud_devops",
+  "Docker / Kubernetes": "cloud_devops",
+  Serverless: "cloud_devops",
+  Microservices: "cloud_devops",
   Blockchain: "blockchain_web3",
-  Cybersecurity: "cybersecurity",
-  "Data Science": "data_science",
-  "Big Data / Analytics": "data_science",
+  Cybersecurity: "security",
+  "Data Science": "data_analytics",
+  "Big Data / Analytics": "data_analytics",
   "UX / Design": "design_ux",
-  FinTech: "fintech",
-  HealthTech: "healthtech",
-  Robotics: "robotics",
-  IoT: "robotics",
-  Startup: "startup",
-  "Open Source": "general_tech",
-  Community: "general_tech",
+  FinTech: "other",
+  HealthTech: "other",
+  Robotics: "software_dev",
+  IoT: "software_dev",
+  Startup: "entrepreneurship",
+  "Open Source": "software_dev",
+  Community: "software_dev",
 };
 
 export const DEVEVENTS_TYPE_MAP: Record<string, EventType> = {
@@ -97,41 +105,41 @@ export const DEVEVENTS_TYPE_MAP: Record<string, EventType> = {
 // ============================================================
 
 export const MEETUP_TOPIC_MAP: Record<string, EventCategory> = {
-  "artificial-intelligence": "ai_ml",
-  "machine-learning": "ai_ml",
-  "deep-learning": "ai_ml",
-  "natural-language-processing": "ai_ml",
-  "computer-vision": "ai_ml",
-  "data-science": "data_science",
-  "data-analytics": "data_science",
-  "big-data": "data_science",
+  "artificial-intelligence": "ai_powered_dev",
+  "machine-learning": "ai_ml_research",
+  "deep-learning": "ai_ml_research",
+  "natural-language-processing": "ai_ml_research",
+  "computer-vision": "ai_ml_research",
+  "data-science": "data_analytics",
+  "data-analytics": "data_analytics",
+  "big-data": "data_analytics",
   blockchain: "blockchain_web3",
   web3: "blockchain_web3",
   ethereum: "blockchain_web3",
-  "cloud-computing": "cloud_infra",
-  devops: "cloud_infra",
-  kubernetes: "cloud_infra",
-  "amazon-web-services": "cloud_infra",
-  docker: "cloud_infra",
-  cybersecurity: "cybersecurity",
-  "information-security": "cybersecurity",
+  "cloud-computing": "cloud_devops",
+  devops: "cloud_devops",
+  kubernetes: "cloud_devops",
+  "amazon-web-services": "cloud_devops",
+  docker: "cloud_devops",
+  cybersecurity: "security",
+  "information-security": "security",
   "ux-design": "design_ux",
   "user-experience": "design_ux",
-  fintech: "fintech",
-  "health-tech": "healthtech",
-  robotics: "robotics",
-  "internet-of-things": "robotics",
-  startup: "startup",
-  entrepreneurship: "startup",
-  maker: "hacker_maker_community",
-  hackerspace: "hacker_maker_community",
-  "open-source": "general_tech",
-  "software-development": "general_tech",
-  "web-development": "general_tech",
-  javascript: "general_tech",
-  python: "general_tech",
-  golang: "general_tech",
-  rust: "general_tech",
+  fintech: "other",
+  "health-tech": "other",
+  robotics: "software_dev",
+  "internet-of-things": "software_dev",
+  startup: "entrepreneurship",
+  entrepreneurship: "entrepreneurship",
+  maker: "hacker_maker",
+  hackerspace: "hacker_maker",
+  "open-source": "software_dev",
+  "software-development": "software_dev",
+  "web-development": "software_dev",
+  javascript: "software_dev",
+  python: "software_dev",
+  golang: "software_dev",
+  rust: "software_dev",
 };
 
 // ============================================================
@@ -139,8 +147,8 @@ export const MEETUP_TOPIC_MAP: Record<string, EventCategory> = {
 // ============================================================
 
 export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
-  "101": "general_tech", // Science & Technology
-  "102": "general_tech", // Science & Technology (alt)
+  "101": "software_dev",
+  "102": "software_dev",
 };
 
 // ============================================================
@@ -148,15 +156,19 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 // ============================================================
 
 /** Check title against all keyword regexes. Returns a category override or null.
- *  Order matters: more specific categories take priority. */
+ *  Order matters: more specific categories take priority.
+ *  AI research regex is checked before AI dev regex so research-specific
+ *  terms (MLOps, PyTorch, training) win over generic "AI" matches. */
 function titleOverride(title: string): EventCategory | null {
-  if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker_community";
-  if (AI_KEYWORD_REGEX.test(title)) return "ai_ml";
+  if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker";
+  if (AI_RESEARCH_REGEX.test(title)) return "ai_ml_research";
+  if (AI_DEV_REGEX.test(title)) return "ai_powered_dev";
   if (WEB3_KEYWORD_REGEX.test(title)) return "blockchain_web3";
-  if (SECURITY_KEYWORD_REGEX.test(title)) return "cybersecurity";
-  if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_infra";
-  if (DATA_KEYWORD_REGEX.test(title)) return "data_science";
+  if (SECURITY_KEYWORD_REGEX.test(title)) return "security";
+  if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_devops";
+  if (DATA_KEYWORD_REGEX.test(title)) return "data_analytics";
   if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
+  if (ENTREPRENEURSHIP_REGEX.test(title)) return "entrepreneurship";
   return null;
 }
 
@@ -166,13 +178,12 @@ export function resolveCategory(
   lookupMap: Record<string, EventCategory>,
   title: string,
 ): EventCategory {
-  // Title-based overrides take priority
   const override = titleOverride(title);
   if (override) return override;
 
   if (lookupKey && lookupMap[lookupKey]) return lookupMap[lookupKey];
 
-  return "general_tech";
+  return "software_dev";
 }
 
 /** Resolve category from an array of tags/topics (first match wins). */
@@ -181,7 +192,6 @@ export function resolveCategoryFromTags(
   lookupMap: Record<string, EventCategory>,
   title: string,
 ): EventCategory {
-  // Title-based overrides take priority
   const override = titleOverride(title);
   if (override) return override;
 
@@ -189,5 +199,5 @@ export function resolveCategoryFromTags(
     if (lookupMap[tag]) return lookupMap[tag];
   }
 
-  return "general_tech";
+  return "software_dev";
 }

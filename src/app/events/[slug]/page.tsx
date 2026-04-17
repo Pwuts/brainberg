@@ -20,6 +20,7 @@ import remarkBreaks from "remark-breaks";
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
+  CATEGORY_DESCRIPTIONS,
   EVENT_TYPE_LABELS,
   SIZE_LABELS,
   countryFlag,
@@ -90,7 +91,7 @@ export default async function EventPage({ params }: PageProps) {
 
       {/* Badges */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Badge className={categoryColor}>{categoryLabel}</Badge>
+        <Badge className={categoryColor} title={CATEGORY_DESCRIPTIONS[event.category]}>{categoryLabel}</Badge>
         <Badge variant="outline">{typeLabel}</Badge>
         {event.isFree && (
           <Badge className="bg-green-100 text-green-800">Free</Badge>

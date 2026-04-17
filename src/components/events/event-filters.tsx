@@ -6,7 +6,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { X } from "lucide-react";
-import { CATEGORY_LABELS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
+import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
 
 interface FilterProps {
   countries: { code: string; name: string }[];
@@ -88,7 +88,7 @@ export function EventFilters({ countries, cities }: FilterProps) {
         >
           <option value="">All Categories</option>
           {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
+            <option key={value} value={value} title={CATEGORY_DESCRIPTIONS[value]}>
               {label}
             </option>
           ))}

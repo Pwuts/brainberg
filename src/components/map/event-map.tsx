@@ -33,20 +33,17 @@ L.Icon.Default.mergeOptions({
 
 // Category → marker color mapping
 const MARKER_COLORS: Record<string, string> = {
-  ai_ml: "#9333ea",
-  blockchain_web3: "#ea580c",
-  devtools: "#2563eb",
-  cloud_infra: "#0891b2",
-  cybersecurity: "#dc2626",
-  data_science: "#16a34a",
-  design_ux: "#ec4899",
-  fintech: "#059669",
-  healthtech: "#0d9488",
-  robotics: "#d97706",
-  startup: "#4f46e5",
-  hacker_maker_community: "#65a30d",
-  general_tech: "#475569",
-  other: "#6b7280",
+  ai_ml_research: "#9333ea",  // purple
+  ai_powered_dev: "#7c3aed",  // violet
+  software_dev: "#475569",    // slate
+  data_analytics: "#16a34a",  // green
+  cloud_devops: "#0891b2",    // cyan
+  security: "#dc2626",        // red
+  design_ux: "#ec4899",       // pink
+  blockchain_web3: "#ea580c", // orange
+  entrepreneurship: "#4f46e5",// indigo
+  hacker_maker: "#65a30d",    // lime
+  other: "#6b7280",           // gray
 };
 
 // Size → scale factor for markers

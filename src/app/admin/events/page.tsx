@@ -10,6 +10,7 @@ import { X } from "lucide-react";
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
+  CATEGORY_DESCRIPTIONS,
   EVENT_TYPE_LABELS,
   SIZE_LABELS,
   SOURCE_LABELS,
@@ -186,7 +187,7 @@ export default function AdminEventsPage() {
         <Select value={filters.category} onChange={(e) => setFilter("category", e.target.value)} className="w-[160px]">
           <option value="">All Categories</option>
           {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val} title={CATEGORY_DESCRIPTIONS[val]}>{label}</option>
           ))}
         </Select>
         <Select value={filters.type} onChange={(e) => setFilter("type", e.target.value)} className="w-[140px]">
@@ -287,7 +288,7 @@ export default function AdminEventsPage() {
                   {SOURCE_LABELS[row.event.source] ?? row.event.source}
                 </td>
                 <td className="px-3 py-2">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[row.event.category] ?? "bg-gray-100 text-gray-800"}`}>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[row.event.category] ?? "bg-gray-100 text-gray-800"}`} title={CATEGORY_DESCRIPTIONS[row.event.category]}>
                     {CATEGORY_LABELS[row.event.category] ?? row.event.category}
                   </span>
                 </td>

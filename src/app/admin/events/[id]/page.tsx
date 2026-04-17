@@ -6,7 +6,7 @@ import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
-  CATEGORY_LABELS, CATEGORY_COLORS, SOURCE_LABELS, EVENT_TYPE_LABELS,
+  CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
   countryFlag, formatEventDate,
 } from "@/lib/utils";
 
@@ -95,6 +95,7 @@ export default function AdminEventDetailPage({
               value={category}
               onChange={(e) => patchField("category", e.target.value)}
               className={`!h-auto w-auto rounded-full !py-1 px-3 text-xs font-medium ${CATEGORY_COLORS[category] ?? "bg-gray-100 text-gray-800"}`}
+              title={CATEGORY_DESCRIPTIONS[category]}
             >
               {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
                 <option key={val} value={val}>{label}</option>

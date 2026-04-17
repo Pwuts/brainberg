@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
+  CATEGORY_DESCRIPTIONS,
   EVENT_TYPE_LABELS,
   SIZE_LABELS,
   countryFlag,
@@ -46,7 +47,7 @@ export function EventCard({ event, city, country }: EventCardProps) {
           <div className="min-w-0 flex-1">
             {/* Category + Type badges */}
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge className={categoryColor}>{categoryLabel}</Badge>
+              <Badge className={categoryColor} title={CATEGORY_DESCRIPTIONS[event.category]}>{categoryLabel}</Badge>
               <Badge variant="outline">{typeLabel}</Badge>
               {event.isFree && (
                 <Badge className="bg-green-100 text-green-800">Free</Badge>
