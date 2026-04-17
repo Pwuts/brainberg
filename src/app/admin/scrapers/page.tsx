@@ -98,9 +98,21 @@ export default function AdminScrapersPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Scrapers</h1>
-        <Button onClick={runAll} disabled={running !== null}>
-          {running === "all" ? "Running All..." : "Run All Scrapers"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const res = await fetchAdmin("/api/admin/events/recategorize", { method: "POST" });
+              const data = await res.json();
+              alert(`Re-categorized ${data.changed} of ${data.total} events`);
+            }}
+          >
+            Re-categorize All
+          </Button>
+          <Button onClick={runAll} disabled={running !== null}>
+            {running === "all" ? "Running All..." : "Run All Scrapers"}
+          </Button>
+        </div>
       </div>
 
       {/* Scraper cards */}

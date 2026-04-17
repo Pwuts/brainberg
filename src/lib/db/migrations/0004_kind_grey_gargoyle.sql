@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "category_locked" boolean DEFAULT false NOT NULL;

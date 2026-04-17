@@ -41,9 +41,12 @@ export default function AdminEventDetailPage({
 
   const patchField = async (field: string, value: string) => {
     if (!id) return;
+    const body: Record<string, unknown> = { [field]: value };
+    // Lock category when manually changed so re-categorize won't overwrite it
+    if (field === "category") body.categoryLocked = true;
     await fetchAdmin(`/api/admin/events/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ [field]: value }),
+      body: JSON.stringify(body),
     });
     setData((prev) =>
       prev ? { ...prev, event: { ...prev.event, [field]: value } } : prev,

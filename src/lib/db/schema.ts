@@ -126,6 +126,7 @@ export const events = pgTable("events", {
       setweight(to_tsvector('english', coalesce(${events.organizerName}, '')), 'D')
     `
   ),
+  categoryLocked: boolean("category_locked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
