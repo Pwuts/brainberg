@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
   };
 
   const useAi = !!process.env.ANTHROPIC_API_KEY;
+  console.log(`[recategorize] Starting (mode: ${useAi ? "AI" : "regex"}, scope: ${eventIds?.length ? `${eventIds.length} events` : dateFrom || dateTo ? `${dateFrom ?? "…"} to ${dateTo ?? "…"}` : "all"})`);
 
   try {
-    // Build query conditions for scoping
     const conditions = [];
     if (dateFrom) conditions.push(gte(events.startsAt, new Date(dateFrom)));
     if (dateTo) conditions.push(lte(events.startsAt, new Date(dateTo)));
@@ -41,17 +41,25 @@ export async function POST(request: NextRequest) {
         source: events.source,
         tags: events.tags,
         isOnline: events.isOnline,
-        cityName: events.venueName, // rough proxy
+        cityName: events.venueName,
       })
       .from(events)
       .where(where);
+
+    console.log(`[recategorize] Processing ${allEvents.length} events`);
 
     let categoriesChanged = 0;
     let typesChanged = 0;
     let statusesChanged = 0;
     let skippedLocked = 0;
+    let processed = 0;
 
     for (const event of allEvents) {
+      processed++;
+      if (processed % 50 === 0 || processed === allEvents.length) {
+        console.log(`[recategorize] Progress: ${processed}/${allEvents.length} (${categoriesChanged} cat, ${typesChanged} type, ${statusesChanged} status changes so far)`);
+      }
+
       if (event.categoryLocked) {
         skippedLocked++;
         continue;
@@ -60,7 +68,6 @@ export async function POST(request: NextRequest) {
       const updates: Record<string, unknown> = {};
 
       if (useAi) {
-        // AI-powered re-categorization
         const normalized: NormalizedEvent = {
           title: event.title,
           category: event.category,
@@ -77,14 +84,17 @@ export async function POST(request: NextRequest) {
         const result = await moderateEvent(normalized);
         if (result) {
           if (result.category && result.category !== event.category) {
+            console.log(`[recategorize] Category: "${event.title}" ${event.category} → ${result.category}`);
             updates.category = result.category;
             categoriesChanged++;
           }
           if (result.eventType && result.eventType !== event.eventType) {
+            console.log(`[recategorize] Type: "${event.title}" ${event.eventType} → ${result.eventType}`);
             updates.eventType = result.eventType;
             typesChanged++;
           }
           if (result.decision !== "approve") {
+            console.log(`[recategorize] Status: "${event.title}" → ${result.decision} (${result.reason})`);
             updates.status = result.decision === "reject" ? "rejected" : "pending";
             statusesChanged++;
           }
@@ -92,15 +102,16 @@ export async function POST(request: NextRequest) {
           updates.aiModerationReason = result.reason;
         }
       } else {
-        // Regex-only re-categorization
         const newCategory = resolveCategory(undefined, {}, event.title);
         if (newCategory !== "software_dev" && newCategory !== event.category) {
+          console.log(`[recategorize] Category: "${event.title}" ${event.category} → ${newCategory}`);
           updates.category = newCategory;
           categoriesChanged++;
         }
 
         const newType = resolveEventType(event.title);
         if (newType && newType !== event.eventType) {
+          console.log(`[recategorize] Type: "${event.title}" ${event.eventType} → ${newType}`);
           updates.eventType = newType;
           typesChanged++;
         }
@@ -112,6 +123,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const summary = `[recategorize] Done: ${allEvents.length} events, ${categoriesChanged} categories, ${typesChanged} types, ${statusesChanged} statuses changed, ${skippedLocked} locked`;
+    console.log(summary);
+
     return NextResponse.json({
       success: true,
       mode: useAi ? "ai" : "regex",
@@ -122,7 +136,7 @@ export async function POST(request: NextRequest) {
       skippedLocked,
     });
   } catch (error) {
-    console.error("Re-categorize error:", error);
+    console.error("[recategorize] Failed:", error);
     return NextResponse.json(
       { error: "Failed", message: error instanceof Error ? error.message : String(error) },
       { status: 500 },
