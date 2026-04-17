@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
       status: params.get("status") ?? undefined,
       source: params.get("source") ?? undefined,
       category: params.get("category") ?? undefined,
+      eventType: params.get("type") ?? undefined,
+      size: params.get("size") ?? undefined,
+      country: params.get("country") ?? undefined,
       search: params.get("q") ?? undefined,
+      noLocation: params.get("noLocation") === "1",
+      sort: params.get("sort") ?? undefined,
       limit: parseInt(params.get("limit") ?? "50"),
       offset: parseInt(params.get("offset") ?? "0"),
     });

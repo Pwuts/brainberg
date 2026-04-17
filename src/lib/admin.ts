@@ -2,8 +2,8 @@ import { db } from "./db";
 import {
   events, cities, countries, eventSources, scraperRuns,
 } from "./db/schema";
-import { eq, and, desc, sql, count, type SQL } from "drizzle-orm";
-import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum } from "./db/schema";
+import { eq, and, asc, desc, sql, count, isNull, ilike, or, type SQL } from "drizzle-orm";
+import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
 
 // ============================================================
 // Auth
@@ -23,7 +23,12 @@ interface ListEventsParams {
   status?: string;
   source?: string;
   category?: string;
+  eventType?: string;
+  size?: string;
+  country?: string;
   search?: string;
+  noLocation?: boolean;
+  sort?: string; // "date", "-date", "title", "-title", "created", "-created"
   limit?: number;
   offset?: number;
 }
@@ -40,14 +45,42 @@ export async function listEvents(params: ListEventsParams) {
   if (params.category) {
     conditions.push(eq(events.category, params.category as (typeof eventCategoryEnum.enumValues)[number]));
   }
+  if (params.eventType) {
+    conditions.push(eq(events.eventType, params.eventType as (typeof eventTypeEnum.enumValues)[number]));
+  }
+  if (params.size) {
+    conditions.push(eq(events.size, params.size as (typeof eventSizeEnum.enumValues)[number]));
+  }
+  if (params.country) {
+    conditions.push(eq(countries.code, params.country.toUpperCase()));
+  }
+  if (params.noLocation) {
+    conditions.push(and(isNull(events.cityId), isNull(events.latitude))!);
+  }
   if (params.search) {
+    // Use ILIKE for partial matching (admin search), not full-text search
+    const pattern = `%${params.search}%`;
     conditions.push(
-      sql`${events.searchVector} @@ plainto_tsquery('english', ${params.search})`
+      or(
+        ilike(events.title, pattern),
+        ilike(cities.name, pattern),
+        ilike(events.organizerName, pattern),
+      )!
     );
   }
 
   const limit = Math.min(params.limit ?? 50, 200);
   const offset = params.offset ?? 0;
+
+  // Sorting
+  let orderBy;
+  switch (params.sort) {
+    case "date": orderBy = asc(events.startsAt); break;
+    case "-date": orderBy = desc(events.startsAt); break;
+    case "title": orderBy = asc(events.title); break;
+    case "-title": orderBy = desc(events.title); break;
+    default: orderBy = desc(events.createdAt);
+  }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -58,12 +91,14 @@ export async function listEvents(params: ListEventsParams) {
       .leftJoin(cities, eq(events.cityId, cities.id))
       .leftJoin(countries, eq(events.countryId, countries.id))
       .where(where)
-      .orderBy(desc(events.createdAt))
+      .orderBy(orderBy)
       .limit(limit)
       .offset(offset),
     db
       .select({ count: count() })
       .from(events)
+      .leftJoin(cities, eq(events.cityId, cities.id))
+      .leftJoin(countries, eq(events.countryId, countries.id))
       .where(where),
   ]);
 
