@@ -1,0 +1,222 @@
+import { db } from "@/lib/db";
+import { events, eventSources, eventFingerprints } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import slugify from "slugify";
+import { resolveLocation } from "./city-resolver";
+import { checkDuplicate } from "./dedup";
+import { normalizeUrl } from "./url-utils";
+import { exactFingerprint } from "./fingerprint";
+import type { NormalizedEvent, IngestStats } from "./types";
+
+function makeSlug(title: string, date: Date): string {
+  const dateStr = date.toISOString().slice(0, 10);
+  return slugify(`${title} ${dateStr}`, { lower: true, strict: true }).slice(0, 350);
+}
+
+/** Ingest a stream of normalized events: resolve locations, dedup, insert/update. */
+export async function ingestEvents(
+  stream: AsyncGenerator<NormalizedEvent>,
+): Promise<IngestStats> {
+  const stats: IngestStats = {
+    found: 0,
+    created: 0,
+    updated: 0,
+    deduplicated: 0,
+    errors: 0,
+  };
+
+  for await (const event of stream) {
+    stats.found++;
+    try {
+      await ingestOne(event, stats);
+    } catch (err) {
+      stats.errors++;
+      console.error(`[ingest] Error processing "${event.title}":`, err);
+    }
+  }
+
+  return stats;
+}
+
+async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
+  // 1. Resolve location
+  const location = await resolveLocation(event.cityName, event.countryCode);
+
+  // 2. Check for duplicates
+  const dedup = await checkDuplicate(event);
+
+  if (dedup.existingEventId) {
+    stats.deduplicated++;
+
+    // Always update the eventSources junction
+    await upsertEventSource(dedup.existingEventId, event);
+
+    // Update existing event if new source has higher priority
+    if (dedup.shouldUpdate) {
+      await updateExistingEvent(dedup.existingEventId, event, location);
+      stats.updated++;
+    }
+
+    return;
+  }
+
+  // 3. Insert new event
+  const slug = makeSlug(event.title, event.startsAt);
+
+  const [inserted] = await db
+    .insert(events)
+    .values({
+      title: event.title,
+      slug,
+      description: event.description,
+      shortDescription: event.shortDescription,
+      category: event.category,
+      eventType: event.eventType,
+      size: event.size,
+      tags: event.tags,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      timezone: event.timezone ?? location.timezone,
+      isMultiDay: event.isMultiDay ?? false,
+      cityId: location.cityId,
+      countryId: location.countryId,
+      venueName: event.venueName,
+      venueAddress: event.venueAddress,
+      latitude: event.latitude ?? location.latitude,
+      longitude: event.longitude ?? location.longitude,
+      isOnline: event.isOnline,
+      isHybrid: event.isHybrid ?? false,
+      onlineUrl: event.onlineUrl,
+      websiteUrl: event.websiteUrl,
+      registrationUrl: event.registrationUrl,
+      lumaUrl: event.lumaUrl,
+      eventbriteUrl: event.eventbriteUrl,
+      meetupUrl: event.meetupUrl,
+      confsTechUrl: event.confsTechUrl,
+      devEventsUrl: event.devEventsUrl,
+      imageUrl: event.imageUrl,
+      thumbnailUrl: event.thumbnailUrl,
+      isFree: event.isFree ?? true,
+      priceFrom: event.priceFrom,
+      priceTo: event.priceTo,
+      currency: event.currency ?? "EUR",
+      status: "approved", // Auto-approve scraped events
+      source: event.source,
+      sourceId: event.sourceId,
+      sourceUrl: event.sourceUrl,
+      organizerName: event.organizerName,
+      organizerUrl: event.organizerUrl,
+      organizerEmail: event.organizerEmail,
+    })
+    .returning({ id: events.id });
+
+  // 4. Create fingerprints
+  await createFingerprints(inserted.id, event);
+
+  // 5. Create event source record
+  await upsertEventSource(inserted.id, event);
+
+  stats.created++;
+}
+
+async function updateExistingEvent(
+  eventId: string,
+  event: NormalizedEvent,
+  location: Awaited<ReturnType<typeof resolveLocation>>,
+) {
+  // Only fill in fields that are missing in the existing record
+  // For higher-priority sources, we overwrite more aggressively
+  await db
+    .update(events)
+    .set({
+      description: event.description || undefined,
+      shortDescription: event.shortDescription || undefined,
+      venueName: event.venueName || undefined,
+      venueAddress: event.venueAddress || undefined,
+      latitude: event.latitude ?? location.latitude ?? undefined,
+      longitude: event.longitude ?? location.longitude ?? undefined,
+      imageUrl: event.imageUrl || undefined,
+      thumbnailUrl: event.thumbnailUrl || undefined,
+      organizerName: event.organizerName || undefined,
+      organizerUrl: event.organizerUrl || undefined,
+      isFree: event.isFree,
+      priceFrom: event.priceFrom ?? undefined,
+      priceTo: event.priceTo ?? undefined,
+      // Always update source-specific URLs
+      eventbriteUrl: event.eventbriteUrl || undefined,
+      meetupUrl: event.meetupUrl || undefined,
+      confsTechUrl: event.confsTechUrl || undefined,
+      devEventsUrl: event.devEventsUrl || undefined,
+      updatedAt: new Date(),
+    })
+    .where(eq(events.id, eventId));
+}
+
+async function createFingerprints(eventId: string, event: NormalizedEvent) {
+  const fingerprints: { eventId: string; fingerprintType: string; fingerprintValue: string }[] = [];
+
+  // URL fingerprints
+  const urls = [event.websiteUrl, event.registrationUrl, event.sourceUrl].filter(Boolean);
+  for (const url of urls) {
+    fingerprints.push({
+      eventId,
+      fingerprintType: "url",
+      fingerprintValue: normalizeUrl(url!),
+    });
+  }
+
+  // Title+date+city fingerprint
+  fingerprints.push({
+    eventId,
+    fingerprintType: "title_date_city",
+    fingerprintValue: exactFingerprint(
+      event.title,
+      event.startsAt,
+      event.cityName ?? null,
+      event.isOnline,
+    ),
+  });
+
+  for (const fp of fingerprints) {
+    try {
+      await db
+        .insert(eventFingerprints)
+        .values(fp)
+        .onConflictDoNothing();
+    } catch {
+      // Ignore duplicate fingerprint errors
+    }
+  }
+}
+
+async function upsertEventSource(eventId: string, event: NormalizedEvent) {
+  const existing = await db
+    .select({ id: eventSources.id })
+    .from(eventSources)
+    .where(
+      and(
+        eq(eventSources.eventId, eventId),
+        eq(eventSources.source, event.source),
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(eventSources)
+      .set({
+        lastSeenAt: new Date(),
+        sourceUrl: event.sourceUrl,
+        rawData: event.rawData as Record<string, unknown> ?? undefined,
+      })
+      .where(eq(eventSources.id, existing[0].id));
+  } else {
+    await db.insert(eventSources).values({
+      eventId,
+      source: event.source,
+      sourceId: event.sourceId,
+      sourceUrl: event.sourceUrl,
+      rawData: event.rawData as Record<string, unknown>,
+    });
+  }
+}
