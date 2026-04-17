@@ -5,22 +5,25 @@ import type { EventCategory, EventType } from "./types";
 // ============================================================
 
 export const AI_KEYWORD_REGEX =
-  /\b(AI|artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning|MLOps|MLcon)\b/i;
+  /\b(AI|artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning|MLOps|MLcon|Agentic|Copilot)\b/i;
+
+export const DATA_KEYWORD_REGEX =
+  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords)\b/i;
 
 export const HACKER_MAKER_REGEX =
-  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab)\b/i;
+  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs)\b/i;
 
 export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
 
 export const DEVOPS_KEYWORD_REGEX =
-  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering)\b/i;
+  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|AWS.User.Group|CloudNativeCon|KubeCon)\b/i;
 
 export const SECURITY_KEYWORD_REGEX =
-  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC)\b/i;
+  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence)\b/i;
 
 export const UX_KEYWORD_REGEX =
-  /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf)\b/i;
+  /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX)\b/i;
 
 // ============================================================
 // confs.tech — filename → category
@@ -29,7 +32,7 @@ export const UX_KEYWORD_REGEX =
 export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
   android: "general_tech",
   css: "design_ux",
-  data: "data_science",
+  data: "general_tech", // Too broad — title keywords handle AI/data_science/etc
   devops: "cloud_infra",
   dotnet: "general_tech",
   elixir: "general_tech",
@@ -40,7 +43,7 @@ export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
   java: "general_tech",
   javascript: "general_tech",
   kotlin: "general_tech",
-  leadership: "startup",
+  leadership: "general_tech", // Engineering leadership, not startup
   networking: "general_tech",
   php: "general_tech",
   product: "startup",
@@ -144,14 +147,16 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 // Category resolution with title-based overrides
 // ============================================================
 
-/** Check title against all keyword regexes. Returns a category override or null. */
+/** Check title against all keyword regexes. Returns a category override or null.
+ *  Order matters: more specific categories take priority. */
 function titleOverride(title: string): EventCategory | null {
   if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker_community";
   if (AI_KEYWORD_REGEX.test(title)) return "ai_ml";
   if (WEB3_KEYWORD_REGEX.test(title)) return "blockchain_web3";
   if (SECURITY_KEYWORD_REGEX.test(title)) return "cybersecurity";
-  if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
   if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_infra";
+  if (DATA_KEYWORD_REGEX.test(title)) return "data_science";
+  if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
   return null;
 }
 
