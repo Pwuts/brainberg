@@ -36,6 +36,13 @@
       "when": 1776419961582,
       "tag": "0004_kind_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776435405711,
+      "tag": "0005_shiny_gamora",
+      "breakpoints": true
     }
   ]
 }

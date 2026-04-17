@@ -16,7 +16,7 @@ export const eventStatusEnum = pgEnum("event_status", [
 export const eventCategoryEnum = pgEnum("event_category", [
   "ai_ml_research", "ai_powered_dev", "software_dev", "data_analytics",
   "cloud_devops", "security", "design_ux", "blockchain_web3",
-  "entrepreneurship", "hacker_maker", "other",
+  "entrepreneurship", "hardware_iot", "hacker_maker", "other",
 ]);
 
 export const eventTypeEnum = pgEnum("event_type", [

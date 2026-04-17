@@ -15,7 +15,8 @@ export const CATEGORY_LABELS: Record<string, string> = {
   design_ux: "Design & UX",
   blockchain_web3: "Web3 & Blockchain",
   entrepreneurship: "Entrepreneurship",
-  hacker_maker: "Hacker / Maker",
+  hardware_iot: "Hardware, Robotics & IoT",
+  hacker_maker: "Hacker / Maker Community",
   other: "Other",
 };
 
@@ -29,7 +30,8 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   design_ux: "User experience, accessibility, design systems, usability",
   blockchain_web3: "Blockchain, DeFi, smart contracts, decentralization",
   entrepreneurship: "Startups, product management, leadership, fundraising, growth",
-  hacker_maker: "Hacker camps, hackerspaces, maker faires, DIY hardware, community congresses",
+  hardware_iot: "Robotics, IoT, embedded systems, 3D printing, electronics, Arduino, drones",
+  hacker_maker: "Hacker camps, hackerspaces, maker faires, community congresses",
   other: "Events that don't fit other categories",
 };
 
@@ -43,6 +45,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   design_ux: "bg-pink-100 text-pink-800",
   blockchain_web3: "bg-orange-100 text-orange-800",
   entrepreneurship: "bg-indigo-100 text-indigo-800",
+  hardware_iot: "bg-amber-100 text-amber-800",
   hacker_maker: "bg-lime-100 text-lime-800",
   other: "bg-gray-100 text-gray-800",
 };

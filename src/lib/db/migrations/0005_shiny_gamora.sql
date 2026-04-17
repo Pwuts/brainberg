@@ -1,0 +1,1 @@
+ALTER TYPE "public"."event_category" ADD VALUE 'hardware_iot' BEFORE 'hacker_maker';

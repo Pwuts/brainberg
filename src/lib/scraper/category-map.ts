@@ -33,6 +33,9 @@ export const UX_KEYWORD_REGEX =
 export const ENTREPRENEURSHIP_REGEX =
   /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership|Demo.Day|Investor)\b/i;
 
+export const HARDWARE_IOT_REGEX =
+  /\b(robotics|robot\b|IoT|Internet.of.Things|Arduino|ESP32|Raspberry.Pi|embedded.system|3D.print|3D.design|CAD|electronics|circuit|sensor|drone|hardware|microcontroller|SmartHome|battery)\b/i;
+
 // ============================================================
 // confs.tech — filename → category
 // ============================================================
@@ -127,8 +130,8 @@ export const MEETUP_TOPIC_MAP: Record<string, EventCategory> = {
   "user-experience": "design_ux",
   fintech: "entrepreneurship",
   "health-tech": "entrepreneurship",
-  robotics: "software_dev",
-  "internet-of-things": "software_dev",
+  robotics: "hardware_iot",
+  "internet-of-things": "hardware_iot",
   startup: "entrepreneurship",
   entrepreneurship: "entrepreneurship",
   maker: "hacker_maker",
@@ -168,6 +171,7 @@ function titleOverride(title: string): EventCategory | null {
   if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_devops";
   if (DATA_KEYWORD_REGEX.test(title)) return "data_analytics";
   if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
+  if (HARDWARE_IOT_REGEX.test(title)) return "hardware_iot";
   if (ENTREPRENEURSHIP_REGEX.test(title)) return "entrepreneurship";
   return null;
 }

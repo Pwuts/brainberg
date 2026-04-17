@@ -42,6 +42,7 @@ const MARKER_COLORS: Record<string, string> = {
   design_ux: "#ec4899",       // pink
   blockchain_web3: "#ea580c", // orange
   entrepreneurship: "#4f46e5",// indigo
+  hardware_iot: "#d97706",    // amber
   hacker_maker: "#65a30d",    // lime
   other: "#6b7280",           // gray
 };
