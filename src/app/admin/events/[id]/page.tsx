@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import {
@@ -162,19 +163,43 @@ export default function AdminEventDetailPage({
         <section className="space-y-3">
           <h2 className="font-semibold">Details</h2>
           <dl className="space-y-2 text-sm">
-            <Row label="Date">
-              {formatEventDate(
-                new Date(ev.startsAt as string),
-                ev.endsAt ? new Date(ev.endsAt as string) : null,
-                ev.timezone as string,
-              )}
+            <Row label="Starts">
+              <Input
+                type="datetime-local"
+                defaultValue={(ev.startsAt as string).slice(0, 16)}
+                onBlur={(e) => e.target.value && patchField("startsAt", new Date(e.target.value).toISOString())}
+                className="h-8 w-auto text-sm"
+              />
+            </Row>
+            <Row label="Ends">
+              <Input
+                type="datetime-local"
+                defaultValue={ev.endsAt ? (ev.endsAt as string).slice(0, 16) : ""}
+                onBlur={(e) => e.target.value ? patchField("endsAt", new Date(e.target.value).toISOString()) : undefined}
+                className="h-8 w-auto text-sm"
+              />
             </Row>
             <Row label="Location">
               {data.city?.name}
               {data.country ? ` ${countryFlag(data.country.code)} ${data.country.name}` : ""}
               {ev.isOnline ? " (Online)" : ""}
             </Row>
-            {ev.venueName ? <Row label="Venue">{String(ev.venueName)}</Row> : null}
+            <Row label="Venue">
+              <Input
+                defaultValue={String(ev.venueName ?? "")}
+                onBlur={(e) => patchField("venueName", e.target.value)}
+                placeholder="Venue name"
+                className="h-8 w-auto text-sm"
+              />
+            </Row>
+            <Row label="Address">
+              <Input
+                defaultValue={String(ev.venueAddress ?? "")}
+                onBlur={(e) => patchField("venueAddress", e.target.value)}
+                placeholder="Venue address"
+                className="h-8 w-auto text-sm"
+              />
+            </Row>
             {ev.organizerName ? <Row label="Organizer">{String(ev.organizerName)}</Row> : null}
             {ev.websiteUrl ? (
               <Row label="Website">
