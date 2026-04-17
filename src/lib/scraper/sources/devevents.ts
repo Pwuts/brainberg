@@ -82,7 +82,9 @@ export const devEventsScraper: Scraper = {
 
   async *scrape(options?: ScraperOptions): AsyncGenerator<NormalizedEvent> {
     // Pass 1: Fetch RSS
-    const res = await fetch(RSS_URL);
+    const res = await fetch(RSS_URL, {
+      headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" },
+    });
     if (!res.ok) throw new Error(`Failed to fetch RSS: ${res.status}`);
 
     const xml = await res.text();
