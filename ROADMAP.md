@@ -18,50 +18,102 @@ Placeholder pages exist for: Map, Calendar, Submit Event.
 
 The platform is useless without real events. This is the #1 priority.
 
-### 1.1 Luma Scraper
-- **Goal**: Scrape AI/tech events from lu.ma (the dominant platform for European AI events)
-- **Implementation**:
-  - Create `src/lib/scrapers/luma.ts`
-  - Luma has an undocumented API: `GET https://api.lu.ma/public/v2/event/search` (or scrape their discover pages)
-  - Parse event data → map to schema (title, description, dates, location, category, etc.)
-  - Deduplicate by URL (`lumaUrl` field already exists in schema)
-  - Geocode cities that don't exist yet → insert into `cities` table
-  - Add to `scraperSources` table for tracking
-- **Testing**: Run locally with `pnpm tsx scripts/scrape-luma.ts`, verify events appear on browse page
-- **Env vars**: `LUMA_API_KEY` (if needed, already in `.env.example`)
+Data sources are chosen for **structured category/topic metadata** — no manual categorization needed.
 
-### 1.2 Eventbrite Scraper
-- **Goal**: Scrape European tech events from Eventbrite
+### 1.1 confs.tech Scraper
+- **Goal**: Import curated tech conferences from confs.tech (easiest source — raw JSON on GitHub)
+- **Why first**: Zero API key needed, structured JSON with topics, dates, locations, and URLs
+- **Data format**: JSON files per year per topic in [GitHub repo](https://github.com/tech-conferences/conference-data)
+  - Structure: `conferences/{year}/{topic}.json` (e.g., `conferences/2026/ai.json`)
+  - Fields: `name`, `url`, `startDate`, `endDate`, `city`, `country`, `topics[]`, `online`
+- **Implementation**:
+  - Create `src/lib/scrapers/confs-tech.ts`
+  - Fetch raw JSON from GitHub (no auth needed): `https://raw.githubusercontent.com/tech-conferences/conference-data/main/conferences/{year}/{topic}.json`
+  - Topics to scrape: `ai`, `general`, `web`, `data`, `devops`, `cloud`, `security`, `mobile`
+  - Map `topics[]` → `eventCategory` enum, `online` flag → `isOnline`
+  - Filter for European countries only (use country code allowlist)
+  - Deduplicate by name + startDate + city combo
+  - Geocode new cities → insert into `cities` table with PostGIS coordinates
+- **Testing**: `pnpm tsx scripts/scrape-confs-tech.ts`
+- **Env vars**: None required
+
+### 1.2 dev.events Scraper
+- **Goal**: Import developer events from dev.events (broad coverage, structured categories)
+- **Data format**: REST API at `https://dev.events/api/events`
+  - Returns events with: `title`, `description`, `startDate`, `endDate`, `location`, `category`, `tags[]`, `url`, `cfpEndDate`
+  - Categories are pre-assigned (e.g., "AI/ML", "DevOps", "Web", "Cloud")
+- **Implementation**:
+  - Create `src/lib/scrapers/dev-events.ts`
+  - Query API with location filter for European countries
+  - Map `category` + `tags[]` → `eventCategory` enum
+  - Handle pagination
+  - Deduplicate by URL or title + date + city
+- **Testing**: `pnpm tsx scripts/scrape-dev-events.ts`
+- **Env vars**: None required (public API)
+
+### 1.3 Eventbrite Scraper
+- **Goal**: Scrape European tech events from Eventbrite (large event volume, rich metadata)
+- **Data format**: REST API v3 (requires API key)
+  - Endpoint: `GET /v3/events/search/`
+  - Query params: `categories=102` (Science & Tech), `subcategories=2004` (AI), `location.address=Europe`, `expand=venue,category`
+  - Returns: `name`, `description`, `start`/`end` (ISO 8601), `venue` (with lat/lng), `category`, `subcategory`, `is_free`, `is_online_event`, `url`
+  - Categories & subcategories are structured with IDs and names
 - **Implementation**:
   - Create `src/lib/scrapers/eventbrite.ts`
-  - Use Eventbrite API v3: `GET /v3/events/search/?categories=102&location.address=Europe`
-  - Map to schema, deduplicate by `eventbriteUrl`
-  - Handle pagination (Eventbrite returns 50 per page)
+  - Use Eventbrite API v3 with bearer token auth
+  - Search by subcategories: AI/ML (2004), Data Science (2007), Robotics (2006), Software (2008)
+  - Map `category.name` + `subcategory.name` → `eventCategory` enum
+  - Map `is_free` → `isFree`, `is_online_event` → `isOnline`
+  - Extract venue coordinates for PostGIS, geocode if missing
+  - Handle pagination (50 per page, `continuation` token)
+  - Deduplicate by `eventbriteUrl` field (already in schema)
+- **Testing**: `pnpm tsx scripts/scrape-eventbrite.ts`
 - **Env vars**: `EVENTBRITE_API_TOKEN` (already in `.env.example`)
 
-### 1.3 Meetup Scraper
-- **Goal**: Scrape tech meetups from Meetup.com
+### 1.4 Meetup Scraper
+- **Goal**: Scrape European tech meetups from Meetup.com (recurring community events)
+- **Data format**: GraphQL API (requires OAuth or Pro API key)
+  - Query: `searchEvents` with `filter: { query: "tech", lat, lon, radius }`
+  - Returns: `title`, `description`, `dateTime`, `venue { lat, lng, city, country }`, `topics[].name`, `eventUrl`, `going`, `isOnline`
+  - `topics[]` provides structured category metadata (e.g., "Artificial Intelligence", "Machine Learning", "Web Development")
 - **Implementation**:
   - Create `src/lib/scrapers/meetup.ts`
-  - Meetup's GraphQL API or scrape search results
-  - Focus on tech/AI categories in European cities
-  - Deduplicate by `meetupUrl`
-- **Note**: Meetup's API has gotten more restrictive; may need browser scraping via Playwright
+  - Query GraphQL API centered on major European tech hubs: Berlin, Amsterdam, London, Paris, Barcelona, Stockholm, Lisbon, Dublin, Munich, Zurich, etc.
+  - Map `topics[].name` → `eventCategory` enum using keyword matching (e.g., "Artificial Intelligence" → `ai_ml`)
+  - Set `eventType: "meetup"` and `size` based on `going` count
+  - Deduplicate by `meetupUrl` field (already in schema)
+  - Handle rate limiting (Meetup is strict — add delays between requests)
+- **Note**: Meetup's API has gotten restrictive; may need Pro API key or browser scraping via Playwright as fallback
+- **Testing**: `pnpm tsx scripts/scrape-meetup.ts`
+- **Env vars**: `MEETUP_API_KEY` (add to `.env.example`)
 
-### 1.4 Scraper Orchestration
+### 1.5 Category Mapping Utility
+- **Goal**: Centralized mapping from source-specific categories/topics to Brainberg's `eventCategory` enum
+- **Implementation**:
+  - Create `src/lib/scrapers/category-mapper.ts`
+  - Input: array of topic strings from any source (e.g., `["Artificial Intelligence", "Deep Learning"]`)
+  - Output: best matching `eventCategory` enum value (e.g., `ai_ml`)
+  - Use keyword matching with weighted scores (e.g., "AI" → `ai_ml` +10, "Machine Learning" → `ai_ml` +10, "Web" → `web_dev` +5)
+  - Fallback to `"general"` if no strong match
+  - Similarly map to `eventType` and `eventSize` where source data allows
+  - Shared across all scrapers for consistency
+
+### 1.6 Scraper Orchestration
 - **Goal**: Cron job that runs all scrapers on a schedule
 - **Implementation**:
   - Create `src/app/api/cron/scrape/route.ts` — protected by `CRON_SECRET`
-  - Run scrapers sequentially, log results to `scraperSources` table
-  - Track last scrape time, events added/updated/skipped
-  - Call via external cron (Vercel Cron, GitHub Actions schedule, or system cron)
+  - Run scrapers sequentially: confs.tech → dev.events → Eventbrite → Meetup
+  - Log results to `scraperSources` table (events added/updated/skipped, errors)
+  - Track last scrape time per source
+  - Call via external cron (GitHub Actions schedule, or system cron on VPS)
 - **Schedule**: Every 6 hours
 - **Testing**: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/scrape`
 
-### 1.5 Event Deduplication & Cleanup
+### 1.7 Event Deduplication & Cleanup
 - **Goal**: Prevent duplicates across scrapers, mark past events
 - **Implementation**:
   - Deduplicate by normalized URL, or title + date + city combo
+  - Cross-source dedup: same event listed on Eventbrite AND Meetup → keep richest record, merge URLs
   - Create `src/app/api/cron/cleanup/route.ts` — marks events with `startsAt < now` as `status: "past"`
   - Add index on `(title, startsAt, cityId)` for fast dedup lookups
 
@@ -245,13 +297,14 @@ The platform is useless without real events. This is the #1 priority.
 
 | Sprint | Duration | Focus |
 |--------|----------|-------|
-| **Sprint 1** | 1-2 weeks | Phase 1.1-1.2 (Luma + Eventbrite scrapers — get real data in) |
-| **Sprint 2** | 1 week | Phase 1.4-1.5 (Scraper cron + dedup) + Phase 4.4 (SEO basics) |
-| **Sprint 3** | 1-2 weeks | Phase 2.1 (Map view) + Phase 2.4 (Mobile nav) |
-| **Sprint 4** | 1 week | Phase 3.1-3.2 (Auth + Event submission) |
-| **Sprint 5** | 1 week | Phase 2.2 (Calendar) + Phase 2.3 (Event detail enhancements) |
-| **Sprint 6** | 1 week | Phase 4.3 (RSS) + Phase 6 (GDPR) |
-| **Sprint 7+** | Ongoing | Phases 4-5 based on user feedback |
+| **Sprint 1** | 1-2 weeks | Phase 1.1-1.2 (confs.tech + dev.events scrapers — easiest wins, no API keys) |
+| **Sprint 2** | 1 week | Phase 1.3-1.4 (Eventbrite + Meetup scrapers — richer data, needs API keys) |
+| **Sprint 3** | 1 week | Phase 1.5-1.7 (Category mapper + scraper cron + dedup) + Phase 4.4 (SEO basics) |
+| **Sprint 4** | 1-2 weeks | Phase 2.1 (Map view) + Phase 2.4 (Mobile nav) |
+| **Sprint 5** | 1 week | Phase 3.1-3.2 (Auth + Event submission) |
+| **Sprint 6** | 1 week | Phase 2.2 (Calendar) + Phase 2.3 (Event detail enhancements) |
+| **Sprint 7** | 1 week | Phase 4.3 (RSS) + Phase 6 (GDPR) |
+| **Sprint 8+** | Ongoing | Phases 4-5 based on user feedback |
 
 ---
 
