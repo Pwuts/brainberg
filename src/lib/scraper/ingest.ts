@@ -6,6 +6,7 @@ import { resolveLocation, geocodeAddress } from "./city-resolver";
 import { checkDuplicate } from "./dedup";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint } from "./fingerprint";
+import { NON_TECH_REGEX } from "./category-map";
 import type { NormalizedEvent, IngestStats } from "./types";
 
 function makeSlug(title: string, date: Date, suffix?: string): string {
@@ -41,6 +42,8 @@ export async function ingestEvents(
 }
 
 async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
+  // Filter out non-tech events across all sources
+  if (NON_TECH_REGEX.test(event.title)) return;
   // 1. Resolve location
   const location = await resolveLocation(event.cityName, event.countryCode);
 
@@ -76,7 +79,7 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
   // 3. Insert new event
   // Include city name in slug to reduce collisions between same-titled events in different cities
-  let slug = makeSlug(event.title, event.startsAt, event.cityName);
+  const slug = makeSlug(event.title, event.startsAt, event.cityName);
 
   const values = {
     title: event.title,
