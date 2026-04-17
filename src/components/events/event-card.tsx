@@ -94,20 +94,20 @@ export function EventCard({ event, city, country }: EventCardProps) {
               )}
             </div>
           </div>
-
-          {/* External link icon */}
-          {event.websiteUrl && (
-            <a
-              href={event.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          )}
         </div>
       </Link>
+
+      {/* External link — outside <Link> to avoid nested <a> */}
+      {event.websiteUrl && (
+        <a
+          href={event.websiteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute right-5 top-5 z-10 shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </a>
+      )}
     </Card>
   );
 }
