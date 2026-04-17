@@ -9,8 +9,8 @@ services:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
     image: brainberg:latest
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: ${DATABASE_URL}
       AUTH_SECRET: ${AUTH_SECRET}
