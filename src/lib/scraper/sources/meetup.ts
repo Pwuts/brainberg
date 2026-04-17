@@ -79,7 +79,18 @@ function extractEventsFromHtml(html: string): MeetupEvent[] {
           eventUrl: ev.eventUrl as string,
           eventType: ev.eventType as string | undefined,
           going: (ev.rsvps as { totalCount?: number })?.totalCount,
-          imageUrl: ev.imageUrl as string | undefined,
+          imageUrl: (() => {
+            // Resolve photo reference from Apollo cache
+            const photoRef = ev.featuredEventPhoto ?? ev.displayPhoto;
+            if (photoRef && typeof photoRef === "object" && "__ref" in (photoRef as Record<string, unknown>)) {
+              const photo = state[(photoRef as { __ref: string }).__ref] as Record<string, unknown> | undefined;
+              return (photo?.highResUrl as string) ?? undefined;
+            }
+            if (photoRef && typeof photoRef === "object") {
+              return ((photoRef as Record<string, unknown>).highResUrl as string) ?? undefined;
+            }
+            return ev.imageUrl as string | undefined;
+          })(),
           venue: ev.venue as MeetupEvent["venue"],
           group: ev.group
             ? { name: (state[ev.group as string] as Record<string, unknown>)?.name as string, urlname: (state[ev.group as string] as Record<string, unknown>)?.urlname as string }
