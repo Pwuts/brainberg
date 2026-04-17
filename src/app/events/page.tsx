@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { db } from "@/lib/db";
-import { countries, cities } from "@/lib/db/schema";
+import { countries } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import { getFilteredEvents } from "@/lib/events";
 
@@ -24,16 +24,10 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   // Fetch filter options
-  const [allCountries, allCities] = await Promise.all([
-    db
-      .select({ code: countries.code, name: countries.name })
-      .from(countries)
-      .orderBy(asc(countries.name)),
-    db
-      .select({ slug: cities.slug, name: cities.name })
-      .from(cities)
-      .orderBy(asc(cities.name)),
-  ]);
+  const allCountries = await db
+    .select({ code: countries.code, name: countries.name })
+    .from(countries)
+    .orderBy(asc(countries.name));
 
   // Apply filters
   const { events: results, nextCursor } = await getFilteredEvents({
@@ -47,6 +41,9 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
     isFree: params.free === "1",
     isOnline: params.online === "1",
     search: params.q,
+    latitude: params.lat ? parseFloat(params.lat) : undefined,
+    longitude: params.lng ? parseFloat(params.lng) : undefined,
+    radius: params.radius ? parseInt(params.radius) : undefined,
     cursor: params.cursor,
     limit: 20,
   });
@@ -70,7 +67,7 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
       {/* Filters */}
       <div className="mb-6">
         <Suspense>
-          <EventFilters countries={allCountries} cities={allCities} />
+          <EventFilters countries={allCountries} />
         </Suspense>
       </div>
 

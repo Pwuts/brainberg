@@ -19,6 +19,9 @@ interface EventFilters {
   isFree?: boolean;
   isOnline?: boolean;
   search?: string;
+  latitude?: number;
+  longitude?: number;
+  radius?: number; // km
   limit?: number;
   cursor?: string;
 }
@@ -123,6 +126,16 @@ export async function getFilteredEvents(filters: EventFilters) {
   if (filters.search) {
     conditions.push(
       sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`
+    );
+  }
+  if (filters.latitude != null && filters.longitude != null && filters.radius) {
+    const radiusMeters = filters.radius * 1000;
+    conditions.push(
+      sql`ST_DWithin(
+        COALESCE(${events.location}, ${cities.location})::geography,
+        ST_SetSRID(ST_MakePoint(${filters.longitude}, ${filters.latitude}), 4326)::geography,
+        ${radiusMeters}
+      )`
     );
   }
 

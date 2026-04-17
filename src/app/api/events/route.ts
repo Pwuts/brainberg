@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
       isFree: params.get("free") === "1",
       isOnline: params.get("online") === "1",
       search: params.get("q") ?? undefined,
+      latitude: params.get("lat") ? parseFloat(params.get("lat")!) : undefined,
+      longitude: params.get("lng") ? parseFloat(params.get("lng")!) : undefined,
+      radius: params.get("radius") ? parseInt(params.get("radius")!) : undefined,
       cursor: params.get("cursor") ?? undefined,
       limit: Math.min(parseInt(params.get("limit") ?? "20"), 100),
     });

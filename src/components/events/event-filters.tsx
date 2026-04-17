@@ -5,15 +5,15 @@ import { useCallback } from "react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
+import { LocationFilter } from "@/components/ui/location-filter";
 import { X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
 
 interface FilterProps {
   countries: { code: string; name: string }[];
-  cities: { slug: string; name: string }[];
 }
 
-export function EventFilters({ countries, cities }: FilterProps) {
+export function EventFilters({ countries }: FilterProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -31,6 +31,30 @@ export function EventFilters({ countries, cities }: FilterProps) {
     },
     [router, pathname, searchParams]
   );
+
+  const setLocation = useCallback(
+    (loc: { name: string; lat: string; lng: string; radius: string }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("loc", loc.name);
+      params.set("lat", loc.lat);
+      params.set("lng", loc.lng);
+      params.set("radius", loc.radius);
+      params.delete("city"); // radius search replaces city filter
+      params.delete("cursor");
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams]
+  );
+
+  const clearLocation = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("loc");
+    params.delete("lat");
+    params.delete("lng");
+    params.delete("radius");
+    params.delete("cursor");
+    router.push(`${pathname}?${params.toString()}`);
+  }, [router, pathname, searchParams]);
 
   const setDateRange = useCallback(
     (from: string, to: string) => {
@@ -66,19 +90,15 @@ export function EventFilters({ countries, cities }: FilterProps) {
           ))}
         </Select>
 
-        {/* City */}
-        <Select
-          value={searchParams.get("city") ?? ""}
-          onChange={(e) => setFilter("city", e.target.value)}
-          className="w-[160px]"
-        >
-          <option value="">All Cities</option>
-          {cities.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
+        {/* Location / Radius */}
+        <LocationFilter
+          locationName={searchParams.get("loc") ?? ""}
+          latitude={searchParams.get("lat") ?? ""}
+          longitude={searchParams.get("lng") ?? ""}
+          radius={searchParams.get("radius") ?? ""}
+          onChange={setLocation}
+          onClear={clearLocation}
+        />
 
         {/* Category */}
         <Select
