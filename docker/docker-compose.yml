@@ -3,6 +3,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      args:
+        DATABASE_URL: postgresql://brainberg:${DB_PASSWORD}@db:5432/brainberg
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://brainberg.eu}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Brainberg}
     container_name: brainberg-app
     restart: unless-stopped
     expose:
