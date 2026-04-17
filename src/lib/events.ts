@@ -294,7 +294,7 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
     .leftJoin(countries, eq(events.countryId, countries.id))
     .where(and(...conditions))
     .orderBy(asc(events.startsAt))
-    .limit(500);
+    .limit(1337);
 
   return results as MapEvent[];
 }
