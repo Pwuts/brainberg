@@ -17,7 +17,7 @@ export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
 
 export const DEVOPS_KEYWORD_REGEX =
-  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|AWS|Azure|CloudNativeCon|KubeCon|OpenTelemetry|Kafka)\b/i;
+  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|CloudNativeCon|KubeCon|OpenTelemetry|AWS.User.Group|AWS.Community|AWS.Meetup|Azure.User.Group|Kafka)\b/i;
 
 export const SECURITY_KEYWORD_REGEX =
   /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks)\b/i;
