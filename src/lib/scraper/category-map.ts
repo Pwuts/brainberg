@@ -8,7 +8,7 @@ export const AI_KEYWORD_REGEX =
   /\b(artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning)\b/i;
 
 export const HACKER_MAKER_REGEX =
-  /\b(CCC|chaos.communication|congress|camp|hacker|maker|faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|hackerspace|fab.?lab)\b/i;
+  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab)\b/i;
 
 // ============================================================
 // confs.tech — filename → category

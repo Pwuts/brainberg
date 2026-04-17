@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, SOURCE_LABELS, EVENT_TYPE_LABELS,
@@ -39,11 +40,23 @@ export default function AdminEventDetailPage({
       .catch(console.error);
   }, [fetchAdmin, id]);
 
+  const patchField = async (field: string, value: string) => {
+    if (!id) return;
+    await fetchAdmin(`/api/admin/events/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ [field]: value }),
+    });
+    setData((prev) =>
+      prev ? { ...prev, event: { ...prev.event, [field]: value } } : prev,
+    );
+  };
+
   if (!data) return <p className="text-muted-foreground">Loading...</p>;
 
   const ev = data.event;
   const status = ev.status as string;
   const category = ev.category as string;
+  const eventType = ev.eventType as string;
 
   const handleApprove = async () => {
     await fetchAdmin(`/api/admin/events/${id}/approve`, { method: "POST" });
@@ -79,10 +92,24 @@ export default function AdminEventDetailPage({
             }`}>
               {status}
             </span>
-            <Badge className={CATEGORY_COLORS[category] ?? "bg-gray-100 text-gray-800"}>
-              {CATEGORY_LABELS[category] ?? category}
-            </Badge>
-            <Badge variant="outline">{EVENT_TYPE_LABELS[ev.eventType as string] ?? ev.eventType}</Badge>
+            <Select
+              value={category}
+              onChange={(e) => patchField("category", e.target.value)}
+              className={`!h-auto w-auto rounded-full !py-1 px-3 text-xs font-medium ${CATEGORY_COLORS[category] ?? "bg-gray-100 text-gray-800"}`}
+            >
+              {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </Select>
+            <Select
+              value={eventType}
+              onChange={(e) => patchField("eventType", e.target.value)}
+              className="!h-auto w-auto rounded-full border !py-1 px-3 text-xs font-medium"
+            >
+              {Object.entries(EVENT_TYPE_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </Select>
             <span className="text-sm text-muted-foreground">
               via {SOURCE_LABELS[ev.source as string] ?? ev.source}
             </span>
