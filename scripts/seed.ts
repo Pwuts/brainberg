@@ -832,15 +832,15 @@ async function seed() {
 
   // Insert countries
   console.log("  → Countries...");
-  const insertedCountries = await db
+  await db
     .insert(countries)
     .values(COUNTRIES)
-    .onConflictDoNothing()
-    .returning();
-  console.log(`    ✓ ${insertedCountries.length} countries`);
+    .onConflictDoNothing();
+  const allCountries = await db.select().from(countries);
+  console.log(`    ✓ ${allCountries.length} countries`);
 
   // Build country code → id map
-  const countryMap = new Map(insertedCountries.map((c) => [c.code, c.id]));
+  const countryMap = new Map(allCountries.map((c) => [c.code, c.id]));
 
   // Insert cities
   console.log("  → Cities...");
@@ -855,15 +855,15 @@ async function seed() {
     isPopular: c.popular,
   }));
 
-  const insertedCities = await db
+  await db
     .insert(cities)
     .values(cityValues)
-    .onConflictDoNothing()
-    .returning();
-  console.log(`    ✓ ${insertedCities.length} cities`);
+    .onConflictDoNothing();
+  const allCities = await db.select().from(cities);
+  console.log(`    ✓ ${allCities.length} cities`);
 
   // Build city slug → data map
-  const cityMap = new Map(insertedCities.map((c) => [c.slug, c]));
+  const cityMap = new Map(allCities.map((c) => [c.slug, c]));
 
   // Insert sample events
   console.log("  → Sample events...");
@@ -874,7 +874,7 @@ async function seed() {
       console.warn(`    ⚠ City not found: ${evt.citySlug}, skipping ${evt.title}`);
       continue;
     }
-    const country = insertedCountries.find((c) => c.id === city.countryId);
+    const country = allCountries.find((c) => c.id === city.countryId);
 
     await db.insert(events).values({
       title: evt.title,
