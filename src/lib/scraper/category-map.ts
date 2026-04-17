@@ -6,14 +6,14 @@ import type { EventCategory, EventType } from "./types";
 
 /** AI/ML research & engineering: building models, training, MLOps */
 export const AI_RESEARCH_REGEX =
-  /\b(machine.learning|deep.learning|neural.net|NLP|computer.vision|MLOps|MLcon|PyTorch|HuggingFace|training.model|fine.?tun|pre.?train|reinforcement.learning|diffusion.model|transformer)\b/i;
+  /\b(machine.learning|deep.learning|neural.net|NLP|computer.vision|MLOps|MLcon|PyTorch|HuggingFace|training.model|fine.?tun|pre.?train|reinforcement.learning|diffusion.model|transformer|Knowledge.Graph|Embedded.AI|Quantum.AI)\b/i;
 
 /** AI-powered development: using AI to build things, integrating AI */
 export const AI_DEV_REGEX =
-  /\b(AI|artificial.intelligence|LLM|GPT|generative.ai|gen.?ai|Agentic|Copilot|vibe.?cod|AI.agent|Claude|ChatGPT|DeepSeek|Mistral)\b/i;
+  /\b(AI|artificial.intelligence|LLM|GPT|generative.ai|gen.?ai|Agentic|Copilot|vibe.?cod|AI.agent|Claude|ChatGPT|DeepSeek|Mistral|KI\b|n8n.*AI|MCP)\b/i;
 
 export const DATA_KEYWORD_REGEX =
-  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh|dbt)\b/i;
+  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh|dbt|PGConf|Airflow)\b/i;
 
 export const HACKER_MAKER_REGEX =
   /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs|repair.caf|OpenLab|electronics.workshop)\b/i;
@@ -28,10 +28,10 @@ export const SECURITY_KEYWORD_REGEX =
   /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks)\b/i;
 
 export const UX_KEYWORD_REGEX =
-  /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX)\b/i;
+  /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX|WCAG)\b/i;
 
 export const ENTREPRENEURSHIP_REGEX =
-  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator)\b/i;
+  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership)\b/i;
 
 // ============================================================
 // confs.tech — filename → category
