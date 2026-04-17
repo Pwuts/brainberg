@@ -16,7 +16,7 @@ const NAME_TO_CODE: Record<string, string> = {
   malta: "MT", netherlands: "NL", "the netherlands": "NL",
   poland: "PL", portugal: "PT", romania: "RO", slovakia: "SK",
   slovenia: "SI", spain: "ES", sweden: "SE",
-  "united kingdom": "GB", "great britain": "GB", uk: "GB",
+  "united kingdom": "GB", "great britain": "GB", uk: "GB", "u.k.": "GB",
   switzerland: "CH", norway: "NO", iceland: "IS", ukraine: "UA",
   serbia: "RS", turkey: "TR", türkiye: "TR", albania: "AL",
   "bosnia and herzegovina": "BA", montenegro: "ME",
