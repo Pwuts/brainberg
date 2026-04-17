@@ -64,7 +64,7 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
     // Update existing event if new source has higher priority
     if (dedup.shouldUpdate) {
-      await updateExistingEvent(dedup.existingEventId, event, location);
+      await updateExistingEvent(dedup.existingEventId, event, location, eventLat, eventLng);
       stats.updated++;
     }
 
@@ -134,18 +134,22 @@ async function updateExistingEvent(
   eventId: string,
   event: NormalizedEvent,
   location: Awaited<ReturnType<typeof resolveLocation>>,
+  eventLat?: number | null,
+  eventLng?: number | null,
 ) {
-  // Only fill in fields that are missing in the existing record
-  // For higher-priority sources, we overwrite more aggressively
+  // Fill in missing fields; higher-priority sources overwrite more aggressively
   await db
     .update(events)
     .set({
       description: event.description || undefined,
       shortDescription: event.shortDescription || undefined,
+      // Fill in location if missing
+      cityId: location.cityId ?? undefined,
+      countryId: location.countryId ?? undefined,
       venueName: event.venueName || undefined,
       venueAddress: event.venueAddress || undefined,
-      latitude: event.latitude ?? location.latitude ?? undefined,
-      longitude: event.longitude ?? location.longitude ?? undefined,
+      latitude: eventLat ?? undefined,
+      longitude: eventLng ?? undefined,
       imageUrl: event.imageUrl || undefined,
       thumbnailUrl: event.thumbnailUrl || undefined,
       organizerName: event.organizerName || undefined,

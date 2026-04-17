@@ -44,6 +44,7 @@ const MARKER_COLORS: Record<string, string> = {
   healthtech: "#0d9488",
   robotics: "#d97706",
   startup: "#4f46e5",
+  hacker_maker_community: "#65a30d",
   general_tech: "#475569",
   other: "#6b7280",
 };

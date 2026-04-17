@@ -149,10 +149,28 @@ export const devEventsScraper: Scraper = {
       const category = resolveCategoryFromTags(categories, DEVEVENTS_CATEGORY_MAP, title);
 
       const isOnline = jsonLd?.location?.["@type"] === "VirtualLocation";
-      const cityName = jsonLd?.location?.address?.addressLocality;
-      const countryCode = jsonLd?.location?.address?.addressCountry;
+      let cityName = jsonLd?.location?.address?.addressLocality;
+      let countryCode = jsonLd?.location?.address?.addressCountry;
 
-      // Filter: European countries only (skip if we have a country and it's not European)
+      // Fallback: parse location from RSS description text
+      // Format: "Event Title is happening on Date in City, Country, Continent"
+      if (!cityName && item.description) {
+        const descText = typeof item.description === "string" ? item.description : "";
+        const locMatch = descText.match(/\bin ([^,]+),\s*([^,]+),\s*(?:Europe|Asia|Africa)/);
+        if (locMatch) {
+          cityName = locMatch[1].trim();
+          countryCode = undefined; // We have country name, not code — let resolver handle it
+        }
+      }
+
+      // Filter: European events only
+      // Skip if description explicitly says non-European continent
+      if (item.description) {
+        const descText = typeof item.description === "string" ? item.description : "";
+        if (/\b(North America|South America|Asia|Africa|Oceania)\b/.test(descText) && !/\bEurope\b/.test(descText)) {
+          continue;
+        }
+      }
       if (countryCode && !isEuropean(countryCode)) continue;
 
       const imageUrl =
