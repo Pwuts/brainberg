@@ -44,7 +44,7 @@ export default async function HomePage() {
   const thisWeek = groups.thisWeek.slice(0, remaining);
   remaining -= thisWeek.length;
   const upcoming = groups.upcoming.slice(0, remaining);
-  const totalEvents = groups.today.length + groups.thisWeek.length + groups.upcoming.length;
+  const totalEvents = eventsNext3m;
 
   return (
     <div>
