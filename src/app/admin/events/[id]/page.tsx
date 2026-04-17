@@ -191,7 +191,19 @@ export default function AdminEventDetailPage({
             <Row label="Location">
               {data.city?.name}
               {data.country ? ` ${countryFlag(data.country.code)} ${data.country.name}` : ""}
-              {ev.isOnline ? " (Online)" : ""}
+            </Row>
+            <Row label="Online">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!ev.isOnline}
+                  onChange={(e) => {
+                    patchField("isOnline", e.target.checked as unknown as string);
+                    setData((prev) => prev ? { ...prev, event: { ...prev.event, isOnline: e.target.checked } } : prev);
+                  }}
+                />
+                <span className="text-muted-foreground">This event is (also) online</span>
+              </label>
             </Row>
             <Row label="Venue">
               <Input
