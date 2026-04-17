@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   ai_ml_research: "AI/ML Research & Engineering",
-  ai_applied: "AI Applications & Integration",
+  ai_applied: "AI Integration & Application",
   software_dev: "Software Engineering",
   data_analytics: "Data & Analytics",
   cloud_devops: "Cloud & DevOps",

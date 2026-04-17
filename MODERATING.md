@@ -20,7 +20,7 @@ Building, training, and deploying machine learning models. MLOps, research paper
 
 **Examples:** deep learning meetup, MLOps conference, PyTorch workshop, NLP paper reading group
 
-### AI Applications & Integration (`ai_applied`)
+### AI Integration & Application (`ai_applied`)
 
 Applying AI rather than researching it. Covers both developers using AI tools (Copilot, Cursor, agents, vibe coding, LLM APIs, prompt engineering, no-code AI) and organizations integrating AI into products, workflows, or operations (AI for marketing, legal, HR, customer support, etc.).
 
