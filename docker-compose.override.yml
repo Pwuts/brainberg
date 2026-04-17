@@ -1,6 +1,0 @@
-# Dev overrides — auto-merged by `docker compose up`
-# Skipped on VPS with: docker compose -f docker-compose.yml up -d
-services:
-  app:
-    ports:
-      - "3000:3000"
