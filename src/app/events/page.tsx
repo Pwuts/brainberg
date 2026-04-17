@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { countries, cities } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import { getFilteredEvents } from "@/lib/events";
+
+export const dynamic = "force-dynamic";
 import { EventCard } from "@/components/events/event-card";
 import { EventFilters } from "@/components/events/event-filters";
 import { EventSearch } from "@/components/events/event-search";

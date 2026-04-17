@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Zap, Search, Menu } from "lucide-react";
+import { Zap, Menu } from "lucide-react";
 
 export function Header() {
   return (

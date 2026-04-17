@@ -8,10 +8,10 @@ import {
   ExternalLink,
   ArrowLeft,
   Globe,
-  Tag,
-  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getEventBySlug } from "@/lib/events";

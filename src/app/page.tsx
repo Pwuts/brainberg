@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Globe, Filter, Calendar } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const { today, thisWeek, upcoming } = await getEventsByTimeGroup();
   const totalEvents = today.length + thisWeek.length + upcoming.length;

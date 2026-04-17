@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { events, cities, countries } from "./db/schema";
-import { eq, and, gte, lte, asc, sql, ilike, type SQL } from "drizzle-orm";
+import { eq, and, gte, lte, asc, sql, type SQL } from "drizzle-orm";
+import type { eventCategoryEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
 
 export type EventWithRelations = typeof events.$inferSelect & {
   city: typeof cities.$inferSelect | null;
@@ -99,13 +100,13 @@ export async function getFilteredEvents(filters: EventFilters) {
     conditions.push(eq(cities.slug, filters.city));
   }
   if (filters.category) {
-    conditions.push(eq(events.category, filters.category as any));
+    conditions.push(eq(events.category, filters.category as (typeof eventCategoryEnum.enumValues)[number]));
   }
   if (filters.eventType) {
-    conditions.push(eq(events.eventType, filters.eventType as any));
+    conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));
   }
   if (filters.size) {
-    conditions.push(eq(events.size, filters.size as any));
+    conditions.push(eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]));
   }
   if (filters.dateFrom) {
     conditions.push(gte(events.startsAt, new Date(filters.dateFrom)));

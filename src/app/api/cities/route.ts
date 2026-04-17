@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       .orderBy(asc(cities.name));
 
     if (countryCode) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       query = query.where(eq(countries.code, countryCode.toUpperCase())) as any;
     }
 

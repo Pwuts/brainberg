@@ -1,21 +1,20 @@
 import { EventCard } from "./event-card";
+import type { events, cities, countries } from "@/lib/db/schema";
 
 interface EventRow {
-  event: any;
-  city: any;
-  country: any;
+  event: typeof events.$inferSelect;
+  city: typeof cities.$inferSelect | null;
+  country: typeof countries.$inferSelect | null;
 }
 
 interface EventListProps {
   title: string;
   events: EventRow[];
-  emptyMessage?: string;
 }
 
 export function EventList({
   title,
   events,
-  emptyMessage = "No events found",
 }: EventListProps) {
   if (events.length === 0) {
     return null;
