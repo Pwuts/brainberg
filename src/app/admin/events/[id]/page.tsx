@@ -277,9 +277,8 @@ export default function AdminEventDetailPage({
         </section>
       )}
 
-      {/* Moderation card */}
-      {(status === "pending" || status === "rejected" || ev.aiModerationReason) ? (
-        <div className={`rounded-lg border p-5 ${
+      {/* Moderation card — always visible */}
+      <div className={`rounded-lg border p-5 ${
           status === "approved"
             ? "border-border bg-muted/30"
             : "border-yellow-300 bg-yellow-50/60"
@@ -312,8 +311,7 @@ export default function AdminEventDetailPage({
             </div>
           </div>
         </div>
-      ) : null}
-    </div>
+      </div>
   );
 }
 
