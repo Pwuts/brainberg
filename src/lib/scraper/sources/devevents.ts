@@ -150,27 +150,31 @@ export const devEventsScraper: Scraper = {
 
       const isOnline = jsonLd?.location?.["@type"] === "VirtualLocation";
       let cityName = jsonLd?.location?.address?.addressLocality;
-      let countryCode = jsonLd?.location?.address?.addressCountry;
+      const countryCode = jsonLd?.location?.address?.addressCountry;
 
-      // Fallback: parse location from RSS description text
+      // Parse location from RSS description as fallback
       // Format: "Event Title is happening on Date in City, Country, Continent"
-      if (!cityName && item.description) {
-        const descText = typeof item.description === "string" ? item.description : "";
-        const locMatch = descText.match(/\bin ([^,]+),\s*([^,]+),\s*(?:Europe|Asia|Africa)/);
+      const descText = typeof item.description === "string" ? item.description : "";
+
+      if (descText) {
+        // Match "in City, Country, Continent" or "in City, Country, Continent and Online"
+        const locMatch = descText.match(/\bin ([^,]+),\s*([^,]+),\s*([\w\s]+?)(?:\s+and\s+Online)?\.?\s*More/);
         if (locMatch) {
-          cityName = locMatch[1].trim();
-          countryCode = undefined; // We have country name, not code — let resolver handle it
+          const parsedCity = locMatch[1].trim();
+          const parsedCountry = locMatch[2].trim();
+          const parsedContinent = locMatch[3].trim();
+
+          if (isEuropean(parsedCountry) || parsedContinent === "Europe") {
+            if (!cityName) cityName = parsedCity;
+          } else {
+            // In-person event outside Europe — skip
+            continue;
+          }
         }
+        // No location match = online-only — keep (online events are relevant to everyone)
       }
 
-      // Filter: European events only
-      // Skip if description explicitly says non-European continent
-      if (item.description) {
-        const descText = typeof item.description === "string" ? item.description : "";
-        if (/\b(North America|South America|Asia|Africa|Oceania)\b/.test(descText) && !/\bEurope\b/.test(descText)) {
-          continue;
-        }
-      }
+      // European filter via JSON-LD country code (skip in-person non-European)
       if (countryCode && !isEuropean(countryCode)) continue;
 
       const imageUrl =
