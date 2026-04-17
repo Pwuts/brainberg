@@ -289,6 +289,12 @@ export default function AdminEventDetailPage({
               <span className={status === "approved" ? "text-muted-foreground" : "text-yellow-800"}>{String(ev.aiModerationReason)}</span>
             </p>
           ) : null}
+          {ev.rejectionReason ? (
+            <p className="mb-4 text-base">
+              <span className="font-semibold text-red-800">Rejection note: </span>
+              <span className="text-red-700">{String(ev.rejectionReason)}</span>
+            </p>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
               {status !== "approved" && (
