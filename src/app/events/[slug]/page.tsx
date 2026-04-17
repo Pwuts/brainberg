@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getEventBySlug } from "@/lib/events";
+import Markdown from "react-markdown";
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
@@ -159,9 +160,7 @@ export default async function EventPage({ params }: PageProps) {
           <CardContent className="p-6">
             <h2 className="mb-3 text-lg font-semibold">About this event</h2>
             <div className="prose prose-sm max-w-none text-muted-foreground">
-              {event.description.split("\n").map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+              <Markdown>{event.description}</Markdown>
             </div>
           </CardContent>
         </Card>
