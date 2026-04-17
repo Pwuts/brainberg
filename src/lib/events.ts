@@ -181,7 +181,7 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
   const conditions: SQL[] = [
     eq(events.status, "approved"),
     gte(events.startsAt, new Date()),
-    sql`${events.latitude} IS NOT NULL AND ${events.longitude} IS NOT NULL`,
+    sql`COALESCE(${events.latitude}, ${cities.latitude}) IS NOT NULL`,
   ];
 
   if (filters.country) {
@@ -230,8 +230,8 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
       timezone: events.timezone,
       isFree: events.isFree,
       isOnline: events.isOnline,
-      latitude: events.latitude,
-      longitude: events.longitude,
+      latitude: sql<number>`COALESCE(${events.latitude}, ${cities.latitude})`.as("latitude"),
+      longitude: sql<number>`COALESCE(${events.longitude}, ${cities.longitude})`.as("longitude"),
       cityName: cities.name,
       countryCode: countries.code,
       countryName: countries.name,
