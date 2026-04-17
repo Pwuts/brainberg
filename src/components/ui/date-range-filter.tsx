@@ -160,7 +160,7 @@ export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-2.5 text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Calendar className="h-4 w-4 text-muted-foreground" />
         <span>{formatLabel(preset, from, to)}</span>

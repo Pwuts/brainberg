@@ -5,11 +5,9 @@ import { asc } from "drizzle-orm";
 import { getFilteredEvents } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
-import { EventCard } from "@/components/events/event-card";
 import { EventFilters } from "@/components/events/event-filters";
 import { EventSearch } from "@/components/events/event-search";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { InfiniteEventGrid } from "@/components/events/infinite-event-grid";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -29,8 +27,8 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
     .from(countries)
     .orderBy(asc(countries.name));
 
-  // Apply filters
-  const { events: results, nextCursor } = await getFilteredEvents({
+  // Initial page of results (10 rows × 3 cols = 30)
+  const initial = await getFilteredEvents({
     country: params.country,
     city: params.city,
     category: params.category,
@@ -44,8 +42,8 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
     latitude: params.lat ? parseFloat(params.lat) : undefined,
     longitude: params.lng ? parseFloat(params.lng) : undefined,
     radius: params.radius ? parseInt(params.radius) : undefined,
-    cursor: params.cursor,
-    limit: 20,
+    sort: params.sort,
+    limit: 30,
   });
 
   return (
@@ -58,7 +56,7 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Search */}
-      <div className="mb-4 max-w-xl">
+      <div className="mb-4">
         <Suspense>
           <EventSearch />
         </Suspense>
@@ -71,53 +69,15 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
         </Suspense>
       </div>
 
-      {/* Results */}
-      <div className="space-y-3">
-        {results.map((row) => (
-          <EventCard
-            key={row.event.id}
-            event={row.event}
-            city={row.city}
-            country={row.country}
-          />
-        ))}
-
-        {results.length === 0 && (
-          <div className="rounded-lg border border-dashed border-border py-16 text-center">
-            <p className="text-lg text-muted-foreground">
-              No events match your filters.
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try adjusting your filters or{" "}
-              <Link
-                href="/events"
-                className="text-primary hover:underline"
-              >
-                clear all
-              </Link>
-              .
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {nextCursor && (
-        <div className="mt-8 text-center">
-          <Link
-            href={`/events?${new URLSearchParams({
-              ...Object.fromEntries(
-                Object.entries(params).filter(
-                  ([, v]) => v !== undefined
-                ) as [string, string][]
-              ),
-              cursor: nextCursor,
-            }).toString()}`}
-          >
-            <Button variant="outline">Load More</Button>
-          </Link>
-        </div>
-      )}
+      {/* Results with infinite scroll */}
+      <Suspense>
+        <InfiniteEventGrid
+          initial={{
+            events: initial.events as never,
+            nextCursor: initial.nextCursor,
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

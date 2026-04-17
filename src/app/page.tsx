@@ -1,23 +1,64 @@
 import { Suspense } from "react";
+import { db } from "@/lib/db";
+import { events, cities } from "@/lib/db/schema";
+import { eq, gte, lte, and, count, countDistinct } from "drizzle-orm";
 import { getEventsByTimeGroup } from "@/lib/events";
 import { EventList } from "@/components/events/event-list";
 import { EventSearch } from "@/components/events/event-search";
+import { CategoryBubbles } from "@/components/home/category-bubbles";
 import { Button } from "@/components/ui/button";
-import { Zap, ArrowRight, Globe, Filter, Calendar } from "lucide-react";
+import { Zap, ArrowRight, Globe, MapPin, Calendar } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { today, thisWeek, upcoming } = await getEventsByTimeGroup();
-  const totalEvents = today.length + thisWeek.length + upcoming.length;
+  const threeMonths = new Date();
+  threeMonths.setMonth(threeMonths.getMonth() + 3);
+
+  const [groups, [statsRow], [cityCountRow]] = await Promise.all([
+    getEventsByTimeGroup(),
+    db
+      .select({ count: count() })
+      .from(events)
+      .where(
+        and(
+          eq(events.status, "approved"),
+          gte(events.startsAt, new Date()),
+          lte(events.startsAt, threeMonths),
+        ),
+      ),
+    db
+      .select({ count: countDistinct(cities.id) })
+      .from(cities),
+  ]);
+
+  const eventsNext3m = statsRow?.count ?? 0;
+  const cityCount = cityCountRow?.count ?? 0;
+
+  // Cap to ~30 items (10 rows × 3 columns) across all groups
+  const maxItems = 30;
+  let remaining = maxItems;
+  const today = groups.today.slice(0, remaining);
+  remaining -= today.length;
+  const thisWeek = groups.thisWeek.slice(0, remaining);
+  remaining -= thisWeek.length;
+  const upcoming = groups.upcoming.slice(0, remaining);
+  const totalEvents = groups.today.length + groups.thisWeek.length + groups.upcoming.length;
 
   return (
     <div>
       {/* Hero */}
-      <section className="border-b border-border bg-gradient-to-b from-primary/5 to-background">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-          <div className="text-center">
+      <section className="relative border-b border-border bg-gradient-to-b from-primary/5 to-background overflow-hidden min-h-[600px] sm:min-h-[700px]">
+        {/* Background bubbles — clickable, positioned around center content */}
+        <div className="absolute inset-0">
+          <Suspense>
+            <CategoryBubbles />
+          </Suspense>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 pointer-events-none">
+          <div className="mx-auto max-w-2xl text-center *:pointer-events-auto">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
               <Zap className="h-3.5 w-3.5" />
               {totalEvents} upcoming events across Europe
@@ -55,28 +96,28 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Stats */}
       <section className="border-b border-border">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-primary/10 p-2">
-              <Globe className="h-5 w-5 text-primary" />
+              <Calendar className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">40+ Countries</h3>
+              <h3 className="font-semibold">{eventsNext3m} events</h3>
               <p className="text-sm text-muted-foreground">
-                Events from across all of Europe
+                in the next 3 months
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-primary/10 p-2">
-              <Filter className="h-5 w-5 text-primary" />
+              <MapPin className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">Smart Filters</h3>
+              <h3 className="font-semibold">In {cityCount} cities cross Europe</h3>
               <p className="text-sm text-muted-foreground">
-                By category, type, size, date, and location
+                ... and counting
               </p>
             </div>
           </div>
@@ -87,7 +128,7 @@ export default async function HomePage() {
             <div>
               <h3 className="font-semibold">Always Fresh</h3>
               <p className="text-sm text-muted-foreground">
-                Aggregated from multiple sources daily
+                aggregated from multiple sources daily
               </p>
             </div>
           </div>

@@ -22,6 +22,7 @@ interface EventFilters {
   latitude?: number;
   longitude?: number;
   radius?: number; // km
+  sort?: string; // "date" (default), "size", "distance"
   limit?: number;
   cursor?: string;
 }
@@ -152,6 +153,40 @@ export async function getFilteredEvents(filters: EventFilters) {
     );
   }
 
+  // Sorting — supports "-field" prefix for descending
+  const sortRaw = filters.sort ?? "date";
+  const sortDesc = sortRaw.startsWith("-");
+  const sortField = sortDesc ? sortRaw.slice(1) : sortRaw;
+  const dir = sortDesc ? "DESC" : "ASC";
+
+  let orderExpr: SQL;
+  if (sortField === "size") {
+    // Map size enum to numeric order; flip for desc
+    const sizeOrder = sortDesc
+      ? sql`CASE ${events.size}
+          WHEN 'small' THEN 1 WHEN 'medium' THEN 2
+          WHEN 'large' THEN 3 WHEN 'major' THEN 4 ELSE 0
+        END DESC, ${events.startsAt} ASC`
+      : sql`CASE ${events.size}
+          WHEN 'major' THEN 1 WHEN 'large' THEN 2
+          WHEN 'medium' THEN 3 WHEN 'small' THEN 4 ELSE 5
+        END ASC, ${events.startsAt} ASC`;
+    orderExpr = sizeOrder;
+  } else if (sortField === "distance" && filters.latitude != null && filters.longitude != null) {
+    orderExpr = sql`ST_Distance(
+      ST_SetSRID(ST_MakePoint(
+        COALESCE(${events.longitude}, ${cities.longitude}),
+        COALESCE(${events.latitude}, ${cities.latitude})
+      ), 4326)::geography,
+      ST_SetSRID(ST_MakePoint(${filters.longitude}, ${filters.latitude}), 4326)::geography
+    ) ASC NULLS LAST`;
+  } else {
+    // date (default)
+    orderExpr = dir === "DESC"
+      ? sql`${events.startsAt} DESC`
+      : sql`${events.startsAt} ASC`;
+  }
+
   const results = await db
     .select({
       event: events,
@@ -162,7 +197,7 @@ export async function getFilteredEvents(filters: EventFilters) {
     .leftJoin(cities, eq(events.cityId, cities.id))
     .leftJoin(countries, eq(events.countryId, countries.id))
     .where(and(...conditions))
-    .orderBy(asc(events.startsAt))
+    .orderBy(orderExpr)
     .limit(limit + 1);
 
   const hasMore = results.length > limit;
@@ -271,11 +306,14 @@ export async function searchEvents(query: string, autocomplete = false) {
         id: events.id,
         title: events.title,
         slug: events.slug,
+        category: events.category,
         startsAt: events.startsAt,
         cityName: cities.name,
+        countryCode: countries.code,
       })
       .from(events)
       .leftJoin(cities, eq(events.cityId, cities.id))
+      .leftJoin(countries, eq(events.countryId, countries.id))
       .where(
         and(
           eq(events.status, "approved"),

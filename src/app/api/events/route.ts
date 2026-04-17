@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       latitude: params.get("lat") ? parseFloat(params.get("lat")!) : undefined,
       longitude: params.get("lng") ? parseFloat(params.get("lng")!) : undefined,
       radius: params.get("radius") ? parseInt(params.get("radius")!) : undefined,
+      sort: params.get("sort") ?? undefined,
       cursor: params.get("cursor") ?? undefined,
       limit: Math.min(parseInt(params.get("limit") ?? "20"), 100),
     });

@@ -2,12 +2,27 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { LocationFilter } from "@/components/ui/location-filter";
-import { X } from "lucide-react";
+import { Dropdown } from "@/components/ui/dropdown";
+import { ArrowUp, ArrowDown, X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
+
+const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
+  value,
+  label,
+  detail: CATEGORY_DESCRIPTIONS[value],
+}));
+
+const TYPE_OPTIONS = Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+const SIZE_OPTIONS = Object.entries(SIZE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 interface FilterProps {
   countries: { code: string; name: string }[];
@@ -18,167 +33,194 @@ export function EventFilters({ countries }: FilterProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const setFilter = useCallback(
-    (key: string, value: string) => {
+  const update = useCallback(
+    (changes: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) params.set(key, value);
+        else params.delete(key);
       }
-      params.delete("cursor"); // reset pagination on filter change
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
-
-  const setLocation = useCallback(
-    (loc: { name: string; lat: string; lng: string; radius: string }) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("loc", loc.name);
-      params.set("lat", loc.lat);
-      params.set("lng", loc.lng);
-      params.set("radius", loc.radius);
-      params.delete("city"); // radius search replaces city filter
       params.delete("cursor");
       router.push(`${pathname}?${params.toString()}`);
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams],
   );
 
-  const clearLocation = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("loc");
-    params.delete("lat");
-    params.delete("lng");
-    params.delete("radius");
-    params.delete("cursor");
-    router.push(`${pathname}?${params.toString()}`);
-  }, [router, pathname, searchParams]);
+  const setFilter = useCallback(
+    (key: string, value: string) => update({ [key]: value || null }),
+    [update],
+  );
 
   const setDateRange = useCallback(
-    (from: string, to: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (from) params.set("from", from); else params.delete("from");
-      if (to) params.set("to", to); else params.delete("to");
-      params.delete("cursor");
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
+    (from: string, to: string) => update({ from: from || null, to: to || null }),
+    [update],
   );
 
-  const clearAll = useCallback(() => {
-    router.push(pathname);
-  }, [router, pathname]);
+  const clearAll = useCallback(() => router.push(pathname), [router, pathname]);
 
   const hasFilters = searchParams.toString().length > 0;
+  const hasLocation = !!searchParams.get("lat");
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        {/* Country */}
-        <Select
-          value={searchParams.get("country") ?? ""}
-          onChange={(e) => setFilter("country", e.target.value)}
-          className="w-[160px]"
-        >
-          <option value="">All Countries</option>
-          {countries.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
+    <div className="flex flex-wrap items-center gap-2">
+      {/* 1. Location / Online */}
+      <LocationFilter
+        countries={countries}
+        country={searchParams.get("country") ?? ""}
+        locationName={searchParams.get("loc") ?? ""}
+        latitude={searchParams.get("lat") ?? ""}
+        longitude={searchParams.get("lng") ?? ""}
+        radius={searchParams.get("radius") ?? ""}
+        isOnline={searchParams.get("online") === "1"}
+        onCountry={(code) =>
+          update({ country: code, loc: null, lat: null, lng: null, radius: null, online: null })
+        }
+        onLocation={(loc) =>
+          update({
+            loc: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius,
+            country: null, online: null,
+          })
+        }
+        onOnline={(on) =>
+          update({
+            online: on ? "1" : null,
+            loc: null, lat: null, lng: null, radius: null, country: null,
+          })
+        }
+        onClear={() =>
+          update({ country: null, loc: null, lat: null, lng: null, radius: null, online: null })
+        }
+      />
 
-        {/* Location / Radius */}
-        <LocationFilter
-          locationName={searchParams.get("loc") ?? ""}
-          latitude={searchParams.get("lat") ?? ""}
-          longitude={searchParams.get("lng") ?? ""}
-          radius={searchParams.get("radius") ?? ""}
-          onChange={setLocation}
-          onClear={clearLocation}
+      {/* 2. Timespan */}
+      <DateRangeFilter
+        from={searchParams.get("from") ?? ""}
+        to={searchParams.get("to") ?? ""}
+        onChange={setDateRange}
+      />
+
+      {/* 3. Category */}
+      <Dropdown
+        value={searchParams.get("category") ?? ""}
+        options={CATEGORY_OPTIONS}
+        placeholder="Category"
+        onChange={(v) => setFilter("category", v)}
+        className="w-28"
+        panelWidth="w-80"
+      />
+
+      {/* 4. Type */}
+      <Dropdown
+        value={searchParams.get("type") ?? ""}
+        options={TYPE_OPTIONS}
+        placeholder="Type"
+        onChange={(v) => setFilter("type", v)}
+        className="w-24"
+        panelWidth="w-40"
+      />
+
+      {/* 5. Size */}
+      <Dropdown
+        value={searchParams.get("size") ?? ""}
+        options={SIZE_OPTIONS}
+        placeholder="Size"
+        onChange={(v) => setFilter("size", v)}
+        className="w-24"
+        panelWidth="w-36"
+      />
+
+      {/* 6. Free */}
+      <button
+        onClick={() => setFilter("free", searchParams.get("free") === "1" ? "" : "1")}
+        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+          searchParams.get("free") === "1"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-input bg-background hover:bg-accent"
+        }`}
+      >
+        Free
+      </button>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* 7. Sort */}
+      <SortControl
+        value={searchParams.get("sort") ?? "date"}
+        hasLocation={hasLocation}
+        onChange={(v) => setFilter("sort", v === "date" ? "" : v)}
+      />
+
+      {/* Clear */}
+      {hasFilters && (
+        <button
+          onClick={clearAll}
+          className="h-9 shrink-0 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+
+const SORT_OPTIONS = [
+  { value: "date", label: "Date" },
+  { value: "size", label: "Size" },
+];
+
+function parseSortParam(raw: string): { field: string; desc: boolean } {
+  if (raw.startsWith("-")) return { field: raw.slice(1), desc: true };
+  return { field: raw, desc: false };
+}
+
+function SortControl({
+  value,
+  hasLocation,
+  onChange,
+}: {
+  value: string;
+  hasLocation: boolean;
+  onChange: (v: string) => void;
+}) {
+  const { field, desc: isDesc } = parseSortParam(value);
+  const isDistance = field === "distance";
+
+  const options = hasLocation
+    ? [...SORT_OPTIONS, { value: "distance", label: "Nearest" }]
+    : SORT_OPTIONS;
+
+  const setField = (f: string) => {
+    onChange(f === "distance" ? f : isDesc ? `-${f}` : f);
+  };
+
+  const toggleDirection = () => {
+    if (isDistance) return;
+    onChange(isDesc ? field : `-${field}`);
+  };
+
+  return (
+    <div className="flex items-center">
+      <div className="w-24">
+        <Dropdown
+          value={field}
+          options={options}
+          placeholder="Sort"
+          onChange={setField}
+          className="w-full [&>button]:rounded-r-none [&>button]:border-r-0"
         />
-
-        {/* Category */}
-        <Select
-          value={searchParams.get("category") ?? ""}
-          onChange={(e) => setFilter("category", e.target.value)}
-          className="w-[160px]"
-        >
-          <option value="">All Categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-            <option key={value} value={value} title={CATEGORY_DESCRIPTIONS[value]}>
-              {label}
-            </option>
-          ))}
-        </Select>
-
-        {/* Event Type */}
-        <Select
-          value={searchParams.get("type") ?? ""}
-          onChange={(e) => setFilter("type", e.target.value)}
-          className="w-[160px]"
-        >
-          <option value="">All Types</option>
-          {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-
-        {/* Size */}
-        <Select
-          value={searchParams.get("size") ?? ""}
-          onChange={(e) => setFilter("size", e.target.value)}
-          className="w-[140px]"
-        >
-          <option value="">Any Size</option>
-          {Object.entries(SIZE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label} attendees
-            </option>
-          ))}
-        </Select>
-
-        {/* Date Range */}
-        <DateRangeFilter
-          from={searchParams.get("from") ?? ""}
-          to={searchParams.get("to") ?? ""}
-          onChange={setDateRange}
-        />
-
-        {/* Free toggle */}
-        <Button
-          variant={searchParams.get("free") === "1" ? "default" : "outline"}
-          size="sm"
-          onClick={() =>
-            setFilter("free", searchParams.get("free") === "1" ? "" : "1")
-          }
-        >
-          Free Only
-        </Button>
-
-        {/* Online toggle */}
-        <Button
-          variant={searchParams.get("online") === "1" ? "default" : "outline"}
-          size="sm"
-          onClick={() =>
-            setFilter("online", searchParams.get("online") === "1" ? "" : "1")
-          }
-        >
-          Online
-        </Button>
-
-        {/* Clear */}
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearAll}>
-            <X className="mr-1 h-3.5 w-3.5" />
-            Clear
-          </Button>
-        )}
       </div>
+      {!isDistance && (
+        <button
+          onClick={toggleDirection}
+          title={isDesc ? "Descending" : "Ascending"}
+          className="h-9 rounded-r-md border border-input bg-background px-1.5 hover:bg-accent transition-colors"
+        >
+          {isDesc ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
+        </button>
+      )}
     </div>
   );
 }

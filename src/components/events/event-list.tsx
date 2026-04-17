@@ -23,7 +23,7 @@ export function EventList({
   return (
     <section>
       <h2 className="mb-4 text-xl font-semibold tracking-tight">{title}</h2>
-      <div className="space-y-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {events.map((row) => (
           <EventCard
             key={row.event.id}
