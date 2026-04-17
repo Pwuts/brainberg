@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { dateFrom, dateTo, eventIds } = body as {
+  const { dateFrom, dateTo, eventIds, bypassLock } = body as {
     dateFrom?: string;
     dateTo?: string;
     eventIds?: string[];
+    bypassLock?: boolean;
   };
 
   const useAi = !!process.env.ANTHROPIC_API_KEY;
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
         console.log(`[recategorize] Progress: ${processed}/${allEvents.length} (${categoriesChanged} cat, ${typesChanged} type, ${statusesChanged} status changes so far)`);
       }
 
-      if (event.categoryLocked) {
+      if (event.categoryLocked && !bypassLock) {
         skippedLocked++;
         continue;
       }

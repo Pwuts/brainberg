@@ -116,7 +116,7 @@ export default function AdminEventDetailPage({
     try {
       const res = await fetchAdmin(`/api/admin/events/recategorize`, {
         method: "POST",
-        body: JSON.stringify({ eventIds: [id] }),
+        body: JSON.stringify({ eventIds: [id], bypassLock: true }),
       });
       const result = await res.json();
       if (!res.ok) {

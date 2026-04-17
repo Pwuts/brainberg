@@ -164,7 +164,7 @@ export default function AdminEventsPage() {
     try {
       await fetchAdmin("/api/admin/events/recategorize", {
         method: "POST",
-        body: JSON.stringify({ eventIds: [...selected] }),
+        body: JSON.stringify({ eventIds: [...selected], bypassLock: true }),
       });
       setSelected(new Set());
       load();
