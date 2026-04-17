@@ -120,9 +120,8 @@ interface LumaEntry {
 }
 
 interface LumaEventDetail {
-  event: LumaEvent & {
-    description_mirror?: PmNode;
-  };
+  event: LumaEvent;
+  description_mirror?: PmNode;
   ticket_types?: {
     type?: string;
     cents?: number;
@@ -329,8 +328,8 @@ export const lumaScraper: Scraper = {
 
           // Description from ProseMirror JSON
           let description: string | undefined;
-          if (detail?.event?.description_mirror) {
-            description = pmToMarkdown(detail.event.description_mirror).trim();
+          if (detail?.description_mirror) {
+            description = pmToMarkdown(detail.description_mirror).trim();
           }
 
           // Pricing from ticket types
