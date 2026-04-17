@@ -17,6 +17,9 @@ services:
       - AUTH_URL=${AUTH_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET}
       - NODE_ENV=production
+      - VIRTUAL_HOST
+      - LETSENCRYPT_HOST
+      - LETSENCRYPT_EMAIL
     depends_on:
       db:
         condition: service_healthy
