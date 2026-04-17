@@ -26,6 +26,10 @@ ENV NODE_ENV=production
 RUN pnpm run db:generate
 RUN pnpm run build
 
+# Bundle the migration runner into a single file for the production image
+RUN npx esbuild src/lib/db/migrate.ts --bundle --platform=node --target=node20 \
+    --format=cjs --outfile=migrate.js --external:pg-native
+
 # Stage 3: Production runner
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -37,10 +41,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/src/lib/db/migrations ./migrations
+COPY --from=builder /app/migrate.js ./migrate.js
+COPY docker/entrypoint.sh ./entrypoint.sh
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"
-CMD ["node", "server.js"]
+CMD ["sh", "./entrypoint.sh"]
