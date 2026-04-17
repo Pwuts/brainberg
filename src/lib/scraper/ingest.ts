@@ -8,9 +8,11 @@ import { normalizeUrl } from "./url-utils";
 import { exactFingerprint } from "./fingerprint";
 import type { NormalizedEvent, IngestStats } from "./types";
 
-function makeSlug(title: string, date: Date): string {
+function makeSlug(title: string, date: Date, suffix?: string): string {
   const dateStr = date.toISOString().slice(0, 10);
-  return slugify(`${title} ${dateStr}`, { lower: true, strict: true }).slice(0, 350);
+  const parts = [title, dateStr];
+  if (suffix) parts.push(suffix);
+  return slugify(parts.join(" "), { lower: true, strict: true }).slice(0, 350);
 }
 
 /** Ingest a stream of normalized events: resolve locations, dedup, insert/update. */
@@ -72,54 +74,75 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
   }
 
   // 3. Insert new event
-  const slug = makeSlug(event.title, event.startsAt);
+  // Include city name in slug to reduce collisions between same-titled events in different cities
+  let slug = makeSlug(event.title, event.startsAt, event.cityName);
 
-  const [inserted] = await db
-    .insert(events)
-    .values({
-      title: event.title,
-      slug,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      category: event.category,
-      eventType: event.eventType,
-      size: event.size,
-      tags: event.tags,
-      startsAt: event.startsAt,
-      endsAt: event.endsAt,
-      timezone: event.timezone ?? location.timezone,
-      isMultiDay: event.isMultiDay ?? false,
-      cityId: location.cityId,
-      countryId: location.countryId,
-      venueName: event.venueName,
-      venueAddress: event.venueAddress,
-      latitude: eventLat,
-      longitude: eventLng,
-      isOnline: event.isOnline,
-      isHybrid: event.isHybrid ?? false,
-      onlineUrl: event.onlineUrl,
-      websiteUrl: event.websiteUrl,
-      registrationUrl: event.registrationUrl,
-      lumaUrl: event.lumaUrl,
-      eventbriteUrl: event.eventbriteUrl,
-      meetupUrl: event.meetupUrl,
-      confsTechUrl: event.confsTechUrl,
-      devEventsUrl: event.devEventsUrl,
-      imageUrl: event.imageUrl,
-      thumbnailUrl: event.thumbnailUrl,
-      isFree: event.isFree ?? true,
-      priceFrom: event.priceFrom,
-      priceTo: event.priceTo,
-      currency: event.currency ?? "EUR",
-      status: "approved", // Auto-approve scraped events
-      source: event.source,
-      sourceId: event.sourceId,
-      sourceUrl: event.sourceUrl,
-      organizerName: event.organizerName,
-      organizerUrl: event.organizerUrl,
-      organizerEmail: event.organizerEmail,
-    })
-    .returning({ id: events.id });
+  const values = {
+    title: event.title,
+    slug,
+    description: event.description,
+    shortDescription: event.shortDescription,
+    category: event.category,
+    eventType: event.eventType,
+    size: event.size,
+    tags: event.tags,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    timezone: event.timezone ?? location.timezone,
+    isMultiDay: event.isMultiDay ?? false,
+    cityId: location.cityId,
+    countryId: location.countryId,
+    venueName: event.venueName,
+    venueAddress: event.venueAddress,
+    latitude: eventLat,
+    longitude: eventLng,
+    isOnline: event.isOnline,
+    isHybrid: event.isHybrid ?? false,
+    onlineUrl: event.onlineUrl,
+    websiteUrl: event.websiteUrl,
+    registrationUrl: event.registrationUrl,
+    lumaUrl: event.lumaUrl,
+    eventbriteUrl: event.eventbriteUrl,
+    meetupUrl: event.meetupUrl,
+    confsTechUrl: event.confsTechUrl,
+    devEventsUrl: event.devEventsUrl,
+    imageUrl: event.imageUrl,
+    thumbnailUrl: event.thumbnailUrl,
+    isFree: event.isFree ?? true,
+    priceFrom: event.priceFrom,
+    priceTo: event.priceTo,
+    currency: event.currency ?? "EUR",
+    status: "approved" as const,
+    source: event.source,
+    sourceId: event.sourceId,
+    sourceUrl: event.sourceUrl,
+    organizerName: event.organizerName,
+    organizerUrl: event.organizerUrl,
+    organizerEmail: event.organizerEmail,
+  };
+
+  let inserted: { id: string };
+  try {
+    [inserted] = await db.insert(events).values(values).returning({ id: events.id });
+  } catch (err: unknown) {
+    // Slug collision = same title + date + city → treat as duplicate
+    if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
+      const existing = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(eq(events.slug, slug))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Link this source to the existing event
+        await upsertEventSource(existing[0].id, event);
+        stats.deduplicated++;
+        return;
+      }
+      throw err; // Collision on a different constraint
+    }
+    throw err;
+  }
 
   // 4. Create fingerprints
   await createFingerprints(inserted.id, event);
