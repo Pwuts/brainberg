@@ -10,13 +10,13 @@ export const AI_RESEARCH_REGEX =
 
 /** AI-powered development: using AI to build things, integrating AI */
 export const AI_DEV_REGEX =
-  /\b(AI|artificial.intelligence|LLM|GPT|generative.ai|gen.?ai|Agentic|Copilot|vibe.?cod|AI.agent|Claude|ChatGPT|DeepSeek|Mistral|KI\b|n8n.*AI|MCP)\b/i;
+  /\b(AI|artificial.intelligence|Intelligence.Artificielle|Intelligenza.Artificiale|Inteligencia.Artificial|Kunstig.Intelligens|Yapay.Zeka|LLM|GPT|generative.ai|gen.?ai|Agentic|Copilot|vibe.?cod|AI.agent|Claude|ChatGPT|DeepSeek|Mistral|KI\b|n8n.*AI|MCP|Lovable)\b|\bIA\b/i;
 
 export const DATA_KEYWORD_REGEX =
   /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh|dbt|PGConf|Airflow)\b/i;
 
 export const HACKER_MAKER_REGEX =
-  /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs|repair.caf|OpenLab|electronics.workshop)\b/i;
+  /\b(CCC|chaos.communication|chaos.congress|hackerspace|hacker.?night|hacker.?camp|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs|repair.caf|OpenLab|electronics.workshop)\b/i;
 
 export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
@@ -25,16 +25,20 @@ export const DEVOPS_KEYWORD_REGEX =
   /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|CloudNativeCon|KubeCon|OpenTelemetry|AWS.User.Group|AWS.Community|AWS.Meetup|Azure.User.Group|Kafka|Data.Center|Cloud.Native)\b/i;
 
 export const SECURITY_KEYWORD_REGEX =
-  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks|Zero.Day|Cyber.Expo|Cyber.Fresque|NIS.2)\b/i;
+  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks|Zero.Day|Cyber.Expo|Cyber.Fresque|NIS.2|Ciberseguridad|Segurança.da.Informação|hacking)\b/i;
 
 export const UX_KEYWORD_REGEX =
   /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX|WCAG)\b/i;
 
 export const ENTREPRENEURSHIP_REGEX =
-  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership|Demo.Day|Investor)\b/i;
+  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership|Demo.Day|Investor|FinTech)\b/i;
+
+/** Title patterns that indicate non-tech events. Used across all scrapers. */
+export const NON_TECH_REGEX =
+  /\b(party|DJ\b|clubbing|rave|techno music|cocktail|wine tasting|yoga|pilates|meditation|salon|ceramics|pottery|cooking class|baking|fermentation|welding|tai chi|walking tour|karaoke|chess club|poker night|running club|film festival|fashion show|album launch|live music|board games|woodworking|cosplay|menstrual|knitting|gardening|stock market|router table|sound system|audio.*fundamentals|movie night)\b/i;
 
 export const HARDWARE_IOT_REGEX =
-  /\b(robotics|robot\b|IoT|Internet.of.Things|Arduino|ESP32|Raspberry.Pi|embedded.system|3D.print|3D.design|CAD|electronics|circuit|sensor|drone|hardware|microcontroller|SmartHome|battery)\b/i;
+  /\b(robotics|robotica|robot\b|IoT|Internet.of.Things|Arduino|ESP32|Raspberry.Pi|embedded.system|3D.print|3D.design|Stampa.3D|CAD|electronics|circuit|sensor|drone|DJI|hardware|microcontroller|SmartHome|battery)\b/i;
 
 // ============================================================
 // confs.tech — filename → category
