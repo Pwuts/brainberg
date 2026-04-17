@@ -15,6 +15,13 @@
       "when": 1776400662057,
       "tag": "0001_hot_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776416927192,
+      "tag": "0002_left_trish_tilby",
+      "breakpoints": true
     }
   ]
 }

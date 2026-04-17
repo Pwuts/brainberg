@@ -105,9 +105,18 @@ export const meetupScraper: Scraper = {
 
   async *scrape(options?: ScraperOptions): AsyncGenerator<NormalizedEvent> {
     const searchCities = await getSearchCities();
-    console.log(`[meetup] Searching ${searchCities.length} cities`);
+    const totalCities = searchCities.length;
+    console.log(`[meetup] Searching ${totalCities} cities`);
 
-    for (const city of searchCities) {
+    for (let i = 0; i < totalCities; i++) {
+      const city = searchCities[i];
+
+      // Report progress
+      options?.onProgress?.(
+        Math.round(((i) / totalCities) * 100),
+        `Searching ${city.name} (${i + 1}/${totalCities})`,
+      );
+
       // Rate limit between cities
       await sleep(2500);
 

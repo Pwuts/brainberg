@@ -24,6 +24,8 @@ interface ScraperRun {
   eventsCreated: number;
   eventsUpdated: number;
   eventsDeduplicated: number;
+  progress: number;
+  progressDetail: string | null;
   errorMessage: string | null;
   startedAt: string;
   completedAt: string | null;
@@ -53,6 +55,17 @@ export default function AdminScrapersPage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // Poll for progress while a scraper is running
+  useEffect(() => {
+    if (!running) return;
+    const interval = setInterval(async () => {
+      const res = await fetchAdmin("/api/admin/scrapers");
+      const data = await res.json();
+      setRuns(data.runs ?? []);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [running, fetchAdmin]);
 
   const runAll = async () => {
     setRunning("all");
@@ -108,7 +121,21 @@ export default function AdminScrapersPage() {
                   </span>
                 )}
               </div>
-              {lastRun && (
+              {lastRun && lastRun.status === "running" && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{lastRun.progressDetail ?? "Starting..."}</span>
+                    <span>{lastRun.progress}%</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
+                    <div
+                      className="h-1.5 rounded-full bg-primary transition-all"
+                      style={{ width: `${lastRun.progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {lastRun && lastRun.status !== "running" && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Last: {new Date(lastRun.startedAt).toLocaleString()}
                   {lastRun.status === "completed" && (
@@ -120,7 +147,7 @@ export default function AdminScrapersPage() {
                 <Button
                   size="sm"
                   onClick={() => runNow(s)}
-                  disabled={running === s}
+                  disabled={running !== null}
                 >
                   {running === s ? "Running..." : "Run Now"}
                 </Button>
@@ -200,7 +227,7 @@ export default function AdminScrapersPage() {
                       : run.status === "failed" ? "bg-red-100 text-red-800"
                       : "bg-yellow-100 text-yellow-800"
                     }`}>
-                      {run.status}
+                      {run.status === "running" ? `${run.progress}%` : run.status}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">{run.eventsFound}</td>

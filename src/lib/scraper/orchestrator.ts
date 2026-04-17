@@ -34,7 +34,15 @@ export async function runScraper(
     .returning({ id: scraperRuns.id });
 
   try {
-    const stream = scraper.scrape(options);
+    // Wire up progress callback to update the run record
+    const onProgress = async (percent: number, detail: string) => {
+      await db
+        .update(scraperRuns)
+        .set({ progress: Math.round(percent), progressDetail: detail })
+        .where(eq(scraperRuns.id, run.id));
+    };
+
+    const stream = scraper.scrape({ ...options, onProgress });
     const stats = await ingestEvents(stream);
 
     // Update run record
@@ -46,6 +54,8 @@ export async function runScraper(
         eventsCreated: stats.created,
         eventsUpdated: stats.updated,
         eventsDeduplicated: stats.deduplicated,
+        progress: 100,
+        progressDetail: null,
         completedAt: new Date(),
       })
       .where(eq(scraperRuns.id, run.id));

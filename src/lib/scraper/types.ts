@@ -63,9 +63,12 @@ export interface NormalizedEvent {
   rawData?: unknown;
 }
 
+export type ProgressCallback = (percent: number, detail: string) => void;
+
 export interface ScraperOptions {
   dateFrom?: Date;
   dateTo?: Date;
+  onProgress?: ProgressCallback;
 }
 
 export interface Scraper {

@@ -101,7 +101,13 @@ export const devEventsScraper: Scraper = {
     }
 
     // Pass 2: For each item, fetch detail page for JSON-LD
-    for (const item of items) {
+    const totalItems = items.length;
+    for (let i = 0; i < totalItems; i++) {
+      const item = items[i];
+      options?.onProgress?.(
+        Math.round(((i) / totalItems) * 100),
+        `Fetching detail ${i + 1}/${totalItems}`,
+      );
       const categories = getCategories(item);
       const title = typeof item.title === "string" ? item.title : String(item.title);
       const link = item.link;

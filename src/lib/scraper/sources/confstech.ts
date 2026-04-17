@@ -29,9 +29,16 @@ export const confsTechScraper: Scraper = {
 
   async *scrape(options?: ScraperOptions): AsyncGenerator<NormalizedEvent> {
     const years = [currentYear(), currentYear() + 1];
+    const totalSteps = years.length * TOPICS.length;
+    let step = 0;
 
     for (const year of years) {
       for (const topic of TOPICS) {
+        step++;
+        options?.onProgress?.(
+          Math.round((step / totalSteps) * 100),
+          `Fetching ${year}/${topic} (${step}/${totalSteps})`,
+        );
         const url = `https://raw.githubusercontent.com/tech-conferences/conference-data/main/conferences/${year}/${topic}.json`;
 
         let entries: ConfsTechEntry[];
