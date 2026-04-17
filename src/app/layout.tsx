@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://brainberg.eu"),
   title: {
     default: "Brainberg — AI & Tech Events Across Europe",
     template: "%s | Brainberg",
@@ -26,6 +27,14 @@ export const metadata: Metadata = {
     description:
       "Discover AI meetups, tech conferences, hackathons, and startup events across Europe.",
     type: "website",
+    siteName: "Brainberg",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Brainberg — AI & Tech Events Across Europe",
+    description:
+      "Discover AI meetups, tech conferences, hackathons, and startup events across Europe.",
   },
 };
 
