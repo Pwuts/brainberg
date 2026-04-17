@@ -1,127 +1,14 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { countries, cities, events } from "../src/lib/db/schema";
+import { SEED_COUNTRIES, SEED_CITIES } from "../src/lib/db/seed-data";
 import slugify from "slugify";
 
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client);
 
-const COUNTRIES = [
-  { code: "AT", name: "Austria", timezone: "Europe/Vienna", isEu: true, region: "Central" },
-  { code: "BE", name: "Belgium", timezone: "Europe/Brussels", isEu: true, region: "Western" },
-  { code: "BG", name: "Bulgaria", timezone: "Europe/Sofia", isEu: true, region: "Eastern" },
-  { code: "HR", name: "Croatia", timezone: "Europe/Zagreb", isEu: true, region: "Southern" },
-  { code: "CY", name: "Cyprus", timezone: "Asia/Nicosia", isEu: true, region: "Southern" },
-  { code: "CZ", name: "Czechia", timezone: "Europe/Prague", isEu: true, region: "Central" },
-  { code: "DK", name: "Denmark", timezone: "Europe/Copenhagen", isEu: true, region: "Northern" },
-  { code: "EE", name: "Estonia", timezone: "Europe/Tallinn", isEu: true, region: "Northern" },
-  { code: "FI", name: "Finland", timezone: "Europe/Helsinki", isEu: true, region: "Northern" },
-  { code: "FR", name: "France", timezone: "Europe/Paris", isEu: true, region: "Western" },
-  { code: "DE", name: "Germany", timezone: "Europe/Berlin", isEu: true, region: "Central" },
-  { code: "GR", name: "Greece", timezone: "Europe/Athens", isEu: true, region: "Southern" },
-  { code: "HU", name: "Hungary", timezone: "Europe/Budapest", isEu: true, region: "Central" },
-  { code: "IE", name: "Ireland", timezone: "Europe/Dublin", isEu: true, region: "Western" },
-  { code: "IT", name: "Italy", timezone: "Europe/Rome", isEu: true, region: "Southern" },
-  { code: "LV", name: "Latvia", timezone: "Europe/Riga", isEu: true, region: "Northern" },
-  { code: "LT", name: "Lithuania", timezone: "Europe/Vilnius", isEu: true, region: "Northern" },
-  { code: "LU", name: "Luxembourg", timezone: "Europe/Luxembourg", isEu: true, region: "Western" },
-  { code: "MT", name: "Malta", timezone: "Europe/Malta", isEu: true, region: "Southern" },
-  { code: "NL", name: "Netherlands", timezone: "Europe/Amsterdam", isEu: true, region: "Western" },
-  { code: "PL", name: "Poland", timezone: "Europe/Warsaw", isEu: true, region: "Central" },
-  { code: "PT", name: "Portugal", timezone: "Europe/Lisbon", isEu: true, region: "Southern" },
-  { code: "RO", name: "Romania", timezone: "Europe/Bucharest", isEu: true, region: "Eastern" },
-  { code: "SK", name: "Slovakia", timezone: "Europe/Bratislava", isEu: true, region: "Central" },
-  { code: "SI", name: "Slovenia", timezone: "Europe/Ljubljana", isEu: true, region: "Central" },
-  { code: "ES", name: "Spain", timezone: "Europe/Madrid", isEu: true, region: "Southern" },
-  { code: "SE", name: "Sweden", timezone: "Europe/Stockholm", isEu: true, region: "Northern" },
-  { code: "GB", name: "United Kingdom", timezone: "Europe/London", isEu: false, region: "Western" },
-  { code: "CH", name: "Switzerland", timezone: "Europe/Zurich", isEu: false, region: "Central" },
-  { code: "NO", name: "Norway", timezone: "Europe/Oslo", isEu: false, region: "Northern" },
-  { code: "IS", name: "Iceland", timezone: "Atlantic/Reykjavik", isEu: false, region: "Northern" },
-  { code: "UA", name: "Ukraine", timezone: "Europe/Kyiv", isEu: false, region: "Eastern" },
-  { code: "RS", name: "Serbia", timezone: "Europe/Belgrade", isEu: false, region: "Southern" },
-  { code: "TR", name: "Turkey", timezone: "Europe/Istanbul", isEu: false, region: "Southern" },
-  { code: "AL", name: "Albania", timezone: "Europe/Tirane", isEu: false, region: "Southern" },
-  { code: "BA", name: "Bosnia and Herzegovina", timezone: "Europe/Sarajevo", isEu: false, region: "Southern" },
-  { code: "ME", name: "Montenegro", timezone: "Europe/Podgorica", isEu: false, region: "Southern" },
-  { code: "MK", name: "North Macedonia", timezone: "Europe/Skopje", isEu: false, region: "Southern" },
-  { code: "MD", name: "Moldova", timezone: "Europe/Chisinau", isEu: false, region: "Eastern" },
-  { code: "GE", name: "Georgia", timezone: "Asia/Tbilisi", isEu: false, region: "Eastern" },
-];
-
-const CITIES = [
-  // Western Europe
-  { name: "London", countryCode: "GB", lat: 51.5074, lng: -0.1278, tz: "Europe/London", popular: true },
-  { name: "Paris", countryCode: "FR", lat: 48.8566, lng: 2.3522, tz: "Europe/Paris", popular: true },
-  { name: "Amsterdam", countryCode: "NL", lat: 52.3676, lng: 4.9041, tz: "Europe/Amsterdam", popular: true },
-  { name: "Rotterdam", countryCode: "NL", lat: 51.9244, lng: 4.4777, tz: "Europe/Amsterdam", popular: false },
-  { name: "The Hague", countryCode: "NL", lat: 52.0705, lng: 4.3007, tz: "Europe/Amsterdam", popular: false },
-  { name: "Eindhoven", countryCode: "NL", lat: 51.4416, lng: 5.4697, tz: "Europe/Amsterdam", popular: false },
-  { name: "Brussels", countryCode: "BE", lat: 50.8503, lng: 4.3517, tz: "Europe/Brussels", popular: true },
-  { name: "Antwerp", countryCode: "BE", lat: 51.2194, lng: 4.4025, tz: "Europe/Brussels", popular: false },
-  { name: "Dublin", countryCode: "IE", lat: 53.3498, lng: -6.2603, tz: "Europe/Dublin", popular: true },
-  { name: "Luxembourg City", countryCode: "LU", lat: 49.6117, lng: 6.1300, tz: "Europe/Luxembourg", popular: false },
-  // Germany
-  { name: "Berlin", countryCode: "DE", lat: 52.5200, lng: 13.4050, tz: "Europe/Berlin", popular: true },
-  { name: "Munich", countryCode: "DE", lat: 48.1351, lng: 11.5820, tz: "Europe/Berlin", popular: true },
-  { name: "Hamburg", countryCode: "DE", lat: 53.5511, lng: 9.9937, tz: "Europe/Berlin", popular: false },
-  { name: "Frankfurt", countryCode: "DE", lat: 50.1109, lng: 8.6821, tz: "Europe/Berlin", popular: false },
-  { name: "Cologne", countryCode: "DE", lat: 50.9375, lng: 6.9603, tz: "Europe/Berlin", popular: false },
-  { name: "Stuttgart", countryCode: "DE", lat: 48.7758, lng: 9.1829, tz: "Europe/Berlin", popular: false },
-  { name: "Karlsruhe", countryCode: "DE", lat: 49.0069, lng: 8.4037, tz: "Europe/Berlin", popular: false },
-  { name: "Darmstadt", countryCode: "DE", lat: 49.8728, lng: 8.6512, tz: "Europe/Berlin", popular: false },
-  { name: "Nuremberg", countryCode: "DE", lat: 49.4521, lng: 11.0767, tz: "Europe/Berlin", popular: false },
-  // France extras
-  { name: "Lyon", countryCode: "FR", lat: 45.7640, lng: 4.8357, tz: "Europe/Paris", popular: false },
-  { name: "Toulouse", countryCode: "FR", lat: 43.6047, lng: 1.4442, tz: "Europe/Paris", popular: false },
-  { name: "Cannes", countryCode: "FR", lat: 43.5528, lng: 7.0174, tz: "Europe/Paris", popular: false },
-  // Switzerland & Austria
-  { name: "Zurich", countryCode: "CH", lat: 47.3769, lng: 8.5417, tz: "Europe/Zurich", popular: true },
-  { name: "Geneva", countryCode: "CH", lat: 46.2044, lng: 6.1432, tz: "Europe/Zurich", popular: false },
-  { name: "Vienna", countryCode: "AT", lat: 48.2082, lng: 16.3738, tz: "Europe/Vienna", popular: true },
-  // Nordic
-  { name: "Stockholm", countryCode: "SE", lat: 59.3293, lng: 18.0686, tz: "Europe/Stockholm", popular: true },
-  { name: "Helsinki", countryCode: "FI", lat: 60.1699, lng: 24.9384, tz: "Europe/Helsinki", popular: true },
-  { name: "Copenhagen", countryCode: "DK", lat: 55.6761, lng: 12.5683, tz: "Europe/Copenhagen", popular: true },
-  { name: "Oslo", countryCode: "NO", lat: 59.9139, lng: 10.7522, tz: "Europe/Oslo", popular: false },
-  { name: "Reykjavik", countryCode: "IS", lat: 64.1466, lng: -21.9426, tz: "Atlantic/Reykjavik", popular: false },
-  // Southern Europe
-  { name: "Barcelona", countryCode: "ES", lat: 41.3874, lng: 2.1686, tz: "Europe/Madrid", popular: true },
-  { name: "Madrid", countryCode: "ES", lat: 40.4168, lng: -3.7038, tz: "Europe/Madrid", popular: true },
-  { name: "Lisbon", countryCode: "PT", lat: 38.7223, lng: -9.1393, tz: "Europe/Lisbon", popular: true },
-  { name: "Porto", countryCode: "PT", lat: 41.1579, lng: -8.6291, tz: "Europe/Lisbon", popular: false },
-  { name: "Milan", countryCode: "IT", lat: 45.4642, lng: 9.1900, tz: "Europe/Rome", popular: true },
-  { name: "Rome", countryCode: "IT", lat: 41.9028, lng: 12.4964, tz: "Europe/Rome", popular: false },
-  { name: "Turin", countryCode: "IT", lat: 45.0703, lng: 7.6869, tz: "Europe/Rome", popular: false },
-  { name: "Athens", countryCode: "GR", lat: 37.9838, lng: 23.7275, tz: "Europe/Athens", popular: false },
-  { name: "Valletta", countryCode: "MT", lat: 35.8989, lng: 14.5146, tz: "Europe/Malta", popular: false },
-  // Central & Eastern Europe
-  { name: "Prague", countryCode: "CZ", lat: 50.0755, lng: 14.4378, tz: "Europe/Prague", popular: true },
-  { name: "Warsaw", countryCode: "PL", lat: 52.2297, lng: 21.0122, tz: "Europe/Warsaw", popular: true },
-  { name: "Krakow", countryCode: "PL", lat: 50.0647, lng: 19.9450, tz: "Europe/Warsaw", popular: false },
-  { name: "Budapest", countryCode: "HU", lat: 47.4979, lng: 19.0402, tz: "Europe/Budapest", popular: true },
-  { name: "Bratislava", countryCode: "SK", lat: 48.1486, lng: 17.1077, tz: "Europe/Bratislava", popular: false },
-  { name: "Ljubljana", countryCode: "SI", lat: 46.0569, lng: 14.5058, tz: "Europe/Ljubljana", popular: false },
-  { name: "Zagreb", countryCode: "HR", lat: 45.8150, lng: 15.9819, tz: "Europe/Zagreb", popular: false },
-  // Baltics
-  { name: "Tallinn", countryCode: "EE", lat: 59.4370, lng: 24.7536, tz: "Europe/Tallinn", popular: true },
-  { name: "Riga", countryCode: "LV", lat: 56.9496, lng: 24.1052, tz: "Europe/Riga", popular: false },
-  { name: "Vilnius", countryCode: "LT", lat: 54.6872, lng: 25.2797, tz: "Europe/Vilnius", popular: false },
-  // Southeast & East
-  { name: "Bucharest", countryCode: "RO", lat: 44.4268, lng: 26.1025, tz: "Europe/Bucharest", popular: false },
-  { name: "Sofia", countryCode: "BG", lat: 42.6977, lng: 23.3219, tz: "Europe/Sofia", popular: false },
-  { name: "Belgrade", countryCode: "RS", lat: 44.7866, lng: 20.4489, tz: "Europe/Belgrade", popular: false },
-  { name: "Istanbul", countryCode: "TR", lat: 41.0082, lng: 28.9784, tz: "Europe/Istanbul", popular: true },
-  { name: "Kyiv", countryCode: "UA", lat: 50.4501, lng: 30.5234, tz: "Europe/Kyiv", popular: false },
-  { name: "Tbilisi", countryCode: "GE", lat: 41.7151, lng: 44.8271, tz: "Asia/Tbilisi", popular: false },
-  // UK extras
-  { name: "Manchester", countryCode: "GB", lat: 53.4808, lng: -2.2426, tz: "Europe/London", popular: false },
-  { name: "Edinburgh", countryCode: "GB", lat: 55.9533, lng: -3.1883, tz: "Europe/London", popular: false },
-  { name: "Cambridge", countryCode: "GB", lat: 52.2053, lng: 0.1218, tz: "Europe/London", popular: false },
-  { name: "Eastnor", countryCode: "GB", lat: 52.0406, lng: -2.3769, tz: "Europe/London", popular: false },
-  // Nicosia
-  { name: "Nicosia", countryCode: "CY", lat: 35.1856, lng: 33.3823, tz: "Asia/Nicosia", popular: false },
-];
+const COUNTRIES = [...SEED_COUNTRIES];
+const CITIES = [...SEED_CITIES];
 
 // Real European tech events, April–October 2026
 const SAMPLE_EVENTS = [
