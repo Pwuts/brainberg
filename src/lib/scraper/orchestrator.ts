@@ -54,6 +54,8 @@ export async function runScraper(
         eventsCreated: stats.created,
         eventsUpdated: stats.updated,
         eventsDeduplicated: stats.deduplicated,
+        eventsRejected: stats.rejected,
+        eventsPending: stats.pending,
         progress: 100,
         progressDetail: null,
         completedAt: new Date(),
@@ -90,7 +92,7 @@ export async function runAllScrapers(
       console.log(`[orchestrator] ${source} done:`, stats);
     } catch (err) {
       console.error(`[orchestrator] ${source} failed:`, err);
-      results[source] = { found: 0, created: 0, updated: 0, deduplicated: 0, errors: 1 };
+      results[source] = { found: 0, created: 0, updated: 0, deduplicated: 0, rejected: 0, pending: 0, errors: 1 };
     }
   }
 

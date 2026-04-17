@@ -127,6 +127,8 @@ export const events = pgTable("events", {
     `
   ),
   categoryLocked: boolean("category_locked").notNull().default(false),
+  moderatedByAI: boolean("moderated_by_ai").notNull().default(false),
+  aiModerationReason: text("ai_moderation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -262,6 +264,8 @@ export const scraperRuns = pgTable("scraper_runs", {
   eventsCreated: integer("events_created").notNull().default(0),
   eventsUpdated: integer("events_updated").notNull().default(0),
   eventsDeduplicated: integer("events_deduplicated").notNull().default(0),
+  eventsRejected: integer("events_rejected").notNull().default(0),
+  eventsPending: integer("events_pending").notNull().default(0),
   progress: integer("progress").notNull().default(0), // 0-100
   progressDetail: text("progress_detail"), // e.g. "Searching Berlin (5/60)"
   errorMessage: text("error_message"),

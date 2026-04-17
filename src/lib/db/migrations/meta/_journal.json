@@ -43,6 +43,13 @@
       "when": 1776435405711,
       "tag": "0005_shiny_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776439496886,
+      "tag": "0006_hard_xorn",
+      "breakpoints": true
     }
   ]
 }

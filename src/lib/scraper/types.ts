@@ -81,5 +81,7 @@ export interface IngestStats {
   created: number;
   updated: number;
   deduplicated: number;
+  rejected: number;
+  pending: number;
   errors: number;
 }

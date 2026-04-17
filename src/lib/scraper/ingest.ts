@@ -7,6 +7,7 @@ import { checkDuplicate } from "./dedup";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint } from "./fingerprint";
 import { NON_TECH_REGEX } from "./category-map";
+import { moderateEvent } from "./ai-moderate";
 import type { NormalizedEvent, IngestStats } from "./types";
 
 function makeSlug(title: string, date: Date, suffix?: string): string {
@@ -25,6 +26,8 @@ export async function ingestEvents(
     created: 0,
     updated: 0,
     deduplicated: 0,
+    rejected: 0,
+    pending: 0,
     errors: 0,
   };
 
@@ -77,8 +80,33 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
     return;
   }
 
-  // 3. Insert new event
-  // Include city name in slug to reduce collisions between same-titled events in different cities
+  // 3. AI moderation (only for new events, skipped if no API key)
+  let finalCategory = event.category;
+  let finalEventType = event.eventType;
+  let status: "approved" | "pending" | "rejected" = "approved";
+  let moderatedByAI = false;
+  let aiModerationReason: string | null = null;
+
+  const moderation = await moderateEvent(event);
+  if (moderation) {
+    moderatedByAI = true;
+    aiModerationReason = moderation.reason;
+
+    if (moderation.category) finalCategory = moderation.category;
+    if (moderation.eventType) finalEventType = moderation.eventType;
+
+    if (moderation.decision === "reject") {
+      status = "rejected";
+      stats.rejected++;
+      console.log(`[ai-moderate] Rejected: "${event.title}" — ${moderation.reason}`);
+    } else if (moderation.decision === "pending") {
+      status = "pending";
+      stats.pending++;
+      console.log(`[ai-moderate] Pending: "${event.title}" — ${moderation.reason}`);
+    }
+  }
+
+  // 4. Insert new event
   const slug = makeSlug(event.title, event.startsAt, event.cityName);
 
   const values = {
@@ -86,8 +114,8 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
     slug,
     description: event.description,
     shortDescription: event.shortDescription,
-    category: event.category,
-    eventType: event.eventType,
+    category: finalCategory,
+    eventType: finalEventType,
     size: event.size,
     tags: event.tags,
     startsAt: event.startsAt,
@@ -116,13 +144,15 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
     priceFrom: event.priceFrom,
     priceTo: event.priceTo,
     currency: event.currency ?? "EUR",
-    status: "approved" as const,
+    status,
     source: event.source,
     sourceId: event.sourceId,
     sourceUrl: event.sourceUrl,
     organizerName: event.organizerName,
     organizerUrl: event.organizerUrl,
     organizerEmail: event.organizerEmail,
+    moderatedByAI,
+    aiModerationReason,
   };
 
   let inserted: { id: string };

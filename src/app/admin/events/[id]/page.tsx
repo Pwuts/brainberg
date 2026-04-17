@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Trash2 } from "lucide-react";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
   countryFlag, formatEventDate,
@@ -31,12 +32,18 @@ export default function AdminEventDetailPage({
     paramsPromise.then((p) => setId(p.id));
   }, [paramsPromise]);
 
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+
   useEffect(() => {
     if (!id) return;
     fetchAdmin(`/api/admin/events/${id}`)
       .then((r) => r.json())
       .then(setData)
       .catch(console.error);
+    fetchAdmin(`/api/admin/events/next-pending?exclude=${id}`)
+      .then((r) => r.json())
+      .then((d) => setPendingCount(d.remaining ?? null))
+      .catch(() => {});
   }, [fetchAdmin, id]);
 
   const patchField = async (field: string, value: string) => {
@@ -60,9 +67,24 @@ export default function AdminEventDetailPage({
   const category = ev.category as string;
   const eventType = ev.eventType as string;
 
+  const goToNextPending = async () => {
+    const res = await fetchAdmin(`/api/admin/events/next-pending?exclude=${id}`);
+    const data = await res.json();
+    if (data.id) {
+      router.push(`/admin/events/${data.id}`);
+    } else {
+      router.push("/admin/events?status=pending");
+    }
+  };
+
   const handleApprove = async () => {
     await fetchAdmin(`/api/admin/events/${id}/approve`, { method: "POST" });
     router.push("/admin/events");
+  };
+
+  const handleApproveNext = async () => {
+    await fetchAdmin(`/api/admin/events/${id}/approve`, { method: "POST" });
+    await goToNextPending();
   };
 
   const handleReject = async () => {
@@ -74,6 +96,14 @@ export default function AdminEventDetailPage({
     router.push("/admin/events");
   };
 
+  const handleRejectNext = async () => {
+    await fetchAdmin(`/api/admin/events/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason: (ev.aiModerationReason as string) ?? "Rejected during review" }),
+    });
+    await goToNextPending();
+  };
+
   const handleDelete = async () => {
     if (!confirm("Delete this event? This cannot be undone.")) return;
     await fetchAdmin(`/api/admin/events/${id}`, { method: "DELETE" });
@@ -81,7 +111,7 @@ export default function AdminEventDetailPage({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">{ev.title as string}</h1>
@@ -92,12 +122,12 @@ export default function AdminEventDetailPage({
               : status === "rejected" ? "bg-red-100 text-red-800"
               : "bg-gray-100 text-gray-800"
             }`}>
-              {status}
+              {status}{status === "pending" && pendingCount != null && pendingCount > 0 ? ` (+${pendingCount - 1})` : ""}
             </span>
             <Select
               value={category}
               onChange={(e) => patchField("category", e.target.value)}
-              className={`!h-auto w-auto rounded-full !py-1 px-3 text-xs font-medium ${CATEGORY_COLORS[category] ?? "bg-gray-100 text-gray-800"}`}
+              className={`h-auto! w-auto rounded-full py-1! px-3 text-xs font-medium ${CATEGORY_COLORS[category] ?? "bg-gray-100 text-gray-800"}`}
               title={CATEGORY_DESCRIPTIONS[category]}
             >
               {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
@@ -107,7 +137,7 @@ export default function AdminEventDetailPage({
             <Select
               value={eventType}
               onChange={(e) => patchField("eventType", e.target.value)}
-              className="!h-auto w-auto rounded-full border !py-1 px-3 text-xs font-medium"
+              className="h-auto! w-auto rounded-full border py-1! px-3 text-xs font-medium"
             >
               {Object.entries(EVENT_TYPE_LABELS).map(([val, label]) => (
                 <option key={val} value={val}>{label}</option>
@@ -118,15 +148,13 @@ export default function AdminEventDetailPage({
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
-          {status !== "approved" && (
-            <Button onClick={handleApprove}>Approve</Button>
-          )}
-          {status !== "rejected" && (
-            <Button variant="outline" onClick={handleReject}>Reject</Button>
-          )}
-          <Button variant="outline" onClick={handleDelete}>Delete</Button>
-        </div>
+        <button
+          onClick={handleDelete}
+          className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+          title="Delete event"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Details grid */}
@@ -202,6 +230,43 @@ export default function AdminEventDetailPage({
           </div>
         </section>
       )}
+
+      {/* Moderation card */}
+      {(status === "pending" || status === "rejected" || ev.aiModerationReason) ? (
+        <div className={`rounded-lg border p-5 ${
+          status === "approved"
+            ? "border-border bg-muted/30"
+            : "border-yellow-300 bg-yellow-50/60"
+        }`}>
+          {ev.aiModerationReason ? (
+            <p className="mb-4 text-base">
+              <span className={`font-semibold ${status === "approved" ? "" : "text-yellow-900"}`}>AI says: </span>
+              <span className={status === "approved" ? "text-muted-foreground" : "text-yellow-800"}>{String(ev.aiModerationReason)}</span>
+            </p>
+          ) : null}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {status !== "approved" && (
+                <>
+                  <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleApproveNext}>Approve & Next</Button>
+                  <Button size="lg" className="border-green-300 text-green-700 hover:bg-green-50" variant="outline" onClick={handleApprove}>Approve</Button>
+                </>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {status !== "approved" && status !== "rejected" && (
+                <>
+                  <Button size="lg" className="border-red-300 text-red-700 hover:bg-red-50" variant="outline" onClick={handleReject}>Reject</Button>
+                  <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white" onClick={handleRejectNext}>Reject & Next</Button>
+                </>
+              )}
+              {status === "approved" && (
+                <Button size="lg" className="border-red-300 text-red-700 hover:bg-red-50" variant="outline" onClick={handleReject}>Reject</Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
