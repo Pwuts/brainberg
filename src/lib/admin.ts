@@ -179,9 +179,19 @@ export async function rejectEvent(id: string, reason?: string) {
     .where(eq(events.id, id));
 }
 
+export async function setEventPending(id: string) {
+  await db
+    .update(events)
+    .set({
+      status: "pending",
+      updatedAt: new Date(),
+    })
+    .where(eq(events.id, id));
+}
+
 export async function bulkAction(
   ids: string[],
-  action: "approve" | "reject" | "delete",
+  action: "approve" | "reject" | "pending" | "delete",
   reason?: string,
 ) {
   for (const id of ids) {
@@ -191,6 +201,9 @@ export async function bulkAction(
         break;
       case "reject":
         await rejectEvent(id, reason);
+        break;
+      case "pending":
+        await setEventPending(id);
         break;
       case "delete":
         await deleteEvent(id);

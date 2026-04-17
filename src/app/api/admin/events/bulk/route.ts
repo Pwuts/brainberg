@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { ids, action, reason } = body;
 
-  if (!Array.isArray(ids) || !["approve", "reject", "delete"].includes(action)) {
+  if (!Array.isArray(ids) || !["approve", "reject", "pending", "delete"].includes(action)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 

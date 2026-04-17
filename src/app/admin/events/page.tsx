@@ -59,7 +59,8 @@ export default function AdminEventsPage() {
     sort: searchParams.get("sort") ?? "-date",
   };
   const offset = parseInt(searchParams.get("offset") ?? "0");
-  const limit = 50;
+  const limit = parseInt(searchParams.get("limit") ?? "50");
+  const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
   const load = useCallback(async () => {
     // Build API query from current URL params
@@ -134,14 +135,37 @@ export default function AdminEventsPage() {
     return "";
   };
 
-  const bulkAction = async (action: "approve" | "reject" | "delete") => {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const bulkAction = async (action: "approve" | "reject" | "pending" | "delete") => {
     if (selected.size === 0) return;
-    await fetchAdmin("/api/admin/events/bulk", {
-      method: "POST",
-      body: JSON.stringify({ ids: [...selected], action }),
-    });
-    setSelected(new Set());
-    load();
+    if (action === "delete" && !confirm(`Delete ${selected.size} event(s)? This cannot be undone.`)) return;
+    setBusy(action);
+    try {
+      await fetchAdmin("/api/admin/events/bulk", {
+        method: "POST",
+        body: JSON.stringify({ ids: [...selected], action }),
+      });
+      setSelected(new Set());
+      load();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const bulkRemoderate = async () => {
+    if (selected.size === 0) return;
+    setBusy("remoderate");
+    try {
+      await fetchAdmin("/api/admin/events/recategorize", {
+        method: "POST",
+        body: JSON.stringify({ eventIds: [...selected] }),
+      });
+      setSelected(new Set());
+      load();
+    } finally {
+      setBusy(null);
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -233,11 +257,23 @@ export default function AdminEventsPage() {
 
       {/* Bulk actions */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-          <Button size="sm" onClick={() => bulkAction("approve")}>Approve</Button>
-          <Button size="sm" variant="outline" onClick={() => bulkAction("reject")}>Reject</Button>
-          <Button size="sm" variant="outline" onClick={() => bulkAction("delete")}>Delete</Button>
+          <Button size="sm" disabled={busy !== null} onClick={() => bulkAction("approve")}>
+            {busy === "approve" ? "Approving..." : "Approve"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("pending")}>
+            {busy === "pending" ? "Setting..." : "Set Pending"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("reject")}>
+            {busy === "reject" ? "Rejecting..." : "Reject"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy !== null} onClick={bulkRemoderate}>
+            {busy === "remoderate" ? "Re-moderating..." : "Re-moderate"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("delete")} className="border-red-300 text-red-700 hover:bg-red-50">
+            {busy === "delete" ? "Deleting..." : "Delete"}
+          </Button>
         </div>
       )}
 
@@ -328,21 +364,37 @@ export default function AdminEventsPage() {
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
-          </span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
-              Previous
-            </Button>
-            <Button size="sm" variant="outline" disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}>
-              Next
-            </Button>
-          </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">
+          {total > 0
+            ? `Showing ${offset + 1}–${Math.min(offset + limit, total)} of ${total}`
+            : "No results"}
+        </span>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Per page
+            <Select
+              value={String(limit)}
+              onChange={(e) => setFilter("limit", e.target.value === "50" ? "" : e.target.value)}
+              className="w-[80px]"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={String(n)}>{n}</option>
+              ))}
+            </Select>
+          </label>
+          {total > limit && (
+            <>
+              <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
+                Previous
+              </Button>
+              <Button size="sm" variant="outline" disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}>
+                Next
+              </Button>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
