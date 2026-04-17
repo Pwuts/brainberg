@@ -6,7 +6,7 @@ import { AnimatedBubbles } from "./animated-bubbles";
 
 const BUBBLE_COLORS: Record<string, string> = {
   ai_ml_research: "#9333ea",
-  ai_powered_dev: "#7c3aed",
+  ai_applied: "#7c3aed",
   software_dev: "#475569",
   data_analytics: "#16a34a",
   cloud_devops: "#0891b2",

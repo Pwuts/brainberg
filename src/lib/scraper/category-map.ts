@@ -77,7 +77,7 @@ export const CONFSTECH_CATEGORY_MAP: Record<string, EventCategory> = {
 // ============================================================
 
 export const DEVEVENTS_CATEGORY_MAP: Record<string, EventCategory> = {
-  "Artificial Intelligence (AI)": "ai_powered_dev",
+  "Artificial Intelligence (AI)": "ai_applied",
   "Machine Learning": "ai_ml_research",
   "Deep Learning": "ai_ml_research",
   Cloud: "cloud_devops",
@@ -112,7 +112,7 @@ export const DEVEVENTS_TYPE_MAP: Record<string, EventType> = {
 // ============================================================
 
 export const MEETUP_TOPIC_MAP: Record<string, EventCategory> = {
-  "artificial-intelligence": "ai_powered_dev",
+  "artificial-intelligence": "ai_applied",
   "machine-learning": "ai_ml_research",
   "deep-learning": "ai_ml_research",
   "natural-language-processing": "ai_ml_research",
@@ -169,7 +169,7 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 function titleOverride(title: string): EventCategory | null {
   if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker";
   if (AI_RESEARCH_REGEX.test(title)) return "ai_ml_research";
-  if (AI_DEV_REGEX.test(title)) return "ai_powered_dev";
+  if (AI_DEV_REGEX.test(title)) return "ai_applied";
   if (WEB3_KEYWORD_REGEX.test(title)) return "blockchain_web3";
   if (SECURITY_KEYWORD_REGEX.test(title)) return "security";
   if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_devops";

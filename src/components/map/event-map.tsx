@@ -34,7 +34,7 @@ L.Icon.Default.mergeOptions({
 // Category → marker color mapping
 const MARKER_COLORS: Record<string, string> = {
   ai_ml_research: "#9333ea",  // purple
-  ai_powered_dev: "#7c3aed",  // violet
+  ai_applied: "#7c3aed",  // violet
   software_dev: "#475569",    // slate
   data_analytics: "#16a34a",  // green
   cloud_devops: "#0891b2",    // cyan

@@ -20,11 +20,11 @@ Building, training, and deploying machine learning models. MLOps, research paper
 
 **Examples:** deep learning meetup, MLOps conference, PyTorch workshop, NLP paper reading group
 
-### AI-Powered Development (`ai_powered_dev`)
+### AI Applications & Integration (`ai_applied`)
 
-Using AI tools to build software or integrate AI into products. AI agents, GitHub Copilot, vibe coding, LLM API integration, prompt engineering, no-code AI tools.
+Applying AI rather than researching it. Covers both developers using AI tools (Copilot, Cursor, agents, vibe coding, LLM APIs, prompt engineering, no-code AI) and organizations integrating AI into products, workflows, or operations (AI for marketing, legal, HR, customer support, etc.).
 
-**Examples:** "Build with AI" workshop, Claude Code meetup, AI agents hackathon, generative AI in business
+**Examples:** "Build with AI" workshop, Claude Code meetup, AI agents hackathon, generative AI in business, AI for marketers, Copilot for lawyers
 
 ### Software Engineering (`software_dev`)
 

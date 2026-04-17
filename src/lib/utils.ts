@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   ai_ml_research: "AI/ML Research & Engineering",
-  ai_powered_dev: "AI-Powered Development",
+  ai_applied: "AI Applications & Integration",
   software_dev: "Software Engineering",
   data_analytics: "Data & Analytics",
   cloud_devops: "Cloud & DevOps",
@@ -22,7 +22,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
 
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   ai_ml_research: "Building models, training, MLOps, research papers, frameworks like PyTorch & Hugging Face",
-  ai_powered_dev: "Using AI to build things — AI agents, Copilot, vibe coding, integrating LLM APIs",
+  ai_applied: "Applying AI — AI agents, Copilot, vibe coding, LLM API integration, AI in products & workflows",
   software_dev: "Languages, frameworks, architecture, testing — the craft of building software",
   data_analytics: "Data engineering, BI, databases, pipelines, analytics platforms",
   cloud_devops: "Infrastructure, Kubernetes, AWS/Azure/GCP, platform engineering, SRE",
@@ -37,7 +37,7 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 
 export const CATEGORY_COLORS: Record<string, string> = {
   ai_ml_research: "bg-purple-100 text-purple-800",
-  ai_powered_dev: "bg-violet-100 text-violet-800",
+  ai_applied: "bg-violet-100 text-violet-800",
   software_dev: "bg-slate-100 text-slate-800",
   data_analytics: "bg-green-100 text-green-800",
   cloud_devops: "bg-cyan-100 text-cyan-800",
