@@ -4,46 +4,55 @@ import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const API_BASE = "https://www.eventbriteapi.com/v3";
 
-interface EventbriteEvent {
+// Who's On First place IDs for European countries
+const EUROPEAN_PLACE_IDS: { code: string; wofId: string }[] = [
+  { code: "DE", wofId: "85633111" },  // Germany
+  { code: "GB", wofId: "85633159" },  // United Kingdom
+  { code: "FR", wofId: "85633147" },  // France
+  { code: "NL", wofId: "85633685" },  // Netherlands
+  { code: "ES", wofId: "85633129" },  // Spain
+  { code: "IT", wofId: "85633253" },  // Italy
+  { code: "SE", wofId: "85633789" },  // Sweden
+  { code: "AT", wofId: "85632785" },  // Austria
+  { code: "CH", wofId: "85633051" },  // Switzerland
+  { code: "BE", wofId: "85632997" },  // Belgium
+  { code: "IE", wofId: "85633241" },  // Ireland
+  { code: "PT", wofId: "85633735" },  // Portugal
+  { code: "DK", wofId: "85633121" },  // Denmark
+  { code: "FI", wofId: "85633143" },  // Finland
+  { code: "NO", wofId: "85633341" },  // Norway
+  { code: "PL", wofId: "85633723" },  // Poland
+  { code: "CZ", wofId: "85633105" },  // Czechia
+];
+
+interface EventbriteResult {
   id: string;
-  name: { text: string; html?: string };
-  description?: { text: string; html?: string };
-  summary?: string;
+  name: string;
   url: string;
-  start: { utc: string; timezone: string };
-  end: { utc: string; timezone: string };
+  start_date: string;   // "2026-05-10"
+  start_time: string;   // "09:00"
+  end_date: string;
+  end_time: string;
+  timezone: string;
   is_free: boolean;
   is_online_event: boolean;
-  online_event?: boolean;
-  category_id?: string;
-  subcategory_id?: string;
-  logo?: { url: string };
-  venue?: {
+  summary?: string;
+  image?: { url: string };
+  primary_venue?: {
     name?: string;
     address?: {
       city?: string;
       country?: string;
       localized_address_display?: string;
+      latitude?: string;
+      longitude?: string;
     };
-    latitude?: string;
-    longitude?: string;
-  };
-  organizer?: {
-    name?: string;
-    url?: string;
   };
   ticket_availability?: {
     minimum_ticket_price?: { major_value: string; currency: string };
     maximum_ticket_price?: { major_value: string; currency: string };
   };
-}
-
-interface SearchResponse {
-  events: EventbriteEvent[];
-  pagination: {
-    has_more_items: boolean;
-    continuation?: string;
-  };
+  tags?: { display_name: string; prefix?: string }[];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -60,118 +69,126 @@ export const eventbriteScraper: Scraper = {
       return;
     }
 
-    let continuation: string | undefined;
-    let page = 0;
+    const totalCountries = EUROPEAN_PLACE_IDS.length;
 
-    do {
-      page++;
-      const params = new URLSearchParams({
-        categories: "101", // Science & Technology
-        "location.address": "Europe",
-        expand: "venue,organizer,ticket_availability",
-      });
+    for (let ci = 0; ci < totalCountries; ci++) {
+      const { code, wofId } = EUROPEAN_PLACE_IDS[ci];
 
-      if (options?.dateFrom) {
-        params.set("start_date.range_start", options.dateFrom.toISOString().replace("Z", ""));
-      }
-      if (options?.dateTo) {
-        params.set("start_date.range_end", options.dateTo.toISOString().replace("Z", ""));
-      }
-      if (continuation) {
-        params.set("continuation", continuation);
-      }
+      options?.onProgress?.(
+        Math.round((ci / totalCountries) * 100),
+        `Searching ${code} (${ci + 1}/${totalCountries})`,
+      );
 
-      const url = `${API_BASE}/events/search/?${params.toString()}`;
+      let continuation: string | undefined;
+      let page = 0;
 
-      let data: SearchResponse;
-      try {
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      do {
+        page++;
 
-        if (res.status === 429) {
-          // Rate limited — back off and retry
-          console.warn("[eventbrite] Rate limited, waiting 30s...");
-          await sleep(30000);
-          continue;
+        const body: Record<string, unknown> = {
+          event_search: {
+            q: "tech",
+            places: [wofId],
+          },
+          "expand.destination_event": [
+            "primary_venue", "image", "ticket_availability",
+          ],
+        };
+
+        if (continuation) {
+          (body.event_search as Record<string, unknown>).continuation = continuation;
         }
 
-        if (!res.ok) {
-          console.error(`[eventbrite] API error: ${res.status}`);
+        let data: { events?: { results?: EventbriteResult[]; pagination?: { continuation?: string; object_count?: number } } };
+        try {
+          const res = await fetch(`${API_BASE}/destination/search/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (res.status === 429) {
+            console.warn("[eventbrite] Rate limited, waiting 30s...");
+            await sleep(30000);
+            continue;
+          }
+
+          if (!res.ok) {
+            console.error(`[eventbrite] API error for ${code}: ${res.status}`);
+            break;
+          }
+
+          data = await res.json();
+        } catch (err) {
+          console.error(`[eventbrite] Fetch error for ${code}:`, err);
           break;
         }
 
-        data = (await res.json()) as SearchResponse;
-      } catch (err) {
-        console.error("[eventbrite] Fetch error:", err);
-        break;
-      }
+        const results = data.events?.results ?? [];
 
-      for (const ev of data.events) {
-        const startsAt = new Date(ev.start.utc);
-        if (isNaN(startsAt.getTime())) continue;
+        for (const ev of results) {
+          const startsAt = new Date(`${ev.start_date}T${ev.start_time || "00:00"}`);
+          if (isNaN(startsAt.getTime())) continue;
 
-        if (options?.dateFrom && startsAt < options.dateFrom) continue;
-        if (options?.dateTo && startsAt > options.dateTo) continue;
+          if (options?.dateFrom && startsAt < options.dateFrom) continue;
+          if (options?.dateTo && startsAt > options.dateTo) continue;
 
-        const endsAt = ev.end?.utc ? new Date(ev.end.utc) : undefined;
+          const endsAt = ev.end_date
+            ? new Date(`${ev.end_date}T${ev.end_time || "23:59"}`)
+            : undefined;
 
-        const description = ev.description?.html
-          ? stripHtml(ev.description.html)
-          : ev.description?.text ?? ev.summary;
+          const category = resolveCategory(undefined, EVENTBRITE_CATEGORY_MAP, ev.name);
 
-        const category = resolveCategory(
-          ev.category_id ?? undefined,
-          EVENTBRITE_CATEGORY_MAP,
-          ev.name.text,
-        );
+          const venue = ev.primary_venue;
+          const addr = venue?.address;
+          const lat = addr?.latitude ? parseFloat(addr.latitude) : undefined;
+          const lng = addr?.longitude ? parseFloat(addr.longitude) : undefined;
 
-        const isOnline = ev.is_online_event || ev.online_event || false;
-        const lat = ev.venue?.latitude ? parseFloat(ev.venue.latitude) : undefined;
-        const lng = ev.venue?.longitude ? parseFloat(ev.venue.longitude) : undefined;
+          const minPrice = ev.ticket_availability?.minimum_ticket_price;
+          const maxPrice = ev.ticket_availability?.maximum_ticket_price;
 
-        const minPrice = ev.ticket_availability?.minimum_ticket_price;
-        const maxPrice = ev.ticket_availability?.maximum_ticket_price;
+          yield {
+            title: ev.name,
+            description: ev.summary,
+            shortDescription: ev.summary ? truncate(ev.summary, 500) : undefined,
+            category,
+            eventType: "conference",
+            startsAt,
+            endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
+            timezone: ev.timezone || "UTC",
+            isMultiDay: !!(endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000),
+            cityName: addr?.city,
+            countryCode: addr?.country || code,
+            venueName: venue?.name,
+            venueAddress: addr?.localized_address_display,
+            latitude: lat && !isNaN(lat) ? lat : undefined,
+            longitude: lng && !isNaN(lng) ? lng : undefined,
+            isOnline: ev.is_online_event || false,
+            websiteUrl: ev.url,
+            eventbriteUrl: ev.url,
+            imageUrl: ev.image?.url,
+            isFree: ev.is_free,
+            priceFrom: minPrice ? parseFloat(minPrice.major_value) : undefined,
+            priceTo: maxPrice ? parseFloat(maxPrice.major_value) : undefined,
+            currency: minPrice?.currency ?? maxPrice?.currency,
+            source: "eventbrite",
+            sourceId: ev.id,
+            sourceUrl: ev.url,
+            rawData: ev,
+          };
+        }
 
-        yield {
-          title: ev.name.text,
-          description,
-          shortDescription: description ? truncate(description, 500) : undefined,
-          category,
-          eventType: "conference", // Eventbrite doesn't cleanly distinguish
-          startsAt,
-          endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
-          timezone: ev.start.timezone,
-          isMultiDay: !!(endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000),
-          cityName: ev.venue?.address?.city,
-          countryCode: ev.venue?.address?.country,
-          venueName: ev.venue?.name,
-          venueAddress: ev.venue?.address?.localized_address_display,
-          latitude: lat && !isNaN(lat) ? lat : undefined,
-          longitude: lng && !isNaN(lng) ? lng : undefined,
-          isOnline,
-          websiteUrl: ev.url,
-          eventbriteUrl: ev.url,
-          imageUrl: ev.logo?.url,
-          isFree: ev.is_free,
-          priceFrom: minPrice ? parseFloat(minPrice.major_value) : undefined,
-          priceTo: maxPrice ? parseFloat(maxPrice.major_value) : undefined,
-          currency: minPrice?.currency ?? maxPrice?.currency,
-          organizerName: ev.organizer?.name,
-          organizerUrl: ev.organizer?.url,
-          source: "eventbrite",
-          sourceId: ev.id,
-          sourceUrl: ev.url,
-          rawData: ev,
-        };
-      }
+        continuation = data.events?.pagination?.continuation ?? undefined;
 
-      continuation = data.pagination.has_more_items
-        ? data.pagination.continuation
-        : undefined;
+        // Rate limit between pages
+        await sleep(1000);
+      } while (continuation && page < 10); // Max 10 pages per country
 
-      // Rate limit between pages
+      // Rate limit between countries
       await sleep(1000);
-    } while (continuation && page < 20); // Safety cap
+    }
   },
 };
