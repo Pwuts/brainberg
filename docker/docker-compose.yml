@@ -21,6 +21,7 @@ services:
       - VIRTUAL_HOST
       - LETSENCRYPT_HOST
       - LETSENCRYPT_EMAIL
+      - ANTHROPIC_API_KEY
       - EVENTBRITE_API_TOKEN
     depends_on:
       db:
