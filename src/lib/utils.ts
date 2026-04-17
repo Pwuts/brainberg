@@ -17,6 +17,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   healthtech: "HealthTech",
   robotics: "Robotics",
   startup: "Startup",
+  hacker_maker_community: "Hacker / Maker Community",
   general_tech: "General Tech",
   other: "Other",
 };
@@ -33,6 +34,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   healthtech: "bg-teal-100 text-teal-800",
   robotics: "bg-amber-100 text-amber-800",
   startup: "bg-indigo-100 text-indigo-800",
+  hacker_maker_community: "bg-lime-100 text-lime-800",
   general_tech: "bg-slate-100 text-slate-800",
   other: "bg-gray-100 text-gray-800",
 };
@@ -55,6 +57,17 @@ export const SIZE_LABELS: Record<string, string> = {
   medium: "50–200",
   large: "200–1000",
   major: "1000+",
+};
+
+export const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  community: "Community",
+  luma: "Luma",
+  eventbrite: "Eventbrite",
+  meetup: "Meetup",
+  confs_tech: "confs.tech",
+  dev_events: "dev.events",
+  other: "Other",
 };
 
 // Country flag emoji from ISO code

@@ -16,7 +16,7 @@ export const eventStatusEnum = pgEnum("event_status", [
 export const eventCategoryEnum = pgEnum("event_category", [
   "ai_ml", "blockchain_web3", "devtools", "cloud_infra", "cybersecurity",
   "data_science", "design_ux", "fintech", "healthtech", "robotics",
-  "startup", "general_tech", "other",
+  "startup", "hacker_maker_community", "general_tech", "other",
 ]);
 
 export const eventTypeEnum = pgEnum("event_type", [
@@ -29,7 +29,8 @@ export const eventSizeEnum = pgEnum("event_size", [
 ]);
 
 export const eventSourceEnum = pgEnum("event_source", [
-  "manual", "community", "luma", "eventbrite", "meetup", "other",
+  "manual", "community", "luma", "eventbrite", "meetup",
+  "confs_tech", "dev_events", "other",
 ]);
 
 export const userRoleEnum = pgEnum("user_role", [
@@ -107,6 +108,8 @@ export const events = pgTable("events", {
   source: eventSourceEnum("source").notNull().default("manual"),
   sourceId: varchar("source_id", { length: 500 }),
   sourceUrl: text("source_url"),
+  confsTechUrl: text("confs_tech_url"),
+  devEventsUrl: text("dev_events_url"),
   organizerName: varchar("organizer_name", { length: 300 }),
   organizerUrl: text("organizer_url"),
   organizerEmail: varchar("organizer_email", { length: 300 }),
@@ -219,6 +222,101 @@ export const consentLog = pgTable("consent_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const scraperRunStatusEnum = pgEnum("scraper_run_status", [
+  "running", "completed", "failed",
+]);
+
+export const diffStatusEnum = pgEnum("diff_status", [
+  "new", "updated", "removed", "unchanged",
+]);
+
+export const eventSources = pgTable("event_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  source: eventSourceEnum("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  sourceUrl: text("source_url"),
+  rawData: jsonb("raw_data"),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("idx_event_sources_unique").on(t.eventId, t.source),
+  index("idx_event_sources_source_id").on(t.source, t.sourceId),
+]);
+
+export const eventFingerprints = pgTable("event_fingerprints", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  fingerprintType: text("fingerprint_type").notNull(),
+  fingerprintValue: text("fingerprint_value").notNull(),
+}, (t) => [
+  uniqueIndex("idx_fingerprints_unique").on(t.fingerprintType, t.fingerprintValue),
+]);
+
+export const scraperRuns = pgTable("scraper_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  source: eventSourceEnum("source").notNull(),
+  status: scraperRunStatusEnum("status").notNull().default("running"),
+  eventsFound: integer("events_found").notNull().default(0),
+  eventsCreated: integer("events_created").notNull().default(0),
+  eventsUpdated: integer("events_updated").notNull().default(0),
+  eventsDeduplicated: integer("events_deduplicated").notNull().default(0),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const stagedEvents = pgTable("staged_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scraperRunId: uuid("scraper_run_id").notNull().references(() => scraperRuns.id, { onDelete: "cascade" }),
+  // Core event fields (mirrored from events table)
+  title: varchar("title", { length: 300 }).notNull(),
+  slug: varchar("slug", { length: 350 }).notNull(),
+  description: text("description"),
+  shortDescription: varchar("short_description", { length: 500 }),
+  category: eventCategoryEnum("category").notNull(),
+  eventType: eventTypeEnum("event_type").notNull(),
+  size: eventSizeEnum("size"),
+  tags: text("tags").array(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  timezone: varchar("timezone", { length: 50 }).notNull(),
+  isMultiDay: boolean("is_multi_day").notNull().default(false),
+  cityId: integer("city_id").references(() => cities.id),
+  countryId: integer("country_id").references(() => countries.id),
+  venueName: varchar("venue_name", { length: 300 }),
+  venueAddress: text("venue_address"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  isOnline: boolean("is_online").notNull().default(false),
+  isHybrid: boolean("is_hybrid").notNull().default(false),
+  onlineUrl: text("online_url"),
+  websiteUrl: text("website_url"),
+  registrationUrl: text("registration_url"),
+  lumaUrl: text("luma_url"),
+  eventbriteUrl: text("eventbrite_url"),
+  meetupUrl: text("meetup_url"),
+  confsTechUrl: text("confs_tech_url"),
+  devEventsUrl: text("dev_events_url"),
+  imageUrl: text("image_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  isFree: boolean("is_free").notNull().default(true),
+  priceFrom: real("price_from"),
+  priceTo: real("price_to"),
+  currency: varchar("currency", { length: 3 }).default("EUR"),
+  source: eventSourceEnum("source").notNull(),
+  sourceId: varchar("source_id", { length: 500 }),
+  sourceUrl: text("source_url"),
+  organizerName: varchar("organizer_name", { length: 300 }),
+  organizerUrl: text("organizer_url"),
+  organizerEmail: varchar("organizer_email", { length: 300 }),
+  // Staging-specific fields
+  diffStatus: diffStatusEnum("diff_status").notNull().default("new"),
+  matchedEventId: uuid("matched_event_id").references(() => events.id),
+  fieldDiffs: jsonb("field_diffs"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ============================================================
 // RELATIONS
 // ============================================================
@@ -239,9 +337,28 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   submittedBy: one(users, { fields: [events.submittedById], references: [users.id] }),
   approvedBy: one(users, { fields: [events.approvedById], references: [users.id] }),
   eventTags: many(eventTags),
+  sources: many(eventSources),
+  fingerprints: many(eventFingerprints),
 }));
 
 export const eventTagsRelations = relations(eventTags, ({ one }) => ({
   event: one(events, { fields: [eventTags.eventId], references: [events.id] }),
   tag: one(tagDefinitions, { fields: [eventTags.tagId], references: [tagDefinitions.id] }),
+}));
+
+export const eventSourcesRelations = relations(eventSources, ({ one }) => ({
+  event: one(events, { fields: [eventSources.eventId], references: [events.id] }),
+}));
+
+export const eventFingerprintsRelations = relations(eventFingerprints, ({ one }) => ({
+  event: one(events, { fields: [eventFingerprints.eventId], references: [events.id] }),
+}));
+
+export const scraperRunsRelations = relations(scraperRuns, ({ many }) => ({
+  stagedEvents: many(stagedEvents),
+}));
+
+export const stagedEventsRelations = relations(stagedEvents, ({ one }) => ({
+  scraperRun: one(scraperRuns, { fields: [stagedEvents.scraperRunId], references: [scraperRuns.id] }),
+  matchedEvent: one(events, { fields: [stagedEvents.matchedEventId], references: [events.id] }),
 }));
