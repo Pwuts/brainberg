@@ -31,6 +31,7 @@ export default function AdminScrapersPage() {
     setRuns(data.runs ?? []);
   }, [fetchAdmin]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const runAll = async () => {
@@ -154,7 +155,7 @@ export default function AdminScrapersPage() {
               {runs.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    No runs yet. Click "Run Now" on a scraper to start.
+                    No runs yet. Click {'"'}Run Now{'"'} on a scraper to start.
                   </td>
                 </tr>
               )}

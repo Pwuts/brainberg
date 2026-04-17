@@ -1,8 +1,8 @@
 import { db } from "./db";
 import {
-  events, cities, countries, eventSources, scraperRuns, scraperSources,
+  events, cities, countries, eventSources, scraperRuns,
 } from "./db/schema";
-import { eq, and, desc, asc, sql, count, type SQL } from "drizzle-orm";
+import { eq, and, desc, sql, count, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum } from "./db/schema";
 
 // ============================================================

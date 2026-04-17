@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, SOURCE_LABELS, EVENT_TYPE_LABELS,
   countryFlag, formatEventDate,

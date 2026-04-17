@@ -113,29 +113,27 @@ export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
   const ref = useRef<HTMLDivElement>(null);
   const appliedDefault = useRef(false);
 
+  // Derive preset from current URL params (replaces sync effects)
+  const derivedPreset = (() => {
+    const detected = detectPreset(from, to);
+    if (detected) return detected;
+    return loadPreset();
+  })();
+  if (derivedPreset !== preset) {
+    setPreset(derivedPreset);
+  }
+
   // On mount: if no date params in URL, apply the stored/default preset
   useEffect(() => {
     if (appliedDefault.current) return;
     appliedDefault.current = true;
     const detected = detectPreset(from, to);
-    if (detected) {
-      setPreset(detected);
-    } else {
+    if (!detected) {
       const saved = loadPreset();
-      setPreset(saved);
       const range = getPresetRange(saved);
       onChange(range.from, range.to);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync preset when URL params change (e.g. "Clear" button, external navigation)
-  useEffect(() => {
-    if (!appliedDefault.current) return;
-    const detected = detectPreset(from, to);
-    if (detected) {
-      setPreset(detected);
-    }
-  }, [from, to]);
 
   // Close on outside click
   useEffect(() => {

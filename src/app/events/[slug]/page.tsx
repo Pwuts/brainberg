@@ -79,6 +79,7 @@ export default async function EventPage({ params }: PageProps) {
       {/* Header image */}
       {event.imageUrl && (
         <div className="mb-6 overflow-hidden rounded-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element -- external event images from arbitrary domains */}
           <img
             src={event.imageUrl}
             alt={event.title}

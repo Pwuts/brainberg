@@ -33,7 +33,7 @@ Brainberg is an open-source event aggregator for the European tech scene — thi
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/Pwuts/techpulse.git
+git clone https://github.com/Pwuts/brainberg.git
 cd brainberg
 npm install
 ```

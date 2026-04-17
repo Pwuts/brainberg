@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { stagedEvents, events, scraperRuns } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import slugify from "slugify";
 import { resolveLocation } from "./city-resolver";
 import { checkDuplicate } from "./dedup";
@@ -181,13 +181,14 @@ async function generateDiffs(scraperRunId: string) {
 /** Commit staged events to the events table. */
 export async function commitStaged(
   scraperRunId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   eventIds?: string[],
 ) {
-  const _conditions = eventIds
-    ? and(eq(stagedEvents.scraperRunId, scraperRunId), inArray(stagedEvents.id, eventIds))
-    : eq(stagedEvents.scraperRunId, scraperRunId);
-
   // TODO: implement actual commit logic — for now, rely on a re-run without preview mode
+  // When implemented, use eventIds to filter:
+  //   eventIds
+  //     ? and(eq(stagedEvents.scraperRunId, scraperRunId), inArray(stagedEvents.id, eventIds))
+  //     : eq(stagedEvents.scraperRunId, scraperRunId)
   // The staged events with diffStatus "new" should be inserted,
   // "updated" should patch the matched event
 

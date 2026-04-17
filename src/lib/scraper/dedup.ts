@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { events, eventFingerprints, eventSources } from "@/lib/db/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint, fuzzyMatch } from "./fingerprint";
 import type { NormalizedEvent } from "./types";

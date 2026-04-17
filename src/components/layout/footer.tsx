@@ -40,13 +40,13 @@ export function Footer() {
             <h3 className="text-sm font-semibold">Community</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               <li><Link href="/events/submit" className="hover:text-foreground">Submit Event</Link></li>
-              <li><Link href="https://github.com/Pwuts/techpulse" className="hover:text-foreground" target="_blank" rel="noopener noreferrer">GitHub</Link></li>
+              <li><Link href="https://github.com/Pwuts/brainberg" className="hover:text-foreground" target="_blank" rel="noopener noreferrer">GitHub</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Brainberg. Open source under MIT.
+          © {new Date().getFullYear()} Brainberg, by Reinier van der Leer (Pwuts). Open source under MIT.
         </div>
       </div>
     </footer>

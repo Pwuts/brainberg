@@ -10,7 +10,6 @@ import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
   SOURCE_LABELS,
-  EVENT_TYPE_LABELS,
   countryFlag,
 } from "@/lib/utils";
 
@@ -57,6 +56,7 @@ export default function AdminEventsPage() {
     setTotal(data.total ?? 0);
   }, [fetchAdmin, status, source, search, offset]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const bulkAction = async (action: "approve" | "reject" | "delete") => {

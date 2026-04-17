@@ -180,6 +180,7 @@ export function EventMap() {
   // Fetch events whenever filters change
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/events/map?${params.toString()}`)
       .then((r) => r.json())
