@@ -29,10 +29,10 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold">Categories</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/events?category=ai_ml" className="hover:text-foreground">AI & ML</Link></li>
-              <li><Link href="/events?category=startup" className="hover:text-foreground">Startup</Link></li>
-              <li><Link href="/events?category=devtools" className="hover:text-foreground">DevTools</Link></li>
-              <li><Link href="/events?category=blockchain_web3" className="hover:text-foreground">Web3</Link></li>
+              <li><Link href="/events?category=ai_powered_dev" className="hover:text-foreground">AI-Powered Development</Link></li>
+              <li><Link href="/events?category=entrepreneurship" className="hover:text-foreground">Entrepreneurship</Link></li>
+              <li><Link href="/events?category=design_ux" className="hover:text-foreground">Design & UX</Link></li>
+              <li><Link href="/events?type=hackathon" className="hover:text-foreground">Hackathons</Link></li>
             </ul>
           </div>
 
