@@ -1,5 +1,5 @@
 import { CONFSTECH_CATEGORY_MAP, resolveCategory } from "../category-map";
-import { isEuropean } from "../european-countries";
+import { isEuropean, toCountryCode } from "../european-countries";
 import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const TOPICS = [
@@ -44,9 +44,9 @@ export const confsTechScraper: Scraper = {
         }
 
         for (const entry of entries) {
-          // Filter: European countries only (skip online-only with no European location)
-          const countryCode = entry.country?.toUpperCase();
-          if (!isEuropean(countryCode)) continue;
+          // Filter: European countries only
+          if (!isEuropean(entry.country)) continue;
+          const countryCode = toCountryCode(entry.country!);
 
           const startsAt = new Date(entry.startDate);
           const endsAt = entry.endDate ? new Date(entry.endDate) : undefined;
