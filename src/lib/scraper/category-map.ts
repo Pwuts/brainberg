@@ -8,7 +8,7 @@ export const AI_KEYWORD_REGEX =
   /\b(AI|artificial.intelligence|machine.learning|deep.learning|neural.net|LLM|GPT|NLP|computer.vision|generative.ai|gen.?ai|transformer|diffusion.model|reinforcement.learning|MLOps|MLcon|Agentic|Copilot)\b/i;
 
 export const DATA_KEYWORD_REGEX =
-  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords)\b/i;
+  /\b(data.science|big.data|analytics|data.engineering|data.platform|data.pipeline|PyData|data2day|Buzzwords|Databricks|Snowflake|Power.?BI|Fabric.User.Group|Data.Community|Data.Meetup|Data.Mesh)\b/i;
 
 export const HACKER_MAKER_REGEX =
   /\b(CCC|chaos.communication|chaos.congress|hacker|hackerspace|maker.?faire|eth0|emf|electromagnetic.field|gpn|gulasch|sha2|mch|why2|fosdem|hackmeeting|fab.?lab|hakierspejs)\b/i;
@@ -17,10 +17,10 @@ export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
 
 export const DEVOPS_KEYWORD_REGEX =
-  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|AWS.User.Group|CloudNativeCon|KubeCon)\b/i;
+  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|AWS|Azure|CloudNativeCon|KubeCon|OpenTelemetry|Kafka)\b/i;
 
 export const SECURITY_KEYWORD_REGEX =
-  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence)\b/i;
+  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks)\b/i;
 
 export const UX_KEYWORD_REGEX =
   /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX)\b/i;
