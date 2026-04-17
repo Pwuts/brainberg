@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { X } from "lucide-react";
 import { CATEGORY_LABELS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
 
@@ -21,6 +21,16 @@ export function MapFilters() {
       } else {
         params.delete(key);
       }
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams]
+  );
+
+  const setDateRange = useCallback(
+    (from: string, to: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (from) params.set("from", from); else params.delete("from");
+      if (to) params.set("to", to); else params.delete("to");
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams]
@@ -73,20 +83,10 @@ export function MapFilters() {
         ))}
       </Select>
 
-      <Input
-        type="date"
-        value={searchParams.get("from") ?? ""}
-        onChange={(e) => setFilter("from", e.target.value)}
-        className="w-[160px]"
-        placeholder="From date"
-      />
-
-      <Input
-        type="date"
-        value={searchParams.get("to") ?? ""}
-        onChange={(e) => setFilter("to", e.target.value)}
-        className="w-[160px]"
-        placeholder="To date"
+      <DateRangeFilter
+        from={searchParams.get("from") ?? ""}
+        to={searchParams.get("to") ?? ""}
+        onChange={setDateRange}
       />
 
       <Button

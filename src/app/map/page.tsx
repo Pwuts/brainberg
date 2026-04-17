@@ -12,7 +12,7 @@ export const metadata = {
 export default function MapPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <div className="shrink-0 border-b bg-background px-4 py-3 sm:px-6">
+      <div className="relative z-1000 shrink-0 border-b bg-background px-4 py-3 sm:px-6">
         <Suspense>
           <MapFilters />
         </Suspense>
