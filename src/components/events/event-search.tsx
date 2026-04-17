@@ -14,7 +14,7 @@ export function EventSearch() {
     { id: string; title: string; slug: string; cityName: string | null }[]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout>(undefined);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Close suggestions on outside click
