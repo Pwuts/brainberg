@@ -132,7 +132,10 @@ export async function getFilteredEvents(filters: EventFilters) {
     const radiusMeters = filters.radius * 1000;
     conditions.push(
       sql`ST_DWithin(
-        COALESCE(${events.location}, ${cities.location})::geography,
+        ST_SetSRID(ST_MakePoint(
+          COALESCE(${events.longitude}, ${cities.longitude}),
+          COALESCE(${events.latitude}, ${cities.latitude})
+        ), 4326)::geography,
         ST_SetSRID(ST_MakePoint(${filters.longitude}, ${filters.latitude}), 4326)::geography,
         ${radiusMeters}
       )`
