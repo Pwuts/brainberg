@@ -39,5 +39,6 @@
     "drizzle-kit": "^0.30",
     "tsx": "^4.19",
     "@tailwindcss/typography": "^0.5"
-  }
+  },
+  "packageManager": "pnpm@latest"
 }
