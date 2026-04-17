@@ -89,7 +89,7 @@ export default function AdminEventsPage() {
   const setFilter = (key: string, value: string | boolean) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
-      params.set(key, String(value));
+      params.set(key, typeof value === "boolean" ? "1" : value);
     } else {
       params.delete(key);
     }
