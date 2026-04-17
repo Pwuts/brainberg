@@ -1,5 +1,5 @@
 import { EVENTBRITE_CATEGORY_MAP, resolveCategory } from "../category-map";
-import { stripHtml, truncate } from "../html-utils";
+import { truncate } from "../html-utils";
 import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const API_BASE = "https://www.eventbriteapi.com/v3";
@@ -58,6 +58,9 @@ interface EventbriteResult {
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+// Title patterns that indicate non-tech events (false positives from "tech" search)
+const NON_TECH_REGEX = /\b(party|DJ|clubbing|rave|techno music|cocktail|wine tasting|yoga|pilates|meditation|hair|salon|ceramics|pottery|cooking|baking|fermentation|welding|tai chi|mushroom|walking tour|karaoke|chess|poker|running club|film festival|fashion show|album launch|live music|happy techno|bamboo flow|songs for the river)\b/i;
 
 export const eventbriteScraper: Scraper = {
   name: "eventbrite",
@@ -130,6 +133,9 @@ export const eventbriteScraper: Scraper = {
         const results = data.events?.results ?? [];
 
         for (const ev of results) {
+          // Filter out non-tech events (false positives from "tech" keyword)
+          if (NON_TECH_REGEX.test(ev.name)) continue;
+
           const startsAt = new Date(`${ev.start_date}T${ev.start_time || "00:00"}`);
           if (isNaN(startsAt.getTime())) continue;
 

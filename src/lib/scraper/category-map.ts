@@ -22,16 +22,16 @@ export const WEB3_KEYWORD_REGEX =
   /\b(web3|blockchain|ethereum|solidity|defi|decentralized|crypto|NFT|smart.contract|DAO)\b/i;
 
 export const DEVOPS_KEYWORD_REGEX =
-  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|CloudNativeCon|KubeCon|OpenTelemetry|AWS.User.Group|AWS.Community|AWS.Meetup|Azure.User.Group|Kafka)\b/i;
+  /\b(devops|kubernetes|k8s|docker|GitOps|terraform|ansible|CI.?CD|SRE|cloud.native|observability|platform.engineering|CloudNativeCon|KubeCon|OpenTelemetry|AWS.User.Group|AWS.Community|AWS.Meetup|Azure.User.Group|Kafka|Data.Center|Cloud.Native)\b/i;
 
 export const SECURITY_KEYWORD_REGEX =
-  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks)\b/i;
+  /\b(security|cybersecurity|infosec|pentest|CTF|OWASP|appsec|threat|vulnerability|SOC|CONFidence|BSides|Red.Team|SecTalks|Zero.Day|Cyber.Expo|Cyber.Fresque|NIS.2)\b/i;
 
 export const UX_KEYWORD_REGEX =
   /\b(UX|user.experience|design.system|usability|accessibility|a11y|uxcon|SmashingConf|UXDX|WCAG)\b/i;
 
 export const ENTREPRENEURSHIP_REGEX =
-  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership)\b/i;
+  /\b(startup|founder|fundrais|pitch|ProductTank|product.market.fit|venture|accelerator|incubator|CTO.Craft|LeadDev|Product.Management|Engineering.Leadership|Demo.Day|Investor)\b/i;
 
 // ============================================================
 // confs.tech — filename → category
@@ -200,4 +200,18 @@ export function resolveCategoryFromTags(
   }
 
   return "software_dev";
+}
+
+// ============================================================
+// Event type resolution from title
+// ============================================================
+
+/** Infer event type from title keywords. Returns null if no match. */
+export function resolveEventType(title: string): EventType | null {
+  if (/\b(workshop|bootcamp|masterclass|hands.on|training.course|lab.day|coding.gym|dojo)\b/i.test(title)) return "workshop";
+  if (/\b(hackathon|hack.day|hack.night|CodeRetreat)\b/i.test(title)) return "hackathon";
+  if (/\b(webinar|online.event)\b/i.test(title)) return "webinar";
+  if (/\b(networking|social|mixer|stammtisch|afterwork|drinks|breakfast|coffee|apéro|brunch|beer|club)\b/i.test(title)) return "networking";
+  if (/\b(conference|summit|congress|forum|expo|symposium|convention)\b/i.test(title)) return "conference";
+  return null;
 }

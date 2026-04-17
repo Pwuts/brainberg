@@ -105,7 +105,7 @@ export default function AdminScrapersPage() {
             onClick={async () => {
               const res = await fetchAdmin("/api/admin/events/recategorize", { method: "POST" });
               const data = await res.json();
-              alert(`Re-categorized ${data.changed} of ${data.total} events`);
+              alert(`${data.categoriesChanged} categories and ${data.typesChanged} types updated (${data.total} events, ${data.skippedLocked} locked)`);
             }}
           >
             Re-categorize All
