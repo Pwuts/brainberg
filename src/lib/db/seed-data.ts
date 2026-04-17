@@ -1,6 +1,8 @@
 /** Seed data for countries and cities. Shared between the seed script
  *  and the migration runner (which seeds on first run). */
 
+import { count } from "console";
+
 export const SEED_COUNTRIES = [
   { code: "AT", name: "Austria", timezone: "Europe/Vienna", isEu: true, region: "Central" },
   { code: "BE", name: "Belgium", timezone: "Europe/Brussels", isEu: true, region: "Western" },
@@ -49,6 +51,7 @@ export const SEED_CITIES = [
   { name: "Paris", countryCode: "FR", lat: 48.8566, lng: 2.3522, tz: "Europe/Paris", popular: true },
   { name: "Amsterdam", countryCode: "NL", lat: 52.3676, lng: 4.9041, tz: "Europe/Amsterdam", popular: true },
   { name: "Rotterdam", countryCode: "NL", lat: 51.9244, lng: 4.4777, tz: "Europe/Amsterdam", popular: false },
+  { name: "Delft", country: "NL", lat: 52.0118, lng: 4.3594, tz: "Europe/Amsterdam", popular: false },
   { name: "The Hague", countryCode: "NL", lat: 52.0705, lng: 4.3007, tz: "Europe/Amsterdam", popular: false },
   { name: "Eindhoven", countryCode: "NL", lat: 51.4416, lng: 5.4697, tz: "Europe/Amsterdam", popular: false },
   { name: "Brussels", countryCode: "BE", lat: 50.8503, lng: 4.3517, tz: "Europe/Brussels", popular: true },
