@@ -56,16 +56,17 @@ export default function AdminScrapersPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  // Poll for progress while a scraper is running
+  // Poll for progress while any scraper is running (works across page reloads)
+  const hasRunning = running !== null || runs.some((r) => r.status === "running");
   useEffect(() => {
-    if (!running) return;
+    if (!hasRunning) return;
     const interval = setInterval(async () => {
       const res = await fetchAdmin("/api/admin/scrapers");
       const data = await res.json();
       setRuns(data.runs ?? []);
     }, 2000);
     return () => clearInterval(interval);
-  }, [running, fetchAdmin]);
+  }, [hasRunning, fetchAdmin]);
 
   const runAll = async () => {
     setRunning("all");

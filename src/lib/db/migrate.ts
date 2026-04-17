@@ -47,12 +47,24 @@ async function seedIfEmpty() {
   console.log(`Seeded ${SEED_COUNTRIES.length} countries and ${SEED_CITIES.length} cities.`);
 }
 
+async function cleanupStaleRuns() {
+  const result = await client`
+    UPDATE scraper_runs
+    SET status = 'failed', error_message = 'Interrupted by app restart', completed_at = now()
+    WHERE status = 'running'
+  `;
+  if (result.count > 0) {
+    console.log(`Cleaned up ${result.count} stale scraper run(s).`);
+  }
+}
+
 async function main() {
   console.log("Running migrations...");
   await migrate(db, { migrationsFolder: "./migrations" });
   console.log("Migrations complete.");
 
   await seedIfEmpty();
+  await cleanupStaleRuns();
 
   await client.end();
 }
