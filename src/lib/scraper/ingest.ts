@@ -60,6 +60,7 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
   if (dedup.existingEventId) {
     stats.deduplicated++;
+    console.log(`[dedup] Layer ${dedup.matchLayer}: "${event.title}" (${event.source}) → existing ${dedup.existingEventId}`);
 
     // Always update the eventSources junction
     await upsertEventSource(dedup.existingEventId, event);
@@ -134,12 +135,13 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
         .limit(1);
 
       if (existing.length > 0) {
-        // Link this source to the existing event
+        console.log(`[dedup] Layer slug: "${event.title}" (${event.source}) → existing ${existing[0].id} (slug: ${slug})`);
         await upsertEventSource(existing[0].id, event);
         stats.deduplicated++;
         return;
       }
-      throw err; // Collision on a different constraint
+      console.error(`[dedup] Unique constraint violation on non-slug column for "${event.title}":`, (err as { detail?: string }).detail);
+      throw err;
     }
     throw err;
   }

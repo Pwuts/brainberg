@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { events, eventFingerprints, eventSources } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { normalizeUrl } from "./url-utils";
-import { exactFingerprint, fuzzyMatch } from "./fingerprint";
+import { exactFingerprint, fuzzyMatch, jaccardSimilarity } from "./fingerprint";
 import type { NormalizedEvent } from "./types";
 
 /** Source priority for merge decisions — higher wins. */
@@ -111,6 +111,8 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
         { title: candidate.title, startsAt: candidate.startsAt, city: null, isOnline: candidate.isOnline },
       )
     ) {
+      const similarity = jaccardSimilarity(event.title, candidate.title);
+      console.log(`[dedup] Fuzzy match (${similarity.toFixed(2)}): "${event.title}" ≈ "${candidate.title}"`);
       return {
         existingEventId: candidate.id,
         matchLayer: "fuzzy",
