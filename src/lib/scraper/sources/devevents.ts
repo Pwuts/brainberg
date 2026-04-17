@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { isEuropean } from "../european-countries";
 import {
   DEVEVENTS_CATEGORY_MAP,
   DEVEVENTS_TYPE_MAP,
@@ -150,6 +151,9 @@ export const devEventsScraper: Scraper = {
       const isOnline = jsonLd?.location?.["@type"] === "VirtualLocation";
       const cityName = jsonLd?.location?.address?.addressLocality;
       const countryCode = jsonLd?.location?.address?.addressCountry;
+
+      // Filter: European countries only (skip if we have a country and it's not European)
+      if (countryCode && !isEuropean(countryCode)) continue;
 
       const imageUrl =
         typeof jsonLd?.image === "string"

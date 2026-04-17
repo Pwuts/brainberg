@@ -156,12 +156,16 @@ export async function resolveLocation(
     city = cityCache!.get(key) ?? cityCache!.get(CITY_ALIASES[key] ?? "");
   }
 
-  // If city not found, geocode and insert it
+  // If city not found, geocode and insert it (only if we have a valid country)
   if (!city && cityName) {
+    if (!country) {
+      // Country not in our DB — likely non-European, skip
+      return { cityId: null, countryId: null, latitude: null, longitude: null, timezone: "UTC" };
+    }
     const geo = await nominatimSearch(cityName, { countryCode, featuretype: "city" });
     if (geo) {
-      const countryId = country?.id ?? null;
-      const timezone = country?.timezone ?? "Europe/London";
+      const countryId = country.id;
+      const timezone = country.timezone;
       const slug = slugify(cityName, { lower: true, strict: true });
 
       try {

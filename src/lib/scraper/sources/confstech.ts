@@ -1,4 +1,5 @@
 import { CONFSTECH_CATEGORY_MAP, resolveCategory } from "../category-map";
+import { isEuropean } from "../european-countries";
 import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const TOPICS = [
@@ -7,14 +8,6 @@ const TOPICS = [
   "networking", "php", "product", "python", "ruby", "rust", "scala",
   "security", "tech-comm", "typescript", "ux",
 ];
-
-// European country codes (from our countries table)
-const EUROPEAN_COUNTRIES = new Set([
-  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE",
-  "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT",
-  "RO", "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "UA", "RS",
-  "TR", "AL", "BA", "ME", "MK", "MD", "GE",
-]);
 
 interface ConfsTechEntry {
   name: string;
@@ -51,11 +44,9 @@ export const confsTechScraper: Scraper = {
         }
 
         for (const entry of entries) {
-          // Filter: European countries only
+          // Filter: European countries only (skip online-only with no European location)
           const countryCode = entry.country?.toUpperCase();
-          if (!countryCode || !EUROPEAN_COUNTRIES.has(countryCode)) {
-            if (!entry.online) continue;
-          }
+          if (!isEuropean(countryCode)) continue;
 
           const startsAt = new Date(entry.startDate);
           const endsAt = entry.endDate ? new Date(entry.endDate) : undefined;
