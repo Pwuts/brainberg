@@ -27,7 +27,10 @@ Brainberg is a European AI/tech event aggregation platform (Next.js 16, Drizzle 
    - Unique constraint: (fingerprintType, fingerprintValue)
 6. **Add `scraperRuns` table** — audit trail for scraper executions
    - `id` UUID PK, `source` eventSourceEnum, `status` TEXT ('running','completed','failed'), `eventsFound` INT, `eventsCreated` INT, `eventsUpdated` INT, `eventsDeduplicated` INT, `errorMessage` TEXT, `startedAt` TIMESTAMPTZ, `completedAt` TIMESTAMPTZ
-7. **Add relations** for new tables
+7. **Add `stagedEvents` table** — staging area for re-scrape preview
+   - Same columns as `events` table, plus:
+   - `scraperRunId` UUID FK → scraperRuns, `diffStatus` TEXT ('new','updated','removed','unchanged'), `matchedEventId` UUID nullable FK → events, `fieldDiffs` JSONB, `createdAt` TIMESTAMPTZ
+8. **Add relations** for new tables
 
 **Verify:** `pnpm db:generate` produces migration, `pnpm db:push` applies cleanly.
 
@@ -97,9 +100,69 @@ Each implements `Scraper` interface, lives in `src/lib/scraper/sources/`.
 
 | File | Purpose |
 |------|---------|
-| `src/lib/scraper/orchestrator.ts` | `runScraper(source)` — runs one scraper through ingest pipeline, creates scraperRun record. `runAllScrapers()` — runs all in sequence. |
-| `src/app/api/cron/scrape/route.ts` | POST, protected by `CRON_SECRET` header. Runs all scrapers. |
+| `src/lib/scraper/orchestrator.ts` | `runScraper(source, options?)` — runs one scraper through ingest pipeline, creates scraperRun record. `runAllScrapers()` — runs all in sequence. Supports `dateFrom`/`dateTo` filters and `preview` mode. |
+| `src/app/api/cron/scrape/route.ts` | POST, protected by `CRON_SECRET` header. Runs all scrapers (production auto-scrape). |
 | `src/app/api/cron/scrape/[source]/route.ts` | POST, protected by `CRON_SECRET`. Runs single scraper by name. |
+
+### Re-scrape with Preview (Staging Workflow)
+
+When iterating on scraper algorithms, we need to see what changed before committing new data. This is implemented as a **staging table + diff/commit/discard** flow.
+
+#### How it works:
+
+1. **Trigger re-scrape** from admin UI — pick source(s), optional date range
+2. **Scraper runs in preview mode** — results go to `stagedEvents` table instead of `events`
+3. **Diff generated** — compare staged vs existing events, categorize as:
+   - **New:** event exists in staged but not in events (by fingerprint)
+   - **Updated:** event exists in both, but fields differ (show field-level diff)
+   - **Removed:** event exists in events (from this source) but not in staged results
+   - **Unchanged:** identical match
+4. **Admin reviews diff** in UI — table view with color-coded changes, expandable field diffs
+5. **Commit or discard:**
+   - **Commit all** — apply all staged changes to events table
+   - **Commit selected** — cherry-pick which changes to apply
+   - **Discard** — drop all staged data, no changes
+
+#### Schema addition:
+
+```
+stagedEvents table:
+  - id UUID PK
+  - scraperRunId UUID FK → scraperRuns (ties staged data to a specific run)
+  - Same columns as events table (title, dates, location, etc.)
+  - diffStatus TEXT ('new', 'updated', 'removed', 'unchanged')
+  - matchedEventId UUID nullable FK → events (the existing event this maps to, if any)
+  - fieldDiffs JSONB (e.g. {"title": {"old": "...", "new": "..."}, "startsAt": {"old": "...", "new": "..."}})
+  - createdAt TIMESTAMPTZ
+```
+
+#### New files:
+| File | Purpose |
+|------|---------|
+| `src/lib/scraper/staging.ts` | `stageEvents(scraperRunId, events[])` — insert into stagedEvents. `generateDiff(scraperRunId)` — compare staged vs existing, populate diffStatus + fieldDiffs. `commitStaged(scraperRunId, eventIds?)` — apply to events table. `discardStaged(scraperRunId)` — delete staged data. |
+| `src/app/api/admin/scrapers/preview/route.ts` | POST: trigger re-scrape in preview mode (params: source, dateFrom?, dateTo?). GET: list active preview runs. |
+| `src/app/api/admin/scrapers/preview/[runId]/route.ts` | GET: fetch diff for a preview run (staged events + diff status). DELETE: discard preview. |
+| `src/app/api/admin/scrapers/preview/[runId]/commit/route.ts` | POST: commit all or selected staged events (body: `{eventIds?: string[]}`) |
+| `src/app/admin/scrapers/preview/[runId]/page.tsx` | Preview diff UI: table showing new/updated/removed events, field-level diffs, commit/discard buttons, select individual changes |
+
+#### Admin UI for re-scrape:
+- **Scraper cards** get a "Re-scrape" button (in addition to existing "Run Now")
+- Clicking opens a dialog: pick date range (optional), confirm
+- After scrape completes, redirects to preview page
+- Preview page shows:
+  - Summary bar: "12 new, 5 updated, 2 removed, 84 unchanged"
+  - Table with color coding: green (new), yellow (updated), red (removed)
+  - Expandable rows showing field-level before/after for updated events
+  - Checkboxes for selective commit
+  - "Commit All", "Commit Selected", "Discard" buttons
+- "Run Now" (existing) skips preview and commits directly — for production cron use
+
+#### Scraper date range support:
+Each scraper's `scrape()` method accepts optional `{dateFrom?, dateTo?}` filter:
+- **confs.tech:** filter JSON entries by startDate range
+- **dev.events:** filter RSS entries by pubDate, only fetch detail pages in range
+- **Meetup:** pass date params to search URL
+- **Eventbrite:** pass `start_date.range_start` / `range_end` to API
 
 ---
 
@@ -200,10 +263,15 @@ Existing `CRON_SECRET` and `EVENTBRITE_API_TOKEN` already in .env.example.
 - `src/lib/scraper/sources/meetup.ts`
 - `src/lib/scraper/sources/eventbrite.ts`
 
-**Orchestration (3):**
+**Orchestration + Staging (8):**
 - `src/lib/scraper/orchestrator.ts`
+- `src/lib/scraper/staging.ts`
 - `src/app/api/cron/scrape/route.ts`
 - `src/app/api/cron/scrape/[source]/route.ts`
+- `src/app/api/admin/scrapers/preview/route.ts`
+- `src/app/api/admin/scrapers/preview/[runId]/route.ts`
+- `src/app/api/admin/scrapers/preview/[runId]/commit/route.ts`
+- `src/app/admin/scrapers/preview/[runId]/page.tsx`
 
 **Admin API (10):**
 - `src/lib/admin.ts`
