@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, FormEvent } from "react";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
 import { SOURCE_LABELS } from "@/lib/utils";
+
+interface LumaSource {
+  id: number;
+  name: string;
+  url: string;
+  isActive: boolean;
+  lastScrapedAt: string | null;
+  eventsFound: number;
+}
 
 interface ScraperRun {
   id: string;
@@ -23,12 +34,21 @@ export default function AdminScrapersPage() {
   const [scrapers, setScrapers] = useState<string[]>([]);
   const [runs, setRuns] = useState<ScraperRun[]>([]);
   const [running, setRunning] = useState<string | null>(null);
+  const [lumaSources, setLumaSources] = useState<LumaSource[]>([]);
+  const [lumaInput, setLumaInput] = useState("");
+  const [lumaAdding, setLumaAdding] = useState(false);
+  const [lumaError, setLumaError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetchAdmin("/api/admin/scrapers");
-    const data = await res.json();
-    setScrapers(data.scrapers ?? []);
-    setRuns(data.runs ?? []);
+    const [scrapersRes, sourcesRes] = await Promise.all([
+      fetchAdmin("/api/admin/scrapers"),
+      fetchAdmin("/api/admin/scrapers/sources?type=luma"),
+    ]);
+    const scrapersData = await scrapersRes.json();
+    const sourcesData = await sourcesRes.json();
+    setScrapers(scrapersData.scrapers ?? []);
+    setRuns(scrapersData.runs ?? []);
+    setLumaSources(sourcesData.sources ?? []);
   }, [fetchAdmin]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -110,6 +130,49 @@ export default function AdminScrapersPage() {
         })}
       </div>
 
+      {/* Luma Subscriptions */}
+      <LumaSubscriptions
+        sources={lumaSources}
+        input={lumaInput}
+        setInput={setLumaInput}
+        adding={lumaAdding}
+        error={lumaError}
+        onAdd={async (e: FormEvent) => {
+          e.preventDefault();
+          if (!lumaInput.trim()) return;
+          setLumaAdding(true);
+          setLumaError(null);
+          try {
+            const res = await fetchAdmin("/api/admin/scrapers/sources", {
+              method: "POST",
+              body: JSON.stringify({ url: lumaInput }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              setLumaError(data.error ?? "Failed to add");
+            } else {
+              setLumaInput("");
+              await load();
+            }
+          } catch {
+            setLumaError("Network error");
+          } finally {
+            setLumaAdding(false);
+          }
+        }}
+        onDelete={async (id: number) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, { method: "DELETE" });
+          await load();
+        }}
+        onToggle={async (id: number, isActive: boolean) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ isActive }),
+          });
+          await load();
+        }}
+      />
+
       {/* Run history */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">Run History</h2>
@@ -164,5 +227,121 @@ export default function AdminScrapersPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+// ============================================================
+// Luma Subscriptions sub-component
+// ============================================================
+
+function LumaSubscriptions({
+  sources,
+  input,
+  setInput,
+  adding,
+  error,
+  onAdd,
+  onDelete,
+  onToggle,
+}: {
+  sources: LumaSource[];
+  input: string;
+  setInput: (v: string) => void;
+  adding: boolean;
+  error: string | null;
+  onAdd: (e: FormEvent) => void;
+  onDelete: (id: number) => void;
+  onToggle: (id: number, isActive: boolean) => void;
+}) {
+  return (
+    <section>
+      <h2 className="mb-3 text-lg font-semibold">Luma Subscriptions</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Add Luma organizer calendars to automatically import their events.
+      </p>
+
+      {/* Add form */}
+      <form onSubmit={onAdd} className="mb-4 flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="luma.com/organizer-slug"
+          className="max-w-sm"
+          disabled={adding}
+        />
+        <Button type="submit" disabled={adding || !input.trim()}>
+          {adding ? "Adding..." : "Add Calendar"}
+        </Button>
+      </form>
+      {error && (
+        <p className="mb-4 text-sm text-red-600">{error}</p>
+      )}
+
+      {/* Sources list */}
+      {sources.length > 0 ? (
+        <div className="overflow-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/50">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Name</th>
+                <th className="px-4 py-2 text-left font-medium">Slug</th>
+                <th className="px-4 py-2 text-right font-medium">Events</th>
+                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
+                <th className="px-4 py-2 text-center font-medium">Active</th>
+                <th className="px-4 py-2 text-center font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr key={s.id} className="border-b last:border-0">
+                  <td className="px-4 py-2 font-medium">{s.name}</td>
+                  <td className="px-4 py-2">
+                    <a
+                      href={`https://lu.ma/${s.url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {s.url}
+                    </a>
+                  </td>
+                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {s.lastScrapedAt
+                      ? new Date(s.lastScrapedAt).toLocaleString()
+                      : "Never"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onToggle(s.id, !s.isActive)}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {s.isActive ? "Active" : "Paused"}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onDelete(s.id)}
+                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+          No Luma calendars added yet. Paste an organizer URL above to get started.
+        </div>
+      )}
+    </section>
   );
 }
