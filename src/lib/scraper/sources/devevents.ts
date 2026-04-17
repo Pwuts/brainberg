@@ -121,8 +121,9 @@ export const devEventsScraper: Scraper = {
       // Rate limit
       await sleep(800);
 
-      // Fetch detail page for JSON-LD
+      // Fetch detail page for JSON-LD and external links
       let jsonLd: JsonLdEvent | null = null;
+      let meetupUrl: string | undefined;
       try {
         const detailRes = await fetch(link, {
           headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" },
@@ -130,6 +131,12 @@ export const devEventsScraper: Scraper = {
         if (detailRes.ok) {
           const html = await detailRes.text();
           jsonLd = extractJsonLd(html);
+
+          // Extract Meetup URL if dev.events is a portal to a Meetup event
+          const meetupMatch = html.match(/https?:\/\/(?:www\.)?meetup\.com\/[^"'\s]+\/events\/[^"'\s]+/);
+          if (meetupMatch) {
+            meetupUrl = meetupMatch[0].replace(/['">\s].*$/, "");
+          }
         }
       } catch {
         // Continue without JSON-LD data
@@ -208,7 +215,7 @@ export const devEventsScraper: Scraper = {
         latitude: jsonLd?.location?.geo?.latitude,
         longitude: jsonLd?.location?.geo?.longitude,
         isOnline,
-        websiteUrl: jsonLd?.url ?? link,
+        websiteUrl: meetupUrl ?? jsonLd?.url ?? link,
         devEventsUrl: link,
         imageUrl,
         isFree: isFree || undefined,
@@ -216,6 +223,7 @@ export const devEventsScraper: Scraper = {
         currency: jsonLd?.offers?.priceCurrency,
         organizerName: jsonLd?.organizer?.name,
         organizerUrl: jsonLd?.organizer?.url,
+        meetupUrl,
         source: "dev_events",
         sourceId: item.guid ?? link,
         sourceUrl: link,
