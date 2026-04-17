@@ -127,7 +127,7 @@ export default async function EventPage({ params }: PageProps) {
         {event.venueName && (
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 shrink-0" />
-            <span>{event.venueName}</span>
+            <span>{event.venueName}{event.venueAddress ? ` · ${event.venueAddress}` : ""}</span>
           </div>
         )}
       </div>
