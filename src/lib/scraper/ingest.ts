@@ -150,6 +150,7 @@ async function updateExistingEvent(
       venueAddress: event.venueAddress || undefined,
       latitude: eventLat ?? undefined,
       longitude: eventLng ?? undefined,
+      size: event.size || undefined,
       imageUrl: event.imageUrl || undefined,
       thumbnailUrl: event.thumbnailUrl || undefined,
       organizerName: event.organizerName || undefined,

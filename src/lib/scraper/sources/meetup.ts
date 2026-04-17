@@ -78,7 +78,7 @@ function extractEventsFromHtml(html: string): MeetupEvent[] {
           endTime: ev.endTime as string | undefined,
           eventUrl: ev.eventUrl as string,
           eventType: ev.eventType as string | undefined,
-          going: (ev.going as { totalCount?: number })?.totalCount,
+          going: (ev.rsvps as { totalCount?: number })?.totalCount,
           imageUrl: ev.imageUrl as string | undefined,
           venue: ev.venue as MeetupEvent["venue"],
           group: ev.group
