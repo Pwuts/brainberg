@@ -117,6 +117,24 @@ function estimateSize(going: number | undefined): EventSize | undefined {
   return "major";
 }
 
+/** Resolve an Apollo cache reference ({__ref: "Type:id"}) to the stored object. */
+function resolveRef(
+  value: unknown,
+  state: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (typeof value === "string") {
+    return (state[value] as Record<string, unknown>) ?? null;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.__ref === "string") {
+      return (state[obj.__ref] as Record<string, unknown>) ?? null;
+    }
+    return obj;
+  }
+  return null;
+}
+
 /** Extract events from Meetup's __NEXT_DATA__ in the search page HTML. */
 function extractEventsFromHtml(html: string): MeetupEvent[] {
   const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
@@ -131,6 +149,8 @@ function extractEventsFromHtml(html: string): MeetupEvent[] {
     for (const [key, value] of Object.entries(state)) {
       if (key.startsWith("Event:") && typeof value === "object" && value !== null) {
         const ev = value as Record<string, unknown>;
+        const venueRef = resolveRef(ev.venue, state);
+        const groupRef = resolveRef(ev.group, state);
         events.push({
           id: (ev.id as string) ?? key.replace("Event:", ""),
           title: ev.title as string,
@@ -141,26 +161,32 @@ function extractEventsFromHtml(html: string): MeetupEvent[] {
           eventType: ev.eventType as string | undefined,
           going: (ev.rsvps as { totalCount?: number })?.totalCount,
           imageUrl: (() => {
-            // Resolve photo reference from Apollo cache
-            const photoRef = ev.featuredEventPhoto ?? ev.displayPhoto;
-            if (photoRef && typeof photoRef === "object" && "__ref" in (photoRef as Record<string, unknown>)) {
-              const photo = state[(photoRef as { __ref: string }).__ref] as Record<string, unknown> | undefined;
-              return (photo?.highResUrl as string) ?? undefined;
-            }
-            if (photoRef && typeof photoRef === "object") {
-              return ((photoRef as Record<string, unknown>).highResUrl as string) ?? undefined;
-            }
+            const photoRef = resolveRef(ev.featuredEventPhoto ?? ev.displayPhoto, state);
+            if (photoRef) return (photoRef.highResUrl as string) ?? undefined;
             return ev.imageUrl as string | undefined;
           })(),
-          venue: ev.venue as MeetupEvent["venue"],
-          group: ev.group
-            ? { name: (state[ev.group as string] as Record<string, unknown>)?.name as string, urlname: (state[ev.group as string] as Record<string, unknown>)?.urlname as string }
+          venue: venueRef
+            ? {
+                name: venueRef.name as string | undefined,
+                address: venueRef.address as string | undefined,
+                city: venueRef.city as string | undefined,
+                country: venueRef.country as string | undefined,
+                lat: venueRef.lat as number | undefined,
+                lng: venueRef.lng as number | undefined,
+              }
+            : undefined,
+          group: groupRef
+            ? {
+                name: groupRef.name as string | undefined,
+                urlname: groupRef.urlname as string | undefined,
+              }
             : undefined,
           topics: Array.isArray(ev.topics)
-            ? (ev.topics.map((ref: unknown) => {
-                const t = state[ref as string] as Record<string, unknown> | undefined;
-                return t ? { name: t.name as string, urlkey: t.urlkey as string } : undefined;
-              }).filter((t): t is { name: string; urlkey: string } => t !== undefined))
+            ? (ev.topics
+                .map((ref: unknown) => resolveRef(ref, state))
+                .filter((t): t is Record<string, unknown> => t !== null)
+                .map((t) => ({ name: t.name as string, urlkey: t.urlkey as string }))
+                .filter((t) => t.name && t.urlkey))
             : undefined,
         });
       }
