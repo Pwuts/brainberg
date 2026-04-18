@@ -49,6 +49,7 @@ export default function AdminEventDetailPage({
 
   const [saving, setSaving] = useState<string | null>(null);
   const [remoderating, setRemoderating] = useState(false);
+  const [enriching, setEnriching] = useState(false);
 
   const patchField = async (field: string, value: string) => {
     if (!id) return;
@@ -108,6 +109,25 @@ export default function AdminEventDetailPage({
       body: JSON.stringify({ reason: (ev.aiModerationReason as string) ?? "Rejected during review" }),
     });
     await goToNextPending();
+  };
+
+  const handleEnrichMeetup = async () => {
+    if (!id) return;
+    setEnriching(true);
+    try {
+      const res = await fetchAdmin(`/api/admin/events/${id}/enrich-meetup`, {
+        method: "POST",
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(`Failed: ${result.message ?? result.error ?? "Unknown error"}`);
+        return;
+      }
+      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+      setData(refreshed);
+    } finally {
+      setEnriching(false);
+    }
   };
 
   const handleRemoderate = async () => {
@@ -264,7 +284,22 @@ export default function AdminEventDetailPage({
       {/* Sources */}
       {data.sources.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-semibold">Data Sources</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Data Sources</h2>
+            {ev.source === "dev_events"
+              && !!ev.meetupUrl
+              && !data.sources.some((s) => s.source === "meetup") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEnrichMeetup}
+                disabled={enriching}
+                title="Fetch additional data from the linked Meetup event"
+              >
+                {enriching ? "Enriching..." : "Enrich from Meetup"}
+              </Button>
+            )}
+          </div>
           <div className="overflow-auto rounded-lg border">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50">

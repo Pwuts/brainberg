@@ -48,6 +48,67 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
+  if (!ev.title || !ev.dateTime) return null;
+  const startsAt = new Date(ev.dateTime);
+  if (isNaN(startsAt.getTime())) return null;
+
+  const endsAt = ev.endTime ? new Date(ev.endTime) : undefined;
+  const isOnline = ev.eventType === "ONLINE";
+  const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
+  const description = ev.description ? stripHtml(ev.description) : undefined;
+  const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
+
+  return {
+    title: ev.title,
+    description,
+    shortDescription: description ? truncate(description, 500) : undefined,
+    category,
+    eventType: "meetup",
+    size: estimateSize(ev.going),
+    tags: ev.topics?.map((t) => t.name).filter(Boolean) as string[],
+    startsAt,
+    endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
+    timezone: "UTC",
+    cityName: ev.venue?.city,
+    countryCode: ev.venue?.country,
+    venueName: ev.venue?.name,
+    venueAddress: ev.venue?.address,
+    latitude: ev.venue?.lat,
+    longitude: ev.venue?.lng,
+    isOnline,
+    websiteUrl: ev.eventUrl,
+    meetupUrl: ev.eventUrl,
+    imageUrl: ev.imageUrl ?? ev.featuredEventPhoto?.highResUrl,
+    organizerName: ev.group?.name,
+    organizerUrl: ev.group?.urlname
+      ? `https://www.meetup.com/${ev.group.urlname}/`
+      : undefined,
+    source: "meetup",
+    sourceId: ev.id,
+    sourceUrl: ev.eventUrl,
+    rawData: ev,
+  };
+}
+
+/** Fetch and normalize a single Meetup event page by URL. */
+export async function scrapeMeetupEvent(url: string): Promise<NormalizedEvent | null> {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const pageEvents = extractEventsFromHtml(html);
+  for (const ev of pageEvents) {
+    const normalized = normalizeMeetupEvent(ev);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
 function estimateSize(going: number | undefined): EventSize | undefined {
   if (!going) return undefined;
   if (going < 50) return "small";
@@ -157,53 +218,19 @@ export const meetupScraper: Scraper = {
       const events = extractEventsFromHtml(html);
 
       for (const ev of events) {
-        if (!ev.title || !ev.dateTime) continue;
-
-        const startsAt = new Date(ev.dateTime);
-        if (isNaN(startsAt.getTime())) continue;
+        const normalized = normalizeMeetupEvent(ev);
+        if (!normalized) continue;
 
         // Apply date filters
-        if (options?.dateFrom && startsAt < options.dateFrom) continue;
-        if (options?.dateTo && startsAt > options.dateTo) continue;
+        if (options?.dateFrom && normalized.startsAt < options.dateFrom) continue;
+        if (options?.dateTo && normalized.startsAt > options.dateTo) continue;
 
-        const endsAt = ev.endTime ? new Date(ev.endTime) : undefined;
-        const isOnline = ev.eventType === "ONLINE";
-        const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
+        // Fall back to searched city name when venue city is missing
+        if (!normalized.cityName) normalized.cityName = city.name;
+        // Mark hybrid if URL hints at it
+        normalized.isHybrid = !normalized.isOnline && !!ev.eventUrl?.includes("online");
 
-        const description = ev.description ? stripHtml(ev.description) : undefined;
-        const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
-
-        yield {
-          title: ev.title,
-          description,
-          shortDescription: description ? truncate(description, 500) : undefined,
-          category,
-          eventType: "meetup",
-          size: estimateSize(ev.going),
-          tags: ev.topics?.map((t) => t.name).filter(Boolean) as string[],
-          startsAt,
-          endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
-          timezone: "UTC",
-          cityName: ev.venue?.city ?? city.name,
-          countryCode: ev.venue?.country,
-          venueName: ev.venue?.name,
-          venueAddress: ev.venue?.address,
-          latitude: ev.venue?.lat,
-          longitude: ev.venue?.lng,
-          isOnline,
-          isHybrid: !isOnline && !!ev.eventUrl?.includes("online"),
-          websiteUrl: ev.eventUrl,
-          meetupUrl: ev.eventUrl,
-          imageUrl: ev.imageUrl ?? ev.featuredEventPhoto?.highResUrl,
-          organizerName: ev.group?.name,
-          organizerUrl: ev.group?.urlname
-            ? `https://www.meetup.com/${ev.group.urlname}/`
-            : undefined,
-          source: "meetup",
-          sourceId: ev.id,
-          sourceUrl: ev.eventUrl,
-          rawData: ev,
-        };
+        yield normalized;
 
         if (ev.eventUrl) seenEventUrls.add(ev.eventUrl);
       }
@@ -235,58 +262,8 @@ export const meetupScraper: Scraper = {
         await sleep(2500);
 
         try {
-          const res = await fetch(url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              Accept: "text/html,application/xhtml+xml",
-            },
-          });
-          if (!res.ok) continue;
-          const html = await res.text();
-          const pageEvents = extractEventsFromHtml(html);
-
-          for (const ev of pageEvents) {
-            if (!ev.title || !ev.dateTime) continue;
-            const startsAt = new Date(ev.dateTime);
-            if (isNaN(startsAt.getTime())) continue;
-
-            const endsAt = ev.endTime ? new Date(ev.endTime) : undefined;
-            const isOnline = ev.eventType === "ONLINE";
-            const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
-            const description = ev.description ? stripHtml(ev.description) : undefined;
-            const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
-
-            yield {
-              title: ev.title,
-              description,
-              shortDescription: description ? truncate(description, 500) : undefined,
-              category,
-              eventType: "meetup",
-              size: estimateSize(ev.going),
-              tags: ev.topics?.map((t) => t.name).filter(Boolean) as string[],
-              startsAt,
-              endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
-              timezone: "UTC",
-              cityName: ev.venue?.city,
-              countryCode: ev.venue?.country,
-              venueName: ev.venue?.name,
-              venueAddress: ev.venue?.address,
-              latitude: ev.venue?.lat,
-              longitude: ev.venue?.lng,
-              isOnline,
-              websiteUrl: ev.eventUrl,
-              meetupUrl: ev.eventUrl,
-              imageUrl: ev.imageUrl ?? ev.featuredEventPhoto?.highResUrl,
-              organizerName: ev.group?.name,
-              organizerUrl: ev.group?.urlname
-                ? `https://www.meetup.com/${ev.group.urlname}/`
-                : undefined,
-              source: "meetup",
-              sourceId: ev.id,
-              sourceUrl: ev.eventUrl,
-              rawData: ev,
-            };
-          }
+          const normalized = await scrapeMeetupEvent(url);
+          if (normalized) yield normalized;
         } catch (err) {
           console.warn(`[meetup] Failed to fetch linked event ${url}:`, err);
         }
