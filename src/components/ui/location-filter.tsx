@@ -126,7 +126,7 @@ export function LocationFilter({
               viewbox: "-25,72,45,34",
               bounded: "1",
             }),
-          { headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" } }
+          { headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)", "Accept-Language": "en" } }
         );
         if (res.ok) {
           const data: NominatimResult[] = await res.json();
@@ -188,7 +188,7 @@ export function LocationFilter({
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?` +
               new URLSearchParams({ lat: String(lat), lon: String(lng), format: "json", addressdetails: "1" }),
-            { headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" } }
+            { headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)", "Accept-Language": "en" } }
           );
           if (res.ok) {
             const data: NominatimResult = await res.json();
