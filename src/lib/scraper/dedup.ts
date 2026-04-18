@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { events, eventFingerprints, eventSources } from "@/lib/db/schema";
+import { events, eventFingerprints, eventSources, cities } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint, fuzzyMatch, jaccardSimilarity } from "./fingerprint";
@@ -94,8 +94,10 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
       title: events.title,
       startsAt: events.startsAt,
       isOnline: events.isOnline,
+      cityName: cities.name,
     })
     .from(events)
+    .leftJoin(cities, eq(events.cityId, cities.id))
     .where(
       and(
         gte(events.startsAt, dateFrom),
@@ -108,7 +110,7 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
     if (
       fuzzyMatch(
         { title: event.title, startsAt: event.startsAt, city: event.cityName ?? null, isOnline: event.isOnline },
-        { title: candidate.title, startsAt: candidate.startsAt, city: null, isOnline: candidate.isOnline },
+        { title: candidate.title, startsAt: candidate.startsAt, city: candidate.cityName ?? null, isOnline: candidate.isOnline },
       )
     ) {
       const similarity = jaccardSimilarity(event.title, candidate.title);

@@ -44,10 +44,18 @@ export function jaccardSimilarity(a: string, b: string): number {
   return intersection / union;
 }
 
+function hasKnownLocation(e: { city: string | null; isOnline: boolean }): boolean {
+  return e.isOnline || !!(e.city && e.city.trim());
+}
+
 /** Check if two events are a fuzzy match:
  *  - Jaccard similarity > 0.6
  *  - Start dates within 1 day
- *  - Same city or both online */
+ *  - If both sides have known locations, they must agree. If either side has
+ *    no location info (no city and not online), skip the location gate —
+ *    matching title+date is a stronger signal than disagreement between a
+ *    known value and an absent one.
+ */
 export function fuzzyMatch(
   a: { title: string; startsAt: Date; city: string | null; isOnline: boolean },
   b: { title: string; startsAt: Date; city: string | null; isOnline: boolean },
@@ -56,10 +64,12 @@ export function fuzzyMatch(
   const dayMs = 24 * 60 * 60 * 1000;
   if (Math.abs(a.startsAt.getTime() - b.startsAt.getTime()) > dayMs) return false;
 
-  // Check location match
-  const aLoc = a.isOnline ? "online" : (a.city || "").toLowerCase();
-  const bLoc = b.isOnline ? "online" : (b.city || "").toLowerCase();
-  if (aLoc !== bLoc) return false;
+  // Require location agreement only when both sides have something to compare
+  if (hasKnownLocation(a) && hasKnownLocation(b)) {
+    const aLoc = a.isOnline ? "online" : (a.city || "").toLowerCase();
+    const bLoc = b.isOnline ? "online" : (b.city || "").toLowerCase();
+    if (aLoc !== bLoc) return false;
+  }
 
   // Check title similarity
   return jaccardSimilarity(a.title, b.title) > 0.6;

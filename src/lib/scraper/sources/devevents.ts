@@ -25,6 +25,7 @@ interface JsonLdEvent {
   description?: string;
   startDate?: string;
   endDate?: string;
+  eventAttendanceMode?: string;
   url?: string;
   image?: string | { url: string };
   isAccessibleForFree?: boolean;
@@ -163,7 +164,14 @@ export const devEventsScraper: Scraper = {
 
       const category = resolveCategoryFromTags(categories, DEVEVENTS_CATEGORY_MAP, title);
 
-      const isOnline = jsonLd?.location?.["@type"] === "VirtualLocation";
+      // Schema.org's authoritative online-ness signal is eventAttendanceMode.
+      // Some dev.events pages mark online events with OnlineEventAttendanceMode
+      // but keep location["@type"] as Place (with a generic "Online" name),
+      // so checking only location["@type"] misses them.
+      const attendanceMode = jsonLd?.eventAttendanceMode ?? "";
+      const isOnline =
+        attendanceMode.includes("OnlineEventAttendanceMode")
+        || jsonLd?.location?.["@type"] === "VirtualLocation";
       let cityName = jsonLd?.location?.address?.addressLocality;
       const countryCode = jsonLd?.location?.address?.addressCountry;
 
