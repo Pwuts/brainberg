@@ -84,9 +84,15 @@ export default function AdminEventDetailPage({
     }
   };
 
+  const refreshEvent = async () => {
+    if (!id) return;
+    const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+    setData(refreshed);
+  };
+
   const handleApprove = async () => {
     await fetchAdmin(`/api/admin/events/${id}/approve`, { method: "POST" });
-    router.push("/admin/events");
+    await refreshEvent();
   };
 
   const handleApproveNext = async () => {
@@ -100,7 +106,7 @@ export default function AdminEventDetailPage({
       method: "POST",
       body: JSON.stringify({ reason }),
     });
-    router.push("/admin/events");
+    await refreshEvent();
   };
 
   const handleRejectNext = async () => {
@@ -153,7 +159,7 @@ export default function AdminEventDetailPage({
   const handleDelete = async () => {
     if (!confirm("Delete this event? This cannot be undone.")) return;
     await fetchAdmin(`/api/admin/events/${id}`, { method: "DELETE" });
-    router.push("/admin/events");
+    router.back();
   };
 
   return (
