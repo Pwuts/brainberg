@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Trash2, Sparkles } from "lucide-react";
+import { LocationPicker } from "@/components/admin/location-picker";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
   countryFlag, formatEventDate,
@@ -18,6 +19,7 @@ interface EventDetail {
   country: { code: string; name: string } | null;
   sources: { source: string; sourceId: string; sourceUrl: string | null; firstSeenAt: string; lastSeenAt: string }[];
 }
+
 
 export default function AdminEventDetailPage({
   params: paramsPromise,
@@ -51,7 +53,7 @@ export default function AdminEventDetailPage({
   const [remoderating, setRemoderating] = useState(false);
   const [enriching, setEnriching] = useState(false);
 
-  const patchField = async (field: string, value: string) => {
+  const patchField = async (field: string, value: unknown) => {
     if (!id) return;
     setSaving(field);
     const body: Record<string, unknown> = { [field]: value };
@@ -218,68 +220,98 @@ export default function AdminEventDetailPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3">
           <h2 className="font-semibold">Details</h2>
-          <dl className="space-y-2 text-sm">
-            <Row label="Starts">
-              <Input
-                type="datetime-local"
-                defaultValue={(ev.startsAt as string).slice(0, 16)}
-                onBlur={(e) => e.target.value && patchField("startsAt", new Date(e.target.value).toISOString())}
-                className="h-8 w-auto text-sm"
-              />
-            </Row>
-            <Row label="Ends">
-              <Input
-                type="datetime-local"
-                defaultValue={ev.endsAt ? (ev.endsAt as string).slice(0, 16) : ""}
-                onBlur={(e) => e.target.value ? patchField("endsAt", new Date(e.target.value).toISOString()) : undefined}
-                className="h-8 w-auto text-sm"
-              />
-            </Row>
-            <Row label="Location">
-              {data.city?.name}
-              {data.country ? ` ${countryFlag(data.country.code)} ${data.country.name}` : ""}
-            </Row>
-            <Row label="Online">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!!ev.isOnline}
-                  onChange={(e) => {
-                    patchField("isOnline", e.target.checked as unknown as string);
-                    setData((prev) => prev ? { ...prev, event: { ...prev.event, isOnline: e.target.checked } } : prev);
+          <dl className="flex flex-col gap-8 text-sm">
+            <div className="flex flex-col gap-3">
+              <Row label="Starts">
+                <Input
+                  type="datetime-local"
+                  defaultValue={(ev.startsAt as string).slice(0, 16)}
+                  onBlur={(e) => e.target.value && patchField("startsAt", new Date(e.target.value).toISOString())}
+                  className="h-8 w-auto text-sm"
+                />
+              </Row>
+              <Row label="Ends">
+                <Input
+                  type="datetime-local"
+                  defaultValue={ev.endsAt ? (ev.endsAt as string).slice(0, 16) : ""}
+                  onBlur={(e) => e.target.value ? patchField("endsAt", new Date(e.target.value).toISOString()) : undefined}
+                  className="h-8 w-auto text-sm"
+                />
+              </Row>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Row label="Location">
+                <LocationPicker
+                  currentCity={data.city?.name ?? null}
+                  currentCountry={data.country}
+                  currentAddress={(ev.venueAddress as string) ?? null}
+                  onPick={async (result) => {
+                    setSaving("location");
+                    const res = await fetchAdmin(`/api/admin/events/${id}/set-location`, {
+                      method: "POST",
+                      body: JSON.stringify(result),
+                    });
+                    if (res.ok) {
+                      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+                      setData(refreshed);
+                    }
+                    setTimeout(() => setSaving(null), 800);
                   }}
                 />
-                <span className="text-muted-foreground">This event is (also) online</span>
-              </label>
-            </Row>
-            <Row label="Venue">
-              <Input
-                defaultValue={String(ev.venueName ?? "")}
-                onBlur={(e) => patchField("venueName", e.target.value)}
-                placeholder="Venue name"
-                className="h-8 w-auto text-sm"
-              />
-            </Row>
-            <Row label="Address">
-              <Input
-                defaultValue={String(ev.venueAddress ?? "")}
-                onBlur={(e) => patchField("venueAddress", e.target.value)}
-                placeholder="Venue address"
-                className="h-8 w-auto text-sm"
-              />
-            </Row>
-            {ev.organizerName ? <Row label="Organizer">{String(ev.organizerName)}</Row> : null}
-            {ev.websiteUrl ? (
-              <Row label="Website">
-                <a href={String(ev.websiteUrl)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {String(ev.websiteUrl)}
-                </a>
               </Row>
-            ) : null}
+              <Row label="Venue">
+                <Input
+                  defaultValue={String(ev.venueName ?? "")}
+                  onBlur={(e) => patchField("venueName", e.target.value)}
+                  placeholder="Venue name"
+                  className="h-8 w-auto text-sm"
+                />
+              </Row>
+              <Row label="Online">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!ev.isOnline}
+                    onChange={(e) => {
+                      patchField("isOnline", e.target.checked as unknown as string);
+                      setData((prev) => prev ? { ...prev, event: { ...prev.event, isOnline: e.target.checked } } : prev);
+                    }}
+                  />
+                  <span className="text-muted-foreground">This event is (also) online</span>
+                </label>
+              </Row>
+            </div>
+            {(!!ev.organizerName || !!ev.websiteUrl) && (
+              <div className="flex flex-col gap-4">
+                {ev.organizerName ? <Row label="Organizer">{String(ev.organizerName)}</Row> : null}
+                {ev.websiteUrl ? (
+                  <Row label="Website">
+                    <a href={String(ev.websiteUrl)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      {String(ev.websiteUrl)}
+                    </a>
+                  </Row>
+                ) : null}
+              </div>
+            )}
           </dl>
         </section>
 
         <section className="space-y-3">
+          {ev.imageUrl ? (
+            <a
+              href={String(ev.imageUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-lg border"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- external event images from arbitrary domains */}
+              <img
+                src={String(ev.imageUrl)}
+                alt={ev.title as string}
+                className="max-h-64 w-full object-cover"
+              />
+            </a>
+          ) : null}
           <h2 className="font-semibold">Description</h2>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">
             {(ev.description as string) || "No description."}
@@ -395,9 +427,9 @@ export default function AdminEventDetailPage({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-2">
-      <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
-      <dd>{children}</dd>
+    <div className="flex items-center gap-3">
+      <dt className="w-20 shrink-0 text-right text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 flex-1">{children}</dd>
     </div>
   );
 }

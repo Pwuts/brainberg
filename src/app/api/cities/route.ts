@@ -9,9 +9,12 @@ export async function GET(request: NextRequest) {
   try {
     let query = db
       .select({
+        id: cities.id,
         slug: cities.slug,
         name: cities.name,
+        countryId: cities.countryId,
         countryCode: countries.code,
+        countryName: countries.name,
       })
       .from(cities)
       .leftJoin(countries, eq(cities.countryId, countries.id))

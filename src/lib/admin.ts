@@ -157,6 +157,16 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
   if (typeof processed.endsAt === "string") processed.endsAt = new Date(processed.endsAt as string);
   if (typeof processed.approvedAt === "string") processed.approvedAt = new Date(processed.approvedAt);
 
+  // If cityId changes, auto-populate countryId from the city's country
+  if (processed.cityId != null && processed.countryId == null) {
+    const [city] = await db
+      .select({ countryId: cities.countryId })
+      .from(cities)
+      .where(eq(cities.id, processed.cityId as number))
+      .limit(1);
+    if (city) processed.countryId = city.countryId;
+  }
+
   await db
     .update(events)
     .set({ ...processed, updatedAt: new Date() })
