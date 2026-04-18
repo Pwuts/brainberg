@@ -8,7 +8,7 @@ Brainberg is a **European tech event aggregator**. We list events where people w
 
 **"Tech" includes:** software development, AI/ML, data engineering, cloud infrastructure, cybersecurity, hardware/electronics/IoT, design & UX, blockchain, and tech entrepreneurship.
 
-**"European" means:** events physically located in a European country (including Cyprus and Malta), OR online events relevant to a European audience (regardless of organizer location).
+**"European" means:** events physically located in a European country (including UK, Cyprus and Malta), OR online events relevant to a European audience (regardless of organizer location).
 
 ## Categories
 
