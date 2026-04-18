@@ -69,7 +69,10 @@ function extractJsonLd(html: string): JsonLdEvent | null {
       // Could be an array or single object
       const items = Array.isArray(data) ? data : [data];
       for (const item of items) {
-        if (item["@type"] === "Event") return item;
+        // dev.events uses Schema.org Event subtypes (EducationEvent,
+        // BusinessEvent, SocialEvent, etc.) — accept any *Event type.
+        const type = item["@type"];
+        if (typeof type === "string" && type.endsWith("Event")) return item;
       }
     } catch {
       continue;
