@@ -17,7 +17,9 @@ export function stripHtml(html: string): string {
 /** Truncate text to a maximum length, breaking at word boundaries. */
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
-  const truncated = text.slice(0, maxLength);
+  const ellipsis = "…";
+  const budget = maxLength - ellipsis.length;
+  const truncated = text.slice(0, budget);
   const lastSpace = truncated.lastIndexOf(" ");
-  return (lastSpace > maxLength * 0.8 ? truncated.slice(0, lastSpace) : truncated) + "…";
+  return (lastSpace > budget * 0.8 ? truncated.slice(0, lastSpace) : truncated) + ellipsis;
 }
