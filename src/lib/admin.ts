@@ -2,7 +2,7 @@ import { db } from "./db";
 import {
   events, cities, countries, eventSources, scraperRuns,
 } from "./db/schema";
-import { eq, and, asc, desc, sql, count, isNull, ilike, or, type SQL } from "drizzle-orm";
+import { eq, and, asc, desc, sql, count, isNull, ilike, or, gte, lte, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
 
 // ============================================================
@@ -29,6 +29,8 @@ interface ListEventsParams {
   search?: string;
   noLocation?: boolean;
   moderated?: string; // "ai", "not_ai"
+  dateFrom?: string; // ISO date, inclusive start of startsAt
+  dateTo?: string;   // ISO date, inclusive end of startsAt
   sort?: string; // "date", "-date", "title", "-title", "created", "-created"
   limit?: number;
   offset?: number;
@@ -62,6 +64,15 @@ export async function listEvents(params: ListEventsParams) {
     conditions.push(eq(events.moderatedByAI, true));
   } else if (params.moderated === "not_ai") {
     conditions.push(eq(events.moderatedByAI, false));
+  }
+  if (params.dateFrom) {
+    conditions.push(gte(events.startsAt, new Date(params.dateFrom)));
+  }
+  if (params.dateTo) {
+    // Treat dateTo as end-of-day to be inclusive
+    const end = new Date(params.dateTo);
+    end.setHours(23, 59, 59, 999);
+    conditions.push(lte(events.startsAt, end));
   }
   if (params.search) {
     // Use ILIKE for partial matching (admin search), not full-text search

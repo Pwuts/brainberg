@@ -55,6 +55,8 @@ export default function AdminEventsPage() {
     country: searchParams.get("country") ?? "",
     noLocation: searchParams.get("noLocation") === "1",
     moderated: searchParams.get("moderated") ?? "",
+    dateFrom: searchParams.get("dateFrom") ?? "",
+    dateTo: searchParams.get("dateTo") ?? "",
     q: searchParams.get("q") ?? "",
     sort: searchParams.get("sort") ?? "-date",
   };
@@ -124,7 +126,7 @@ export default function AdminEventsPage() {
     searchTimer.current = setTimeout(() => setFilter("q", val), 300);
   };
 
-  const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.q;
+  const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.dateFrom || filters.dateTo || filters.q;
 
   const toggleSort = (field: string) => {
     const params = currentParams();
@@ -252,6 +254,24 @@ export default function AdminEventsPage() {
           <option value="ai">AI-moderated</option>
           <option value="not_ai">Not AI-moderated</option>
         </Select>
+        <label className="flex items-center gap-1 text-sm text-muted-foreground">
+          From
+          <Input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(e) => setFilter("dateFrom", e.target.value)}
+            className="h-9 w-[150px]"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-sm text-muted-foreground">
+          To
+          <Input
+            type="date"
+            value={filters.dateTo}
+            onChange={(e) => setFilter("dateTo", e.target.value)}
+            className="h-9 w-[150px]"
+          />
+        </label>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="mr-1 h-3.5 w-3.5" />
