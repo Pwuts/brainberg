@@ -5,20 +5,41 @@ import { eq, desc } from "drizzle-orm";
 import { isAdminAuthorized } from "@/lib/admin";
 
 const LUMA_API = "https://api.lu.ma";
+const LUMA_HOSTS = new Set(["lu.ma", "www.lu.ma", "luma.com", "www.luma.com"]);
 
-/** Extract Luma slug from various input formats */
-function extractLumaSlug(input: string): string {
-  let slug = input.trim();
-  // Handle full URLs: luma.com/foo, lu.ma/foo, https://luma.com/foo
-  slug = slug.replace(/^https?:\/\//, "");
-  slug = slug.replace(/^(www\.)?(lu\.ma|luma\.com)\//, "");
-  // Remove trailing slashes and query params
-  slug = slug.split("?")[0].replace(/\/+$/, "");
+/**
+ * Extract Luma slug from various input formats. Returns null if the input
+ * looks like a URL pointing somewhere other than lu.ma / luma.com, or if
+ * the resulting slug contains path segments (e.g. "evil.com/foo") that
+ * would otherwise be passed through to Luma's resolver verbatim.
+ */
+function extractLumaSlug(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  let slug: string;
+  if (/^https?:\/\//i.test(trimmed)) {
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return null;
+    }
+    if (!LUMA_HOSTS.has(parsed.hostname.toLowerCase())) return null;
+    slug = parsed.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+  } else {
+    slug = trimmed.replace(/^(www\.)?(lu\.ma|luma\.com)\//i, "");
+    slug = slug.split("?")[0].replace(/\/+$/, "");
+  }
+
+  // A Luma calendar slug is a single path segment — reject anything with
+  // a slash, whitespace, or other host-like characters.
+  if (!/^[A-Za-z0-9_-]+$/.test(slug)) return null;
   return slug;
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAdminAuthorized(request.headers.get("x-admin-secret"))) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -38,7 +59,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminAuthorized(request.headers.get("x-admin-secret"))) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -47,7 +68,10 @@ export async function POST(request: NextRequest) {
     const slug = extractLumaSlug(body.url ?? "");
 
     if (!slug) {
-      return NextResponse.json({ error: "URL or slug is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Enter a Luma calendar URL (lu.ma/…) or slug" },
+        { status: 400 },
+      );
     }
 
     // Validate by resolving the calendar on Luma

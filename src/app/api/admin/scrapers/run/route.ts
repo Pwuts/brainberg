@@ -4,7 +4,7 @@ import { runScraper, getAvailableScrapers } from "@/lib/scraper/orchestrator";
 import type { EventSource } from "@/lib/scraper/types";
 
 export async function POST(request: NextRequest) {
-  if (!isAdminAuthorized(request.headers.get("x-admin-secret"))) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

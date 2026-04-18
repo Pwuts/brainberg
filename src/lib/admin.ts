@@ -4,15 +4,32 @@ import {
 } from "./db/schema";
 import { eq, and, asc, desc, sql, count, isNull, ilike, or, gte, lte, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
+import type { NextRequest } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 // ============================================================
 // Auth
 // ============================================================
 
-export function isAdminAuthorized(secret: string | null): boolean {
+export const ADMIN_COOKIE_NAME = "admin-session";
+
+function verifyAdminSecret(candidate: string | undefined): boolean {
   const adminSecret = process.env.ADMIN_SECRET;
-  if (!adminSecret) return false;
-  return secret === adminSecret;
+  if (!adminSecret || !candidate) return false;
+  const a = Buffer.from(adminSecret);
+  const b = Buffer.from(candidate);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+/** Verify the admin session cookie on an incoming request. */
+export function isAdminAuthorized(request: NextRequest): boolean {
+  return verifyAdminSecret(request.cookies.get(ADMIN_COOKIE_NAME)?.value);
+}
+
+/** Verify a raw secret (used by the login handler). */
+export function isValidAdminSecret(secret: string | undefined): boolean {
+  return verifyAdminSecret(secret);
 }
 
 // ============================================================
@@ -150,12 +167,63 @@ export async function getEvent(id: string) {
   return { ...result[0], sources };
 }
 
+// Columns an admin is permitted to PATCH. Excludes identity (id, slug),
+// status (handled via approve/reject/pending endpoints), provenance
+// (source*, approvedBy*, submittedById, createdAt), moderation state
+// (moderatedByAI, aiModerationReason, rejectionReason), and generated
+// columns (searchVector, viewCount, updatedAt).
+const PATCHABLE_EVENT_FIELDS = new Set<keyof typeof events.$inferInsert>([
+  "title",
+  "description",
+  "shortDescription",
+  "category",
+  "categoryLocked",
+  "eventType",
+  "size",
+  "tags",
+  "startsAt",
+  "endsAt",
+  "timezone",
+  "isMultiDay",
+  "cityId",
+  "countryId",
+  "venueName",
+  "venueAddress",
+  "latitude",
+  "longitude",
+  "isOnline",
+  "isHybrid",
+  "onlineUrl",
+  "websiteUrl",
+  "registrationUrl",
+  "lumaUrl",
+  "eventbriteUrl",
+  "meetupUrl",
+  "confsTechUrl",
+  "devEventsUrl",
+  "imageUrl",
+  "thumbnailUrl",
+  "isFree",
+  "priceFrom",
+  "priceTo",
+  "currency",
+  "organizerName",
+  "organizerUrl",
+  "organizerEmail",
+  "sourceUrl",
+]);
+
 export async function updateEvent(id: string, data: Partial<typeof events.$inferInsert>) {
+  const processed: Partial<typeof events.$inferInsert> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (PATCHABLE_EVENT_FIELDS.has(key as keyof typeof events.$inferInsert)) {
+      (processed as Record<string, unknown>)[key] = value;
+    }
+  }
+
   // Convert date strings to Date objects for timestamp columns
-  const processed = { ...data };
   if (typeof processed.startsAt === "string") processed.startsAt = new Date(processed.startsAt);
   if (typeof processed.endsAt === "string") processed.endsAt = new Date(processed.endsAt as string);
-  if (typeof processed.approvedAt === "string") processed.approvedAt = new Date(processed.approvedAt);
 
   // If cityId changes, auto-populate countryId from the city's country
   if (processed.cityId != null && processed.countryId == null) {
@@ -166,6 +234,8 @@ export async function updateEvent(id: string, data: Partial<typeof events.$infer
       .limit(1);
     if (city) processed.countryId = city.countryId;
   }
+
+  if (Object.keys(processed).length === 0) return;
 
   await db
     .update(events)

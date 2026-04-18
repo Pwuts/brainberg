@@ -3,10 +3,64 @@ import { events, cities, countries } from "./db/schema";
 import { eq, and, gte, lte, asc, sql, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
 
-export type EventWithRelations = typeof events.$inferSelect & {
+// Fields exposed to unauthenticated visitors. Deliberately excludes
+// organizerEmail, moderation fields (aiModerationReason, moderatedByAI,
+// rejectionReason, approvedById, approvedAt, categoryLocked, submittedById),
+// sourceId, and searchVector.
+const publicEventColumns = {
+  id: events.id,
+  title: events.title,
+  slug: events.slug,
+  description: events.description,
+  shortDescription: events.shortDescription,
+  category: events.category,
+  eventType: events.eventType,
+  size: events.size,
+  tags: events.tags,
+  status: events.status,
+  startsAt: events.startsAt,
+  endsAt: events.endsAt,
+  timezone: events.timezone,
+  isMultiDay: events.isMultiDay,
+  cityId: events.cityId,
+  countryId: events.countryId,
+  venueName: events.venueName,
+  venueAddress: events.venueAddress,
+  latitude: events.latitude,
+  longitude: events.longitude,
+  isOnline: events.isOnline,
+  isHybrid: events.isHybrid,
+  onlineUrl: events.onlineUrl,
+  websiteUrl: events.websiteUrl,
+  registrationUrl: events.registrationUrl,
+  lumaUrl: events.lumaUrl,
+  eventbriteUrl: events.eventbriteUrl,
+  meetupUrl: events.meetupUrl,
+  confsTechUrl: events.confsTechUrl,
+  devEventsUrl: events.devEventsUrl,
+  imageUrl: events.imageUrl,
+  thumbnailUrl: events.thumbnailUrl,
+  isFree: events.isFree,
+  priceFrom: events.priceFrom,
+  priceTo: events.priceTo,
+  currency: events.currency,
+  source: events.source,
+  sourceUrl: events.sourceUrl,
+  organizerName: events.organizerName,
+  organizerUrl: events.organizerUrl,
+  createdAt: events.createdAt,
+  updatedAt: events.updatedAt,
+} as const;
+
+export type PublicEvent = {
+  [K in keyof typeof publicEventColumns]: (typeof events.$inferSelect)[K];
+};
+
+export interface EventWithRelations {
+  event: PublicEvent;
   city: typeof cities.$inferSelect | null;
   country: typeof countries.$inferSelect | null;
-};
+}
 
 interface EventFilters {
   country?: string;
@@ -39,7 +93,7 @@ export async function getEventsByTimeGroup() {
 
   const allEvents = await db
     .select({
-      event: events,
+      event: publicEventColumns,
       city: cities,
       country: countries,
     })
@@ -76,14 +130,14 @@ export async function getEventsByTimeGroup() {
 export async function getEventBySlug(slug: string) {
   const result = await db
     .select({
-      event: events,
+      event: publicEventColumns,
       city: cities,
       country: countries,
     })
     .from(events)
     .leftJoin(cities, eq(events.cityId, cities.id))
     .leftJoin(countries, eq(events.countryId, countries.id))
-    .where(eq(events.slug, slug))
+    .where(and(eq(events.slug, slug), eq(events.status, "approved")))
     .limit(1);
 
   return result[0] ?? null;
@@ -189,7 +243,7 @@ export async function getFilteredEvents(filters: EventFilters) {
 
   const results = await db
     .select({
-      event: events,
+      event: publicEventColumns,
       city: cities,
       country: countries,
     })
@@ -331,7 +385,7 @@ export async function searchEvents(query: string, autocomplete = false) {
 
   const results = await db
     .select({
-      event: events,
+      event: publicEventColumns,
       city: cities,
       country: countries,
       rank: sql<number>`ts_rank(${events.searchVector}, plainto_tsquery('english', ${query}))`.as("rank"),

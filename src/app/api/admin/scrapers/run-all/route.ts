@@ -3,7 +3,7 @@ import { isAdminAuthorized } from "@/lib/admin";
 import { runAllScrapers } from "@/lib/scraper/orchestrator";
 
 export async function POST(request: NextRequest) {
-  if (!isAdminAuthorized(request.headers.get("x-admin-secret"))) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

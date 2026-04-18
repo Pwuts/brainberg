@@ -1,11 +1,7 @@
 import { EventCard } from "./event-card";
-import type { events, cities, countries } from "@/lib/db/schema";
+import type { EventWithRelations } from "@/lib/events";
 
-interface EventRow {
-  event: typeof events.$inferSelect;
-  city: typeof cities.$inferSelect | null;
-  country: typeof countries.$inferSelect | null;
-}
+type EventRow = EventWithRelations;
 
 interface EventListProps {
   title: string;

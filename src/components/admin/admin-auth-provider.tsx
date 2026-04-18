@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface AdminAuthContext {
-  secret: string;
   fetchAdmin: (url: string, init?: RequestInit) => Promise<Response>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AdminAuthContext | null>(null);
@@ -17,44 +17,62 @@ export function useAdminAuth() {
   return ctx;
 }
 
+type AuthState = "checking" | "signed-out" | "signed-in";
+
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [secret, setSecret] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return sessionStorage.getItem("admin-secret") ?? "";
-  });
+  const [authState, setAuthState] = useState<AuthState>("checking");
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
 
+  useEffect(() => {
+    fetch("/api/admin/stats", { credentials: "same-origin" })
+      .then((res) => setAuthState(res.ok ? "signed-in" : "signed-out"))
+      .catch(() => setAuthState("signed-out"));
+  }, []);
+
   const fetchAdmin = useCallback(
-    (url: string, init?: RequestInit) => {
-      return fetch(url, {
+    async (url: string, init?: RequestInit) => {
+      const res = await fetch(url, {
         ...init,
+        credentials: "same-origin",
         headers: {
           ...init?.headers,
-          "x-admin-secret": secret,
           "Content-Type": "application/json",
         },
       });
+      if (res.status === 401) setAuthState("signed-out");
+      return res;
     },
-    [secret],
+    [],
   );
+
+  const logout = useCallback(async () => {
+    await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" });
+    setAuthState("signed-out");
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate by hitting the stats endpoint
-    const res = await fetch("/api/admin/stats", {
-      headers: { "x-admin-secret": input },
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: input }),
     });
     if (res.ok) {
-      sessionStorage.setItem("admin-secret", input);
-      setSecret(input);
+      setAuthState("signed-in");
+      setInput("");
       setError(false);
     } else {
       setError(true);
     }
   };
 
-  if (!secret) {
+  if (authState === "checking") {
+    return <p className="text-muted-foreground p-8">Loading...</p>;
+  }
+
+  if (authState === "signed-out") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
@@ -81,7 +99,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ secret, fetchAdmin }}>
+    <AuthContext.Provider value={{ fetchAdmin, logout }}>
       {children}
     </AuthContext.Provider>
   );

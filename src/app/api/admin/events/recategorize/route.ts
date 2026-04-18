@@ -8,7 +8,7 @@ import { moderateEvent } from "@/lib/scraper/ai-moderate";
 import type { NormalizedEvent } from "@/lib/scraper/types";
 
 export async function POST(request: NextRequest) {
-  if (!isAdminAuthorized(request.headers.get("x-admin-secret"))) {
+  if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

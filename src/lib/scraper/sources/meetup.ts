@@ -93,7 +93,16 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
 
 /** Fetch and normalize a single Meetup event page by URL. */
 export async function scrapeMeetupEvent(url: string): Promise<NormalizedEvent | null> {
-  const res = await fetch(url, {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") return null;
+  if (parsed.hostname !== "www.meetup.com" && parsed.hostname !== "meetup.com") return null;
+
+  const res = await fetch(parsed.toString(), {
     headers: {
       "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Accept: "text/html,application/xhtml+xml",
