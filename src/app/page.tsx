@@ -67,7 +67,19 @@ export default async function HomePage() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 pointer-events-none">
-          <div className="mx-auto max-w-2xl text-center *:pointer-events-auto">
+          <div className="relative mx-auto max-w-2xl">
+            {/* Fuzzy-edged blur backdrop, sits behind content */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-16 -inset-y-20 bg-background/30 backdrop-blur-sm sm:-inset-x-24 sm:-inset-y-28"
+              style={{
+                maskImage:
+                  "radial-gradient(ellipse 50% 50% at center, black 55%, transparent 100%)",
+                WebkitMaskImage:
+                  "radial-gradient(ellipse 50% 50% at center, black 55%, transparent 100%)",
+              }}
+            />
+            <div className="relative px-4 py-8 text-center *:pointer-events-auto sm:px-10 sm:py-12">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
               <Zap className="h-3.5 w-3.5" />
               {totalUpcomingEvents} upcoming events across Europe
@@ -100,6 +112,7 @@ export default async function HomePage() {
                   Map View
                 </Button>
               </Link>
+            </div>
             </div>
           </div>
         </div>

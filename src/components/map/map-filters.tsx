@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { Dropdown } from "@/components/ui/dropdown";
+import { MoreFilters } from "@/components/ui/more-filters";
 import { X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
 
@@ -57,6 +58,73 @@ export function MapFilters() {
 
   const hasFilters = searchParams.toString().length > 0;
 
+  // Secondary controls (collapsed into "Filters" popover on mobile)
+  const categoryEl = (
+    <Dropdown
+      value={searchParams.get("category") ?? ""}
+      options={CATEGORY_OPTIONS}
+      placeholder="Category"
+      onChange={(v) => setFilter("category", v)}
+      className="w-28"
+      panelWidth="w-80"
+    />
+  );
+  const typeEl = (
+    <Dropdown
+      value={searchParams.get("type") ?? ""}
+      options={TYPE_OPTIONS}
+      placeholder="Type"
+      onChange={(v) => setFilter("type", v)}
+      className="w-24"
+      panelWidth="w-40"
+    />
+  );
+  const sizeEl = (
+    <Dropdown
+      value={searchParams.get("size") ?? ""}
+      options={SIZE_OPTIONS}
+      placeholder="Size"
+      onChange={(v) => setFilter("size", v)}
+      className="w-24"
+      panelWidth="w-36"
+    />
+  );
+  const freeEl = (
+    <button
+      onClick={() =>
+        setFilter("free", searchParams.get("free") === "1" ? "" : "1")
+      }
+      className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+        searchParams.get("free") === "1"
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-input bg-background hover:bg-accent"
+      }`}
+    >
+      Free
+    </button>
+  );
+  const onlineEl = (
+    <button
+      onClick={() =>
+        setFilter("online", searchParams.get("online") === "1" ? "" : "1")
+      }
+      className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+        searchParams.get("online") === "1"
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-input bg-background hover:bg-accent"
+      }`}
+    >
+      Online
+    </button>
+  );
+
+  const secondaryActiveCount =
+    (searchParams.get("category") ? 1 : 0) +
+    (searchParams.get("type") ? 1 : 0) +
+    (searchParams.get("size") ? 1 : 0) +
+    (searchParams.get("free") === "1" ? 1 : 0) +
+    (searchParams.get("online") === "1" ? 1 : 0);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Timespan */}
@@ -66,63 +134,23 @@ export function MapFilters() {
         onChange={setDateRange}
       />
 
-      {/* Category */}
-      <Dropdown
-        value={searchParams.get("category") ?? ""}
-        options={CATEGORY_OPTIONS}
-        placeholder="Category"
-        onChange={(v) => setFilter("category", v)}
-        className="w-28"
-        panelWidth="w-80"
-      />
+      {/* Secondary filters — inline on desktop */}
+      <div className="hidden md:contents">
+        {categoryEl}
+        {typeEl}
+        {sizeEl}
+        {freeEl}
+        {onlineEl}
+      </div>
 
-      {/* Type */}
-      <Dropdown
-        value={searchParams.get("type") ?? ""}
-        options={TYPE_OPTIONS}
-        placeholder="Type"
-        onChange={(v) => setFilter("type", v)}
-        className="w-24"
-        panelWidth="w-40"
-      />
-
-      {/* Size */}
-      <Dropdown
-        value={searchParams.get("size") ?? ""}
-        options={SIZE_OPTIONS}
-        placeholder="Size"
-        onChange={(v) => setFilter("size", v)}
-        className="w-24"
-        panelWidth="w-36"
-      />
-
-      {/* Free */}
-      <button
-        onClick={() =>
-          setFilter("free", searchParams.get("free") === "1" ? "" : "1")
-        }
-        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
-          searchParams.get("free") === "1"
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-input bg-background hover:bg-accent"
-        }`}
-      >
-        Free
-      </button>
-
-      {/* Online */}
-      <button
-        onClick={() =>
-          setFilter("online", searchParams.get("online") === "1" ? "" : "1")
-        }
-        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
-          searchParams.get("online") === "1"
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-input bg-background hover:bg-accent"
-        }`}
-      >
-        Online
-      </button>
+      {/* Secondary filters — collapsed popover on mobile */}
+      <MoreFilters className="md:hidden" activeCount={secondaryActiveCount}>
+        {categoryEl}
+        {typeEl}
+        {sizeEl}
+        {freeEl}
+        {onlineEl}
+      </MoreFilters>
 
       {/* Clear */}
       {hasFilters && (

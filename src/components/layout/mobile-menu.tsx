@@ -32,7 +32,7 @@ export function MobileMenu() {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-16 z-50 border-b bg-background shadow-lg">
+        <div className="absolute left-0 right-0 top-16 z-1100 border-b bg-background shadow-lg">
           <nav className="mx-auto flex max-w-7xl flex-col px-4 py-3">
             {NAV_LINKS.map((link) => (
               <Link

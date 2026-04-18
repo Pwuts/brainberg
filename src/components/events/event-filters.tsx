@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { LocationFilter } from "@/components/ui/location-filter";
 import { Dropdown } from "@/components/ui/dropdown";
+import { MoreFilters } from "@/components/ui/more-filters";
 import { ArrowUp, ArrowDown, X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
 
@@ -61,6 +62,56 @@ export function EventFilters({ countries }: FilterProps) {
   const hasFilters = searchParams.toString().length > 0;
   const hasLocation = !!searchParams.get("lat");
 
+  // Secondary controls (collapsed into "Filters" popover on mobile)
+  const categoryEl = (
+    <Dropdown
+      value={searchParams.get("category") ?? ""}
+      options={CATEGORY_OPTIONS}
+      placeholder="Category"
+      onChange={(v) => setFilter("category", v)}
+      className="w-28"
+      panelWidth="w-80"
+    />
+  );
+  const typeEl = (
+    <Dropdown
+      value={searchParams.get("type") ?? ""}
+      options={TYPE_OPTIONS}
+      placeholder="Type"
+      onChange={(v) => setFilter("type", v)}
+      className="w-24"
+      panelWidth="w-40"
+    />
+  );
+  const sizeEl = (
+    <Dropdown
+      value={searchParams.get("size") ?? ""}
+      options={SIZE_OPTIONS}
+      placeholder="Size"
+      onChange={(v) => setFilter("size", v)}
+      className="w-24"
+      panelWidth="w-36"
+    />
+  );
+  const freeEl = (
+    <button
+      onClick={() => setFilter("free", searchParams.get("free") === "1" ? "" : "1")}
+      className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
+        searchParams.get("free") === "1"
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-input bg-background hover:bg-accent"
+      }`}
+    >
+      Free
+    </button>
+  );
+
+  const secondaryActiveCount =
+    (searchParams.get("category") ? 1 : 0) +
+    (searchParams.get("type") ? 1 : 0) +
+    (searchParams.get("size") ? 1 : 0) +
+    (searchParams.get("free") === "1" ? 1 : 0);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* 1. Location / Online */}
@@ -99,52 +150,26 @@ export function EventFilters({ countries }: FilterProps) {
         onChange={setDateRange}
       />
 
-      {/* 3. Category */}
-      <Dropdown
-        value={searchParams.get("category") ?? ""}
-        options={CATEGORY_OPTIONS}
-        placeholder="Category"
-        onChange={(v) => setFilter("category", v)}
-        className="w-28"
-        panelWidth="w-80"
-      />
+      {/* Secondary filters — inline on desktop */}
+      <div className="hidden md:contents">
+        {categoryEl}
+        {typeEl}
+        {sizeEl}
+        {freeEl}
+      </div>
 
-      {/* 4. Type */}
-      <Dropdown
-        value={searchParams.get("type") ?? ""}
-        options={TYPE_OPTIONS}
-        placeholder="Type"
-        onChange={(v) => setFilter("type", v)}
-        className="w-24"
-        panelWidth="w-40"
-      />
+      {/* Secondary filters — collapsed popover on mobile */}
+      <MoreFilters className="md:hidden" activeCount={secondaryActiveCount}>
+        {categoryEl}
+        {typeEl}
+        {sizeEl}
+        {freeEl}
+      </MoreFilters>
 
-      {/* 5. Size */}
-      <Dropdown
-        value={searchParams.get("size") ?? ""}
-        options={SIZE_OPTIONS}
-        placeholder="Size"
-        onChange={(v) => setFilter("size", v)}
-        className="w-24"
-        panelWidth="w-36"
-      />
+      {/* Spacer (desktop only — pushes Sort right) */}
+      <div className="hidden flex-1 md:block" />
 
-      {/* 6. Free */}
-      <button
-        onClick={() => setFilter("free", searchParams.get("free") === "1" ? "" : "1")}
-        className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
-          searchParams.get("free") === "1"
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-input bg-background hover:bg-accent"
-        }`}
-      >
-        Free
-      </button>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* 7. Sort */}
+      {/* Sort */}
       <SortControl
         value={searchParams.get("sort") ?? "date"}
         hasLocation={hasLocation}
