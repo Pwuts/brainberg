@@ -7,6 +7,7 @@ services:
         DATABASE_URL: postgresql://brainberg:${DB_PASSWORD}@db:5432/brainberg
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://brainberg.eu}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Brainberg}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
     container_name: brainberg-app
     restart: unless-stopped
     expose:
@@ -23,6 +24,7 @@ services:
       - LETSENCRYPT_EMAIL
       - ANTHROPIC_API_KEY
       - EVENTBRITE_API_TOKEN
+      - TURNSTILE_SECRET_KEY
     depends_on:
       db:
         condition: service_healthy
