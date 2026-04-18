@@ -6,7 +6,7 @@ import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Trash2, Sparkles } from "lucide-react";
+import { Trash2, Sparkles, Clock } from "lucide-react";
 import { LocationPicker } from "@/components/admin/location-picker";
 import {
   CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
@@ -225,7 +225,7 @@ export default function AdminEventDetailPage({
               <Row label="Starts">
                 <Input
                   type="datetime-local"
-                  defaultValue={(ev.startsAt as string).slice(0, 16)}
+                  defaultValue={toLocalInputValue(ev.startsAt as string)}
                   onBlur={(e) => e.target.value && patchField("startsAt", new Date(e.target.value).toISOString())}
                   className="h-8 w-auto text-sm"
                 />
@@ -233,11 +233,19 @@ export default function AdminEventDetailPage({
               <Row label="Ends">
                 <Input
                   type="datetime-local"
-                  defaultValue={ev.endsAt ? (ev.endsAt as string).slice(0, 16) : ""}
+                  defaultValue={ev.endsAt ? toLocalInputValue(ev.endsAt as string) : ""}
                   onBlur={(e) => e.target.value ? patchField("endsAt", new Date(e.target.value).toISOString()) : undefined}
                   className="h-8 w-auto text-sm"
                 />
               </Row>
+              {(!!ev.startsAt || !!ev.endsAt) && (
+                <Row label="" className="-my-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  </span>
+                </Row>
+              )}
             </div>
             <div className="flex flex-col gap-3">
               <Row label="Location">
@@ -425,9 +433,15 @@ export default function AdminEventDetailPage({
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function toLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function Row({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={`flex items-center gap-3${className ? ` ${className}` : ""}`}>
       <dt className="w-20 shrink-0 text-right text-muted-foreground">{label}</dt>
       <dd className="min-w-0 flex-1">{children}</dd>
     </div>
