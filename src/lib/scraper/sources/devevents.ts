@@ -142,12 +142,11 @@ export const devEventsScraper: Scraper = {
         // Continue without JSON-LD data
       }
 
-      const startsAt = jsonLd?.startDate
-        ? new Date(jsonLd.startDate)
-        : item.pubDate
-          ? new Date(item.pubDate)
-          : null;
-
+      // Only trust JSON-LD's startDate. RSS pubDate is when dev.events
+      // published the feed item, not when the event starts — using it
+      // would silently stamp the event with the wrong date and break
+      // cross-source dedup.
+      const startsAt = jsonLd?.startDate ? new Date(jsonLd.startDate) : null;
       if (!startsAt || isNaN(startsAt.getTime())) continue;
 
       // Apply date filters

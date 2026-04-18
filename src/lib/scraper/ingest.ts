@@ -71,6 +71,11 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
     // Always update the eventSources junction
     await upsertEventSource(dedup.existingEventId, event);
 
+    // Always record fingerprints from this source so future scrapes can
+    // dedup via URLs/titles this source knows about even if the priority
+    // check below skips the field update.
+    await createFingerprints(dedup.existingEventId, event);
+
     // Update existing event if new source has higher priority
     if (dedup.shouldUpdate) {
       await updateExistingEvent(dedup.existingEventId, event, location, eventLat, eventLng);
@@ -103,6 +108,21 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
       status = "pending";
       stats.pending++;
       console.log(`[ai-moderate] Pending: "${event.title}" — ${moderation.reason}`);
+    }
+  }
+
+  // Auto-reject any non-approved event that has already ended — no point
+  // spending human moderation time on events that have already passed.
+  if (status !== "approved") {
+    const endTime = event.endsAt ?? event.startsAt;
+    if (endTime < new Date()) {
+      if (status === "pending") stats.pending--;
+      status = "rejected";
+      stats.rejected++;
+      aiModerationReason = aiModerationReason
+        ? `${aiModerationReason} (auto-rejected: event already passed)`
+        : "Auto-rejected: event already passed";
+      console.log(`[ingest] Auto-rejected (passed): "${event.title}"`);
     }
   }
 
@@ -195,10 +215,26 @@ async function updateExistingEvent(
   eventLat?: number | null,
   eventLng?: number | null,
 ) {
-  // Fill in missing fields; higher-priority sources overwrite more aggressively
+  // Called only when dedup.shouldUpdate is true (new source has priority ≥
+  // existing), so we can overwrite authoritative fields (dates, title,
+  // event type, online flags) — not just fill blanks. This lets improved
+  // scraper data heal existing rows on re-ingest.
+  const [existing] = await db
+    .select({ categoryLocked: events.categoryLocked })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .limit(1);
+
   await db
     .update(events)
     .set({
+      title: event.title,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt ?? undefined,
+      eventType: event.eventType,
+      isOnline: event.isOnline,
+      isHybrid: event.isHybrid ?? false,
+      category: existing?.categoryLocked ? undefined : event.category,
       description: event.description || undefined,
       shortDescription: event.shortDescription || undefined,
       // Fill in location if missing
