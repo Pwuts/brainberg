@@ -24,7 +24,11 @@ const ALL_PRESETS = PRESET_ROWS.flat();
 
 function getPresetRange(preset: DatePreset): { from: string; to: string } {
   const now = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  // Local-time YYYY-MM-DD — paired with `tzo` in the URL so the server
+  // resolves the bounds in the caller's timezone.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const addDays = (n: number) => { const d = new Date(now); d.setDate(d.getDate() + n); return d; };
 
   switch (preset) {

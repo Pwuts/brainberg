@@ -103,6 +103,15 @@ export default function AdminEventsPage() {
       params.delete(key);
     }
     params.delete("offset"); // reset pagination on filter change
+    // Keep tzo in sync with date-filter presence so the server interprets
+    // dateFrom/dateTo as start/end of the local day.
+    if (key === "dateFrom" || key === "dateTo") {
+      if (params.get("dateFrom") || params.get("dateTo")) {
+        params.set("tzo", String(-new Date().getTimezoneOffset()));
+      } else {
+        params.delete("tzo");
+      }
+    }
     router.push(`${pathname}?${params.toString()}`);
   };
 

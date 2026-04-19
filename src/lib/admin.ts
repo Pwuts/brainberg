@@ -2,8 +2,9 @@ import { db } from "./db";
 import {
   events, cities, countries, eventSources, scraperRuns,
 } from "./db/schema";
-import { eq, and, asc, desc, sql, count, isNull, ilike, or, gte, lte, type SQL } from "drizzle-orm";
-import type { eventCategoryEnum, eventStatusEnum, eventSourceEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
+import { eq, and, asc, desc, sql, count, isNull, ilike, or, type SQL } from "drizzle-orm";
+import { buildCommonEventConditions } from "./events";
+import type { eventStatusEnum, eventSourceEnum } from "./db/schema";
 import type { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 
@@ -46,33 +47,22 @@ interface ListEventsParams {
   search?: string;
   noLocation?: boolean;
   moderated?: string; // "ai", "not_ai"
-  dateFrom?: string; // ISO date, inclusive start of startsAt
-  dateTo?: string;   // ISO date, inclusive end of startsAt
+  dateFrom?: string; // YYYY-MM-DD, start-of-day in tzOffsetMinutes (default UTC)
+  dateTo?: string;   // YYYY-MM-DD, end-of-day in tzOffsetMinutes (default UTC)
+  tzOffsetMinutes?: number; // see EventFilters in lib/events.ts for semantics
   sort?: string; // "date", "-date", "title", "-title", "created", "-created"
   limit?: number;
   offset?: number;
 }
 
 export async function listEvents(params: ListEventsParams) {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [...buildCommonEventConditions(params)];
 
   if (params.status) {
     conditions.push(eq(events.status, params.status as (typeof eventStatusEnum.enumValues)[number]));
   }
   if (params.source) {
     conditions.push(eq(events.source, params.source as (typeof eventSourceEnum.enumValues)[number]));
-  }
-  if (params.category) {
-    conditions.push(eq(events.category, params.category as (typeof eventCategoryEnum.enumValues)[number]));
-  }
-  if (params.eventType) {
-    conditions.push(eq(events.eventType, params.eventType as (typeof eventTypeEnum.enumValues)[number]));
-  }
-  if (params.size) {
-    conditions.push(eq(events.size, params.size as (typeof eventSizeEnum.enumValues)[number]));
-  }
-  if (params.country) {
-    conditions.push(eq(countries.code, params.country.toUpperCase()));
   }
   if (params.noLocation) {
     conditions.push(and(isNull(events.cityId), isNull(events.latitude))!);
@@ -81,15 +71,6 @@ export async function listEvents(params: ListEventsParams) {
     conditions.push(eq(events.moderatedByAI, true));
   } else if (params.moderated === "not_ai") {
     conditions.push(eq(events.moderatedByAI, false));
-  }
-  if (params.dateFrom) {
-    conditions.push(gte(events.startsAt, new Date(params.dateFrom)));
-  }
-  if (params.dateTo) {
-    // Treat dateTo as end-of-day to be inclusive
-    const end = new Date(params.dateTo);
-    end.setHours(23, 59, 59, 999);
-    conditions.push(lte(events.startsAt, end));
   }
   if (params.search) {
     // Use ILIKE for partial matching (admin search), not full-text search

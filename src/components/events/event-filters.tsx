@@ -53,7 +53,14 @@ export function EventFilters({ countries }: FilterProps) {
   );
 
   const setDateRange = useCallback(
-    (from: string, to: string) => update({ from: from || null, to: to || null }),
+    (from: string, to: string) =>
+      update({
+        from: from || null,
+        to: to || null,
+        // Tag the range with the user's local TZ offset so the server can
+        // interpret YYYY-MM-DD as start/end of that *local* day.
+        tzo: from || to ? String(-new Date().getTimezoneOffset()) : null,
+      }),
     [update],
   );
 

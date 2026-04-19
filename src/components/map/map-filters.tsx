@@ -47,6 +47,13 @@ export function MapFilters() {
       const params = new URLSearchParams(searchParams.toString());
       if (from) params.set("from", from); else params.delete("from");
       if (to) params.set("to", to); else params.delete("to");
+      // Tag with the user's local TZ offset so the server interprets the
+      // YYYY-MM-DD bounds as start/end of that local day.
+      if (from || to) {
+        params.set("tzo", String(-new Date().getTimezoneOffset()));
+      } else {
+        params.delete("tzo");
+      }
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams]

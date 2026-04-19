@@ -68,8 +68,14 @@ interface EventFilters {
   category?: string;
   eventType?: string;
   size?: string;
-  dateFrom?: string;
+  dateFrom?: string; // YYYY-MM-DD; interpreted in tzOffsetMinutes (default UTC)
   dateTo?: string;
+  /**
+   * Caller's local timezone offset from UTC in minutes (positive = ahead of UTC,
+   * matching the standard convention; negate `Date#getTimezoneOffset()` on the
+   * client). When omitted, dateFrom/dateTo are treated as UTC day boundaries.
+   */
+  tzOffsetMinutes?: number;
   isFree?: boolean;
   isOnline?: boolean;
   search?: string;
@@ -79,6 +85,78 @@ interface EventFilters {
   sort?: string; // "date" (default), "size", "distance"
   limit?: number;
   cursor?: string;
+}
+
+/**
+ * Convert a YYYY-MM-DD date string to the UTC instant of the start or end of
+ * that local day in the given timezone offset. Anything that's not a bare
+ * YYYY-MM-DD is parsed by `new Date()` directly (lets ISO strings with offsets
+ * pass through untouched).
+ */
+export function parseDateBound(s: string, tzOffsetMinutes: number, end: boolean): Date {
+  const ymdMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!ymdMatch) return new Date(s);
+  const [, y, m, d] = ymdMatch;
+  const utc = Date.UTC(
+    Number(y),
+    Number(m) - 1,
+    Number(d),
+    end ? 23 : 0,
+    end ? 59 : 0,
+    end ? 59 : 0,
+    end ? 999 : 0,
+  );
+  return new Date(utc - tzOffsetMinutes * 60_000);
+}
+
+export interface CommonEventFilters {
+  country?: string;
+  city?: string;
+  category?: string;
+  eventType?: string;
+  size?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  tzOffsetMinutes?: number;
+  isFree?: boolean;
+  isOnline?: boolean;
+}
+
+/**
+ * Where-clause predicates shared between the public event listing, the map
+ * endpoint, and the admin listing. Caller-specific predicates (status,
+ * full-text vs ILIKE search, distance, cursor, etc.) stay with each caller.
+ */
+export function buildCommonEventConditions(filters: CommonEventFilters): SQL[] {
+  const conditions: SQL[] = [];
+  if (filters.country) {
+    conditions.push(eq(countries.code, filters.country.toUpperCase()));
+  }
+  if (filters.city) {
+    conditions.push(eq(cities.slug, filters.city));
+  }
+  if (filters.category) {
+    conditions.push(eq(events.category, filters.category as (typeof eventCategoryEnum.enumValues)[number]));
+  }
+  if (filters.eventType) {
+    conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));
+  }
+  if (filters.size) {
+    conditions.push(eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]));
+  }
+  if (filters.dateFrom) {
+    conditions.push(gte(events.startsAt, parseDateBound(filters.dateFrom, filters.tzOffsetMinutes ?? 0, false)));
+  }
+  if (filters.dateTo) {
+    conditions.push(lte(events.startsAt, parseDateBound(filters.dateTo, filters.tzOffsetMinutes ?? 0, true)));
+  }
+  if (filters.isFree) {
+    conditions.push(eq(events.isFree, true));
+  }
+  if (filters.isOnline) {
+    conditions.push(eq(events.isOnline, true));
+  }
+  return conditions;
 }
 
 export async function getEventsByTimeGroup() {
@@ -147,37 +225,9 @@ export async function getFilteredEvents(filters: EventFilters) {
   const conditions: SQL[] = [
     eq(events.status, "approved"),
     gte(events.startsAt, new Date()),
+    ...buildCommonEventConditions(filters),
   ];
 
-  if (filters.country) {
-    conditions.push(
-      eq(countries.code, filters.country.toUpperCase())
-    );
-  }
-  if (filters.city) {
-    conditions.push(eq(cities.slug, filters.city));
-  }
-  if (filters.category) {
-    conditions.push(eq(events.category, filters.category as (typeof eventCategoryEnum.enumValues)[number]));
-  }
-  if (filters.eventType) {
-    conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));
-  }
-  if (filters.size) {
-    conditions.push(eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]));
-  }
-  if (filters.dateFrom) {
-    conditions.push(gte(events.startsAt, new Date(filters.dateFrom)));
-  }
-  if (filters.dateTo) {
-    conditions.push(lte(events.startsAt, new Date(filters.dateTo)));
-  }
-  if (filters.isFree) {
-    conditions.push(eq(events.isFree, true));
-  }
-  if (filters.isOnline) {
-    conditions.push(eq(events.isOnline, true));
-  }
   if (filters.search) {
     conditions.push(
       sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`
@@ -288,35 +338,9 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
     eq(events.status, "approved"),
     gte(events.startsAt, new Date()),
     sql`COALESCE(${events.latitude}, ${cities.latitude}) IS NOT NULL`,
+    ...buildCommonEventConditions(filters),
   ];
 
-  if (filters.country) {
-    conditions.push(eq(countries.code, filters.country.toUpperCase()));
-  }
-  if (filters.city) {
-    conditions.push(eq(cities.slug, filters.city));
-  }
-  if (filters.category) {
-    conditions.push(eq(events.category, filters.category as (typeof eventCategoryEnum.enumValues)[number]));
-  }
-  if (filters.eventType) {
-    conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));
-  }
-  if (filters.size) {
-    conditions.push(eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]));
-  }
-  if (filters.dateFrom) {
-    conditions.push(gte(events.startsAt, new Date(filters.dateFrom)));
-  }
-  if (filters.dateTo) {
-    conditions.push(lte(events.startsAt, new Date(filters.dateTo)));
-  }
-  if (filters.isFree) {
-    conditions.push(eq(events.isFree, true));
-  }
-  if (filters.isOnline) {
-    conditions.push(eq(events.isOnline, true));
-  }
   if (filters.search) {
     conditions.push(
       sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`

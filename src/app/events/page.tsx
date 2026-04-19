@@ -36,6 +36,7 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
     size: params.size,
     dateFrom: params.from,
     dateTo: params.to,
+    tzOffsetMinutes: params.tzo ? parseInt(params.tzo, 10) : undefined,
     isFree: params.free === "1",
     isOnline: params.online === "1",
     search: params.q,

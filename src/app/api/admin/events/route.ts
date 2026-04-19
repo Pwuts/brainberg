@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       moderated: params.get("moderated") ?? undefined,
       dateFrom: params.get("dateFrom") ?? undefined,
       dateTo: params.get("dateTo") ?? undefined,
+      tzOffsetMinutes: params.get("tzo") ? parseInt(params.get("tzo")!, 10) : undefined,
       sort: params.get("sort") ?? undefined,
       limit: parseInt(params.get("limit") ?? "50"),
       offset: parseInt(params.get("offset") ?? "0"),

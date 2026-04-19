@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       size: params.get("size") ?? undefined,
       dateFrom: params.get("from") ?? undefined,
       dateTo: params.get("to") ?? undefined,
+      tzOffsetMinutes: params.get("tzo") ? parseInt(params.get("tzo")!, 10) : undefined,
       isFree: params.get("free") === "1",
       isOnline: params.get("online") === "1",
       search: params.get("q") ?? undefined,
