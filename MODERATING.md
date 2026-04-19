@@ -6,7 +6,9 @@ This guide defines what belongs on Brainberg.eu. It is used by both human modera
 
 Brainberg is a **European tech event aggregator**. We list events where people who build, use, or think about technology come together — in person or online.
 
-**"Tech" includes:** software development, AI/ML, data engineering, cloud infrastructure, cybersecurity, hardware/electronics/IoT, design & UX, blockchain, and tech entrepreneurship. Social events aimed specifically at this target audience are also deemed relevant.
+**"Tech" is broad and domain-crossing.** Any event whose core focus is digital systems, computational methods, engineered hardware, or the technical craft and culture around them is in scope. That includes the topics our categories cover (software, AI/ML, data, cloud, security, hardware/IoT, design & UX, blockchain, entrepreneurship, hacker/maker) **and** cross-domain "*-tech" fields where technology or innovation is the lead: climate/sustainable tech, biotech, healthtech, fintech, legaltech, edtech, agritech, govtech, spacetech, and so on.
+
+Social, networking, and community events aimed specifically at this audience are also in scope (e.g. tech Stammtisch, founder drinks, OSS contributor dinner, repair cafés).
 
 **"European" means:** events physically located in a European country (including UK, Iceland, Cyprus, Malta, and the European atlantic island groups), OR online events relevant to a European audience (regardless of organizer location).
 
@@ -133,5 +135,7 @@ Clearly not a fit. Reject when:
 - **Women/diversity in tech events:** approve — community building within tech
 - **Barcamp / unconference:** approve — community-driven tech format
 - **Digital literacy for seniors ("Smart Tech for Seniors"):** approve — tech education
-- **Building/construction tech:** approve if focused on software/IoT or non-mainstream innovative aspects, reject if purely about physical construction
+- **Building/construction tech:** approve if there's a clear tech or engineering-innovation angle (smart buildings, modular construction, 3D-printed concrete, construction-software demos); reject if it's a general trade fair with no technical content
+- **Sustainable/climate/green tech:** approve if the focus is on the technology (energy storage, grid software, carbon accounting platforms, climate-modelling ML, clean-energy hardware); reject if it's purely policy/advocacy with no technical content
+- **Domain + tech crossovers** (bio, health, legal, ed, agri, gov, space, etc.): approve when the event centers on the technology or technical practice, not just the domain
 - **Science conferences with no tech angle:** reject unless there's a clear technology/computing component
