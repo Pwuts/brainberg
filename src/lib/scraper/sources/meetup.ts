@@ -59,6 +59,11 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
   const description = ev.description ? stripHtml(ev.description) : undefined;
   const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
 
+  // Meetup's Apollo cache sometimes ships a venue with a placeholder lat
+  // (e.g. the group's home city) but no lng — common for "Online event"
+  // venue objects. A partial coordinate plots on null island in Leaflet.
+  const hasBothCoords = typeof ev.venue?.lat === "number" && typeof ev.venue?.lng === "number";
+
   return {
     title: ev.title,
     description,
@@ -74,8 +79,8 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
     countryCode: ev.venue?.country,
     venueName: ev.venue?.name,
     venueAddress: ev.venue?.address,
-    latitude: ev.venue?.lat,
-    longitude: ev.venue?.lng,
+    latitude: hasBothCoords ? ev.venue!.lat : undefined,
+    longitude: hasBothCoords ? ev.venue!.lng : undefined,
     isOnline,
     websiteUrl: ev.eventUrl,
     meetupUrl: ev.eventUrl,

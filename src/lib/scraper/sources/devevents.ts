@@ -200,6 +200,9 @@ export const devEventsScraper: Scraper = {
       // European filter via JSON-LD country code (skip in-person non-European)
       if (countryCode && !isEuropean(countryCode)) continue;
 
+      const geo = jsonLd?.location?.geo;
+      const hasBothCoords = typeof geo?.latitude === "number" && typeof geo?.longitude === "number";
+
       const imageUrl =
         typeof jsonLd?.image === "string"
           ? jsonLd.image
@@ -222,8 +225,8 @@ export const devEventsScraper: Scraper = {
         countryCode,
         venueName: jsonLd?.location?.name,
         venueAddress: jsonLd?.location?.address?.streetAddress,
-        latitude: jsonLd?.location?.geo?.latitude,
-        longitude: jsonLd?.location?.geo?.longitude,
+        latitude: hasBothCoords ? geo!.latitude : undefined,
+        longitude: hasBothCoords ? geo!.longitude : undefined,
         isOnline,
         websiteUrl: meetupUrl ?? jsonLd?.url ?? link,
         devEventsUrl: link,

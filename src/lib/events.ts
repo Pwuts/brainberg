@@ -338,6 +338,7 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
     eq(events.status, "approved"),
     gte(events.startsAt, new Date()),
     sql`COALESCE(${events.latitude}, ${cities.latitude}) IS NOT NULL`,
+    sql`COALESCE(${events.longitude}, ${cities.longitude}) IS NOT NULL`,
     ...buildCommonEventConditions(filters),
   ];
 
