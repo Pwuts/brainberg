@@ -40,6 +40,7 @@ export default function AdminScrapersPage() {
   const [lumaInput, setLumaInput] = useState("");
   const [lumaAdding, setLumaAdding] = useState(false);
   const [lumaError, setLumaError] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   const load = useCallback(async () => {
     const [scrapersRes, sourcesRes] = await Promise.all([
@@ -100,6 +101,30 @@ export default function AdminScrapersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Scrapers</h1>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            disabled={backfilling}
+            onClick={async () => {
+              setBackfilling(true);
+              try {
+                const res = await fetchAdmin("/api/admin/events/backfill-eventbrite-descriptions", {
+                  method: "POST",
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                  alert(`Failed: ${data.error ?? "Unknown"}`);
+                  return;
+                }
+                alert(`Processed ${data.total}: ${data.updated} updated, ${data.unchanged} unchanged, ${data.failed} failed`);
+              } catch {
+                alert("Request dropped (likely proxy timeout). Backfill continues in the background — re-click later to see 0 remaining.");
+              } finally {
+                setBackfilling(false);
+              }
+            }}
+          >
+            {backfilling ? "Backfilling..." : "Backfill Eventbrite Descriptions"}
+          </Button>
           <Button
             variant="outline"
             onClick={async () => {

@@ -1,3 +1,5 @@
+import TurndownService from "turndown";
+
 /** Strip HTML tags and decode common entities. */
 export function stripHtml(html: string): string {
   return html
@@ -12,6 +14,22 @@ export function stripHtml(html: string): string {
     .replace(/&nbsp;/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+let turndown: TurndownService | null = null;
+
+/** Convert HTML to Markdown. Output is compatible with the react-markdown
+ *  renderer used for event descriptions (remark-breaks enabled). */
+export function htmlToMarkdown(html: string): string {
+  if (!turndown) {
+    turndown = new TurndownService({
+      headingStyle: "atx",
+      bulletListMarker: "-",
+      codeBlockStyle: "fenced",
+      emDelimiter: "*",
+    });
+  }
+  return turndown.turndown(html).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /** Truncate text to a maximum length, breaking at word boundaries. */

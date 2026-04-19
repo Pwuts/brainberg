@@ -5,7 +5,7 @@ import {
   DEVEVENTS_TYPE_MAP,
   resolveCategoryFromTags,
 } from "../category-map";
-import { stripHtml, truncate } from "../html-utils";
+import { htmlToMarkdown, truncate } from "../html-utils";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventType } from "../types";
 
 const RSS_URL = "https://dev.events/rss.xml";
@@ -160,7 +160,7 @@ export const devEventsScraper: Scraper = {
       const endsAt = jsonLd?.endDate ? new Date(jsonLd.endDate) : undefined;
 
       const description = jsonLd?.description
-        ?? (item.description ? stripHtml(item.description) : undefined);
+        ?? (item.description ? htmlToMarkdown(item.description) : undefined);
 
       const category = resolveCategoryFromTags(categories, DEVEVENTS_CATEGORY_MAP, title);
 

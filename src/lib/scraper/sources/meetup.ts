@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { cities, countries, events } from "@/lib/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { MEETUP_TOPIC_MAP, resolveCategoryFromTags } from "../category-map";
-import { stripHtml, truncate } from "../html-utils";
+import { htmlToMarkdown, truncate } from "../html-utils";
 import { isEuropean } from "../european-countries";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventSize } from "../types";
 
@@ -64,7 +64,7 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
     return null;
   }
   const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
-  const description = ev.description ? stripHtml(ev.description) : undefined;
+  const description = ev.description ? htmlToMarkdown(ev.description) : undefined;
   const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
 
   // Meetup's Apollo cache sometimes ships a venue with a placeholder lat

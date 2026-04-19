@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { eventSources } from "@/lib/db/schema";
 import { EVENTBRITE_CATEGORY_MAP, resolveCategory } from "../category-map";
-import { truncate } from "../html-utils";
+import { htmlToMarkdown, truncate } from "../html-utils";
 import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const API_BASE = "https://www.eventbriteapi.com/v3";
@@ -59,6 +62,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Eventbrite's search endpoint only returns a short `summary` excerpt.
+ *  The full description requires a separate API call per event. */
+async function fetchFullDescription(
+  eventId: string,
+  token: string,
+): Promise<string | undefined> {
+  try {
+    const res = await fetch(`${API_BASE}/events/${eventId}/description/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { description?: unknown };
+    if (typeof data.description !== "string" || !data.description.trim()) {
+      return undefined;
+    }
+    return htmlToMarkdown(data.description);
+  } catch {
+    return undefined;
+  }
+}
+
 export const eventbriteScraper: Scraper = {
   name: "eventbrite",
 
@@ -68,6 +92,19 @@ export const eventbriteScraper: Scraper = {
       console.warn("[eventbrite] EVENTBRITE_API_TOKEN not set, skipping");
       return;
     }
+
+    // Known Eventbrite source IDs — we only pay the per-event description
+    // fetch for ones we haven't seen before. Existing rows keep whatever
+    // description they have; the backfill endpoint upgrades legacy rows.
+    const knownSourceIds = new Set<string>();
+    {
+      const rows = await db
+        .select({ sourceId: eventSources.sourceId })
+        .from(eventSources)
+        .where(eq(eventSources.source, "eventbrite"));
+      for (const r of rows) knownSourceIds.add(r.sourceId);
+    }
+    console.log(`[eventbrite] Known source IDs: ${knownSourceIds.size}`);
 
     const totalCountries = EUROPEAN_PLACE_IDS.length;
 
@@ -150,9 +187,18 @@ export const eventbriteScraper: Scraper = {
           const minPrice = ev.ticket_availability?.minimum_ticket_price;
           const maxPrice = ev.ticket_availability?.maximum_ticket_price;
 
+          // For new events: fetch the full markdown description. For known
+          // events: leave undefined so ingest won't overwrite the existing
+          // (likely full) description with the short summary.
+          let description: string | undefined;
+          if (!knownSourceIds.has(ev.id)) {
+            description = (await fetchFullDescription(ev.id, token)) ?? ev.summary;
+            await sleep(1000);
+          }
+
           yield {
             title: ev.name,
-            description: ev.summary,
+            description,
             shortDescription: ev.summary ? truncate(ev.summary, 500) : undefined,
             category,
             eventType: "conference",
