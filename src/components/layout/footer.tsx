@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Zap } from "lucide-react";
 
 export function Footer() {
+  const pathname = usePathname();
+  // Map view is a full-viewport canvas; the footer would force page scroll
+  // and reveal it under the bottom drawer.
+  if (pathname === "/map") return null;
+
   return (
     <footer className="border-t border-border bg-muted/40">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

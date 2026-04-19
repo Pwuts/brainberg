@@ -77,7 +77,16 @@ export function EventCard({ event, city, country }: EventCardProps) {
         {/* Description excerpt */}
         {event.description && (
           <div className="mt-3 text-sm text-muted-foreground line-clamp-2 prose prose-sm prose-p:m-0 prose-p:leading-snug max-w-none">
-            <Markdown remarkPlugins={[remarkBreaks]}>{event.description}</Markdown>
+            <Markdown
+              remarkPlugins={[remarkBreaks]}
+              components={{
+                // Card is wrapped in a Link; render markdown links as plain
+                // text to avoid nested <a> hydration error.
+                a: ({ children }) => <>{children}</>,
+              }}
+            >
+              {event.description}
+            </Markdown>
           </div>
         )}
 
