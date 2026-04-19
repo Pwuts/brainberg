@@ -77,10 +77,10 @@ Your task: evaluate a scraped event and decide whether it belongs on the platfor
 
 Respond with a JSON object matching this exact schema:
 {
+  "reason": "<1-2 sentence explanation>",
   "decision": "approve" | "pending" | "reject",
   "category": "<valid category or null to keep current>",
   "eventType": "<valid type or null to keep current>",
-  "reason": "<1-2 sentence explanation>",
   "confidence": <0.0 to 1.0>
 }
 
