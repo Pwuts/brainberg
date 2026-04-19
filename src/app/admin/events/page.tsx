@@ -62,7 +62,7 @@ export default function AdminEventsPage() {
   };
   const offset = parseInt(searchParams.get("offset") ?? "0");
   const limit = parseInt(searchParams.get("limit") ?? "50");
-  const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+  const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 
   const load = useCallback(async () => {
     // Build API query from current URL params

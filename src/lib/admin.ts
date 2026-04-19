@@ -84,7 +84,7 @@ export async function listEvents(params: ListEventsParams) {
     );
   }
 
-  const limit = Math.min(params.limit ?? 50, 200);
+  const limit = Math.min(params.limit ?? 50, 500);
   const offset = params.offset ?? 0;
 
   // Sorting
