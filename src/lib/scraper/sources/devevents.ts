@@ -6,6 +6,7 @@ import {
   resolveCategoryFromTags,
 } from "../category-map";
 import { htmlToMarkdown, truncate } from "../html-utils";
+import { extractJsonLdEvents } from "../structured-data";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventType } from "../types";
 
 const RSS_URL = "https://dev.events/rss.xml";
@@ -60,26 +61,10 @@ function resolveEventType(categories: string[]): EventType {
   return "conference";
 }
 
-/** Extract JSON-LD from an HTML page. */
+/** Extract the first Schema.org Event (any subtype) from an HTML page. */
 function extractJsonLd(html: string): JsonLdEvent | null {
-  const regex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let match;
-  while ((match = regex.exec(html)) !== null) {
-    try {
-      const data = JSON.parse(match[1]);
-      // Could be an array or single object
-      const items = Array.isArray(data) ? data : [data];
-      for (const item of items) {
-        // dev.events uses Schema.org Event subtypes (EducationEvent,
-        // BusinessEvent, SocialEvent, etc.) — accept any *Event type.
-        const type = item["@type"];
-        if (typeof type === "string" && type.endsWith("Event")) return item;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
+  const [first] = extractJsonLdEvents(html);
+  return (first?.raw as JsonLdEvent | undefined) ?? null;
 }
 
 export const devEventsScraper: Scraper = {

@@ -3,7 +3,7 @@ import { AdminAuthProvider } from "@/components/admin/admin-auth-provider";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 export const metadata = {
-  title: "Admin | Brainberg",
+  title: "Admin",
   robots: "noindex",
 };
 

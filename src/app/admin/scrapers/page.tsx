@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback, FormEvent } from "react";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
-import { SOURCE_LABELS } from "@/lib/utils";
+import { SOURCE_LABELS, CATEGORY_LABELS } from "@/lib/utils";
 
 interface LumaSource {
   id: number;
@@ -15,6 +16,51 @@ interface LumaSource {
   lastScrapedAt: string | null;
   eventsFound: number;
 }
+
+interface MicrodataSource {
+  id: number;
+  name: string;
+  url: string;
+  isActive: boolean;
+  lastScrapedAt: string | null;
+  eventsFound: number;
+  defaultCategory: string | null;
+  config: {
+    extraction?: "microdata" | "jsonld";
+    itemtype?: string;
+    fallbacks?: {
+      cityName?: string;
+      countryCode?: string;
+      venueName?: string;
+      venueAddress?: string;
+      timezone?: string;
+    };
+  } | null;
+}
+
+interface MicrodataForm {
+  name: string;
+  url: string;
+  extraction: "microdata" | "jsonld";
+  itemtype: string;
+  cityName: string;
+  countryCode: string;
+  venueName: string;
+  venueAddress: string;
+  defaultCategory: string;
+}
+
+const EMPTY_MICRODATA_FORM: MicrodataForm = {
+  name: "",
+  url: "",
+  extraction: "microdata",
+  itemtype: "https://schema.org/Event",
+  cityName: "",
+  countryCode: "",
+  venueName: "",
+  venueAddress: "",
+  defaultCategory: "",
+};
 
 interface ScraperRun {
   id: string;
@@ -40,18 +86,25 @@ export default function AdminScrapersPage() {
   const [lumaInput, setLumaInput] = useState("");
   const [lumaAdding, setLumaAdding] = useState(false);
   const [lumaError, setLumaError] = useState<string | null>(null);
+  const [microdataSources, setMicrodataSources] = useState<MicrodataSource[]>([]);
+  const [microdataForm, setMicrodataForm] = useState<MicrodataForm>(EMPTY_MICRODATA_FORM);
+  const [microdataAdding, setMicrodataAdding] = useState(false);
+  const [microdataError, setMicrodataError] = useState<string | null>(null);
   const [backfilling, setBackfilling] = useState(false);
 
   const load = useCallback(async () => {
-    const [scrapersRes, sourcesRes] = await Promise.all([
+    const [scrapersRes, lumaRes, microdataRes] = await Promise.all([
       fetchAdmin("/api/admin/scrapers"),
       fetchAdmin("/api/admin/scrapers/sources?type=luma"),
+      fetchAdmin("/api/admin/scrapers/sources?type=microdata"),
     ]);
     const scrapersData = await scrapersRes.json();
-    const sourcesData = await sourcesRes.json();
+    const lumaData = await lumaRes.json();
+    const microdataData = await microdataRes.json();
     setScrapers(scrapersData.scrapers ?? []);
     setRuns(scrapersData.runs ?? []);
-    setLumaSources(sourcesData.sources ?? []);
+    setLumaSources(lumaData.sources ?? []);
+    setMicrodataSources(microdataData.sources ?? []);
   }, [fetchAdmin]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -244,6 +297,52 @@ export default function AdminScrapersPage() {
         }}
       />
 
+      {/* Microdata Sources */}
+      <MicrodataSources
+        sources={microdataSources}
+        form={microdataForm}
+        setForm={setMicrodataForm}
+        adding={microdataAdding}
+        error={microdataError}
+        onAdd={async (e: FormEvent) => {
+          e.preventDefault();
+          if (!microdataForm.url.trim() || !microdataForm.name.trim()) return;
+          setMicrodataAdding(true);
+          setMicrodataError(null);
+          try {
+            const res = await fetchAdmin("/api/admin/scrapers/sources/microdata", {
+              method: "POST",
+              body: JSON.stringify({
+                ...microdataForm,
+                defaultCategory: microdataForm.defaultCategory || undefined,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              setMicrodataError(data.error ?? "Failed to add");
+            } else {
+              setMicrodataForm(EMPTY_MICRODATA_FORM);
+              await load();
+            }
+          } catch {
+            setMicrodataError("Network error");
+          } finally {
+            setMicrodataAdding(false);
+          }
+        }}
+        onDelete={async (id: number) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, { method: "DELETE" });
+          await load();
+        }}
+        onToggle={async (id: number, isActive: boolean) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ isActive }),
+          });
+          await load();
+        }}
+      />
+
       {/* Run history */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">Run History</h2>
@@ -411,6 +510,206 @@ function LumaSubscriptions({
       ) : (
         <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
           No Luma calendars added yet. Paste an organizer URL above to get started.
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ============================================================
+// Microdata Sources sub-component
+// ============================================================
+
+function MicrodataSources({
+  sources,
+  form,
+  setForm,
+  adding,
+  error,
+  onAdd,
+  onDelete,
+  onToggle,
+}: {
+  sources: MicrodataSource[];
+  form: MicrodataForm;
+  setForm: (v: MicrodataForm) => void;
+  adding: boolean;
+  error: string | null;
+  onAdd: (e: FormEvent) => void;
+  onDelete: (id: number) => void;
+  onToggle: (id: number, isActive: boolean) => void;
+}) {
+  const update = (patch: Partial<MicrodataForm>) => setForm({ ...form, ...patch });
+  return (
+    <section>
+      <h2 className="mb-3 text-lg font-semibold">Microdata &amp; JSON-LD Sources</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Add any page that publishes Schema.org Event data — microdata
+        (<code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD
+        (<code className="rounded bg-muted px-1 text-xs">&lt;script type=&quot;application/ld+json&quot;&gt;</code>).
+        Fallback fields are used when the source doesn&apos;t carry that data (e.g. all Waag events are at the same venue).
+      </p>
+
+      {/* Add form */}
+      <form onSubmit={onAdd} className="mb-4 grid gap-2 rounded-lg border p-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+          URL
+          <Input
+            value={form.url}
+            onChange={(e) => update({ url: e.target.value })}
+            placeholder="https://example.org/events/"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Display name
+          <Input
+            value={form.name}
+            onChange={(e) => update({ name: e.target.value })}
+            placeholder="Waag Future Lab"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Extraction
+          <Select
+            value={form.extraction}
+            onChange={(e) => update({ extraction: e.target.value as "microdata" | "jsonld" })}
+            disabled={adding}
+          >
+            <option value="microdata">Microdata (itemprop)</option>
+            <option value="jsonld">JSON-LD (script tag)</option>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+          Itemtype / @type substring
+          <Input
+            value={form.itemtype}
+            onChange={(e) => update({ itemtype: e.target.value })}
+            placeholder="https://schema.org/Event"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Fallback city
+          <Input
+            value={form.cityName}
+            onChange={(e) => update({ cityName: e.target.value })}
+            placeholder="Amsterdam"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Fallback country (ISO-2)
+          <Input
+            value={form.countryCode}
+            onChange={(e) => update({ countryCode: e.target.value.toUpperCase().slice(0, 2) })}
+            placeholder="NL"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Fallback venue name
+          <Input
+            value={form.venueName}
+            onChange={(e) => update({ venueName: e.target.value })}
+            placeholder="Waag Futurelab"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Fallback venue address
+          <Input
+            value={form.venueAddress}
+            onChange={(e) => update({ venueAddress: e.target.value })}
+            placeholder="Nieuwmarkt 4, 1012 CR Amsterdam"
+            disabled={adding}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+          Default category
+          <Select
+            value={form.defaultCategory}
+            onChange={(e) => update({ defaultCategory: e.target.value })}
+            disabled={adding}
+          >
+            <option value="">— infer from title —</option>
+            {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </Select>
+        </label>
+        <div className="sm:col-span-2">
+          <Button type="submit" disabled={adding || !form.url.trim() || !form.name.trim()}>
+            {adding ? "Adding..." : "Add source"}
+          </Button>
+        </div>
+      </form>
+      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+
+      {/* Sources list */}
+      {sources.length > 0 ? (
+        <div className="overflow-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/50">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Name</th>
+                <th className="px-4 py-2 text-left font-medium">URL</th>
+                <th className="px-4 py-2 text-left font-medium">Extraction</th>
+                <th className="px-4 py-2 text-right font-medium">Events</th>
+                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
+                <th className="px-4 py-2 text-center font-medium">Active</th>
+                <th className="px-4 py-2 text-center font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr key={s.id} className="border-b last:border-0">
+                  <td className="px-4 py-2 font-medium">{s.name}</td>
+                  <td className="max-w-[280px] truncate px-4 py-2">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {s.url}
+                    </a>
+                  </td>
+                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                    {s.config?.extraction ?? "microdata"}
+                  </td>
+                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onToggle(s.id, !s.isActive)}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {s.isActive ? "Active" : "Paused"}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onDelete(s.id)}
+                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+          No microdata sources added yet. Add one above to start scraping.
         </div>
       )}
     </section>

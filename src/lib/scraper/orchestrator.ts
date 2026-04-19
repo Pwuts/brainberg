@@ -7,6 +7,7 @@ import { meetupScraper } from "./sources/meetup";
 import { eventbriteScraper } from "./sources/eventbrite";
 import { hackerCampsScraper } from "./sources/hacker-camps";
 import { lumaScraper } from "./sources/luma";
+import { microdataScraper } from "./sources/microdata";
 import { ingestEvents } from "./ingest";
 import type { Scraper, ScraperOptions, IngestStats, EventSource } from "./types";
 
@@ -16,6 +17,7 @@ const SCRAPERS: Record<string, Scraper> = {
   meetup: meetupScraper,
   eventbrite: eventbriteScraper,
   luma: lumaScraper,
+  microdata: microdataScraper,
   manual: hackerCampsScraper,
 };
 
@@ -82,7 +84,7 @@ export async function runAllScrapers(
   options?: ScraperOptions,
 ): Promise<Record<string, IngestStats>> {
   const results: Record<string, IngestStats> = {};
-  const order: EventSource[] = ["confs_tech", "dev_events", "meetup", "eventbrite", "luma", "manual"];
+  const order: EventSource[] = ["confs_tech", "dev_events", "meetup", "eventbrite", "luma", "microdata", "manual"];
 
   for (const source of order) {
     try {

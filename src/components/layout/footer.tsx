@@ -47,6 +47,7 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold">Community</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <li><Link href="/about" className="hover:text-foreground">About & Join the Network</Link></li>
               <li><Link href="/events/submit" className="hover:text-foreground">Submit Event</Link></li>
               <li><Link href="https://github.com/Pwuts/brainberg" className="hover:text-foreground" target="_blank" rel="noopener noreferrer">GitHub</Link></li>
             </ul>

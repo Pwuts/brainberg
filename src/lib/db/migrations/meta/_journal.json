@@ -57,6 +57,13 @@
       "when": 1776455405521,
       "tag": "0007_even_mantis",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776621665642,
+      "tag": "0008_glamorous_doctor_doom",
+      "breakpoints": true
     }
   ]
 }

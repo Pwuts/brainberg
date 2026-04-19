@@ -30,7 +30,7 @@ export const eventSizeEnum = pgEnum("event_size", [
 
 export const eventSourceEnum = pgEnum("event_source", [
   "manual", "community", "luma", "eventbrite", "meetup",
-  "confs_tech", "dev_events", "other",
+  "confs_tech", "dev_events", "microdata", "other",
 ]);
 
 export const userRoleEnum = pgEnum("user_role", [

@@ -4,6 +4,10 @@
 
 Brainberg is an open-source event aggregator for the European tech scene — think [Cerebral Valley](https://cerebralvalley.ai), but for all of Europe. Find AI meetups, startup conferences, hackathons, workshops, and more.
 
+## Publish your events on Brainberg
+
+Run a site or community that lists tech events? We can pull them in automatically if your site exposes structured data (JSON-LD, Schema.org microdata, RSS + JSON-LD, or iCal). See [**brainberg.eu/about**](https://brainberg.eu/about) for supported formats and the fields we use, then open an issue to get added.
+
 ## Features
 
 - 🌍 **40+ European countries** with city-level filtering
