@@ -113,9 +113,12 @@ export async function POST(request: NextRequest) {
             updates.eventType = result.eventType;
             typesChanged++;
           }
-          if (result.decision !== "approve") {
-            console.log(`[recategorize] Status: "${event.title}" → ${result.decision} (${result.reason})`);
-            updates.status = result.decision === "reject" ? "rejected" : "pending";
+          const newStatus =
+            result.decision === "reject" ? "rejected" :
+            result.decision === "pending" ? "pending" : "approved";
+          if (newStatus !== event.status) {
+            console.log(`[recategorize] Status: "${event.title}" ${event.status} → ${newStatus} (${result.reason})`);
+            updates.status = newStatus;
             statusesChanged++;
           }
           updates.moderatedByAI = true;
