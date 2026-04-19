@@ -66,7 +66,7 @@ Blockchain technology, DeFi, smart contracts, decentralized systems, crypto. Eve
 
 ### Entrepreneurship (`entrepreneurship`)
 
-Startups, product management, tech leadership, fundraising, growth, venture capital. Events about building and scaling tech businesses.
+Events for **tech founders, tech investors, and startup operators**: product management, tech leadership, fundraising, growth, venture capital. Generic executive or leadership content (C-suite retreats, MBA-style strategy) is only in scope when the audience is clearly the tech ecosystem.
 
 **Examples:** startup pitch night, ProductTank meetup, founder networking, tech leadership forum
 
@@ -114,6 +114,8 @@ Something is ambiguous. Use pending when:
 - It's a recurring event with a very generic title and no description
 
 **When in doubt, use pending rather than reject.** A human can quickly approve a pending event, but a rejected event might be lost.
+
+Concrete test: if you can plausibly imagine a European tech founder, engineer, or investor paying to attend, and you have no evidence the event is explicitly outside tech, use pending — not reject.
 
 ### Reject
 
