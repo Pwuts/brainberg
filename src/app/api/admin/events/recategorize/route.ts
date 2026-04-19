@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { isAdminAuthorized } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { events } from "@/lib/db/schema";
+import { events, cities, countries } from "@/lib/db/schema";
 import { resolveCategory, resolveEventType } from "@/lib/scraper/category-map";
 import { moderateEvent } from "@/lib/scraper/ai-moderate";
 import type { NormalizedEvent } from "@/lib/scraper/types";
@@ -44,9 +44,15 @@ export async function POST(request: NextRequest) {
         source: events.source,
         tags: events.tags,
         isOnline: events.isOnline,
-        cityName: events.venueName,
+        venueName: events.venueName,
+        venueAddress: events.venueAddress,
+        organizerName: events.organizerName,
+        cityName: cities.name,
+        countryCode: countries.code,
       })
       .from(events)
+      .leftJoin(cities, eq(events.cityId, cities.id))
+      .leftJoin(countries, eq(events.countryId, countries.id))
       .where(where);
 
     console.log(`[recategorize] Processing ${allEvents.length} events`);
@@ -86,6 +92,11 @@ export async function POST(request: NextRequest) {
           tags: event.tags ?? undefined,
           description: descParts.length > 0 ? descParts.join("\n\n") : undefined,
           isOnline: event.isOnline,
+          cityName: event.cityName ?? undefined,
+          countryCode: event.countryCode ?? undefined,
+          venueName: event.venueName ?? undefined,
+          venueAddress: event.venueAddress ?? undefined,
+          organizerName: event.organizerName ?? undefined,
           startsAt: new Date(),
           timezone: "UTC",
         };

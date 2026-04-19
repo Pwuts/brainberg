@@ -90,9 +90,9 @@ Valid event types: ${EVENT_TYPES.join(", ")}
 Rules:
 - If category and eventType from the scraper seem correct, set them to null (no override needed).
 - Only override when you're confident the scraper got it wrong.
-- "approve": clearly a tech event that fits the platform.
+- "approve": clearly an event that fits the platform.
 - "pending": probably fits but something is ambiguous — err on the side of pending over reject.
-- "reject": clearly not a fit (non-tech, spam, pure marketing, non-European in-person event).
+- "reject": clearly not a fit (not for our target audience, spam, pure marketing, non-European in-person event).
 - Respond ONLY with the JSON object, no other text.`;
 }
 
@@ -116,6 +116,16 @@ function buildEventPrompt(event: NormalizedEvent): string {
     parts.push(`Location: ${[event.cityName, event.countryCode].filter(Boolean).join(", ")}${event.isOnline ? " (+ online)" : ""}`);
   } else if (event.isOnline) {
     parts.push("Location: Online");
+  }
+
+  if (event.venueName) {
+    parts.push(`Venue: ${event.venueName}`);
+  }
+  if (event.venueAddress) {
+    parts.push(`Venue address: ${event.venueAddress}`);
+  }
+  if (event.organizerName) {
+    parts.push(`Organizer: ${event.organizerName}`);
   }
 
   if (event.description) {
