@@ -3,6 +3,7 @@ import { cities, countries, events } from "@/lib/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { MEETUP_TOPIC_MAP, resolveCategoryFromTags } from "../category-map";
 import { stripHtml, truncate } from "../html-utils";
+import { isEuropean } from "../european-countries";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventSize } from "../types";
 
 /** Load all cities from the DB with their country codes for Meetup search. */
@@ -55,6 +56,13 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
 
   const endsAt = ev.endTime ? new Date(ev.endTime) : undefined;
   const isOnline = ev.eventType === "ONLINE";
+
+  // Meetup's city-search pages occasionally return events from neighbouring
+  // groups outside Europe. Skip in-person events whose venue country is known
+  // and non-European so they don't leak into the platform.
+  if (!isOnline && ev.venue?.country && !isEuropean(ev.venue.country)) {
+    return null;
+  }
   const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
   const description = ev.description ? stripHtml(ev.description) : undefined;
   const category = resolveCategoryFromTags(topicUrlkeys, MEETUP_TOPIC_MAP, ev.title);
