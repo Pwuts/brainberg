@@ -103,7 +103,7 @@ const EVENTS: HackerCampEntry[] = [
     title: "FSCK 2026 – Episode IV",
     description: "Hacking and networking event featuring talks, Hackcenter, and film screening. Organized by CCC affiliates.",
     startsAt: "2026-05-08T16:00:00+02:00",
-    endsAt: "2026-05-10T16:00:00+02:00",
+    endsAt: "2026-05-10T18:00:00+02:00",
     cityName: "Backnang",
     countryCode: "DE",
     venueName: "Kino Universum",

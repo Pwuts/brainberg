@@ -96,27 +96,24 @@ export function formatEventDate(
   timezone: string
 ): string {
   const start = new Date(startsAt);
-  const dateStr = start.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: timezone,
-  });
-  const timeStr = start.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: timezone,
-  });
+  const dateOpts = { weekday: "short", day: "numeric", month: "short", timeZone: timezone } as const;
+  const timeOpts = { hour: "2-digit", minute: "2-digit", timeZone: timezone } as const;
 
-  if (endsAt) {
-    const end = new Date(endsAt);
-    const endTimeStr = end.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: timezone,
-    });
-    return `${dateStr} · ${timeStr} – ${endTimeStr}`;
+  const startDateStr = start.toLocaleDateString("en-GB", dateOpts);
+  const startTimeStr = start.toLocaleTimeString("en-GB", timeOpts);
+
+  if (!endsAt) return `${startDateStr} · ${startTimeStr}`;
+
+  const end = new Date(endsAt);
+  const endTimeStr = end.toLocaleTimeString("en-GB", timeOpts);
+
+  // Single-day event: same weekday+day+month in the event's timezone
+  const dayKey = (d: Date) =>
+    d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric", timeZone: timezone });
+  if (dayKey(start) === dayKey(end)) {
+    return `${startDateStr} · ${startTimeStr} – ${endTimeStr}`;
   }
 
-  return `${dateStr} · ${timeStr}`;
+  const endDateStr = end.toLocaleDateString("en-GB", dateOpts);
+  return `${startDateStr} ${startTimeStr} – ${endDateStr} ${endTimeStr}`;
 }
