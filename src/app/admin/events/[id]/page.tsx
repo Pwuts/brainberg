@@ -226,7 +226,10 @@ export default function AdminEventDetailPage({
                 <Input
                   type="datetime-local"
                   defaultValue={toLocalInputValue(ev.startsAt as string)}
-                  onBlur={(e) => e.target.value && patchField("startsAt", new Date(e.target.value).toISOString())}
+                  onBlur={(e) => {
+                    if (!e.target.value || e.target.value === e.target.defaultValue) return;
+                    patchField("startsAt", new Date(e.target.value).toISOString());
+                  }}
                   className="h-8 w-auto text-sm"
                 />
               </Row>
@@ -234,7 +237,10 @@ export default function AdminEventDetailPage({
                 <Input
                   type="datetime-local"
                   defaultValue={ev.endsAt ? toLocalInputValue(ev.endsAt as string) : ""}
-                  onBlur={(e) => e.target.value ? patchField("endsAt", new Date(e.target.value).toISOString()) : undefined}
+                  onBlur={(e) => {
+                    if (e.target.value === e.target.defaultValue) return;
+                    patchField("endsAt", e.target.value ? new Date(e.target.value).toISOString() : null);
+                  }}
                   className="h-8 w-auto text-sm"
                 />
               </Row>
@@ -270,7 +276,10 @@ export default function AdminEventDetailPage({
               <Row label="Venue">
                 <Input
                   defaultValue={String(ev.venueName ?? "")}
-                  onBlur={(e) => patchField("venueName", e.target.value)}
+                  onBlur={(e) => {
+                    if (e.target.value === e.target.defaultValue) return;
+                    patchField("venueName", e.target.value || null);
+                  }}
                   placeholder="Venue name"
                   className="h-8 w-auto text-sm"
                 />
