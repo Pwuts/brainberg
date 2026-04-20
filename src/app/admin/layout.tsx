@@ -14,9 +14,9 @@ export default function AdminLayout({
 }) {
   return (
     <AdminAuthProvider>
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex flex-col md:h-[calc(100vh-4rem)] md:flex-row">
         <AdminSidebar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 p-4 md:overflow-auto md:p-6">
           <Suspense>{children}</Suspense>
         </main>
       </div>

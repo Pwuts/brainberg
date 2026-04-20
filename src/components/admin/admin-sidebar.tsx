@@ -15,12 +15,12 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r bg-background">
-      <div className="flex h-16 items-center gap-2 border-b px-4">
+    <aside className="flex shrink-0 flex-row border-b bg-background md:w-56 md:flex-col md:border-b-0 md:border-r">
+      <div className="hidden h-16 items-center gap-2 border-b px-4 md:flex">
         <Zap className="h-5 w-5 text-primary" />
         <span className="font-semibold">Admin</span>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex flex-1 gap-1 overflow-x-auto p-2 md:flex-col md:space-y-1 md:gap-0 md:overflow-visible md:p-3">
         {NAV_ITEMS.map((item) => {
           const active =
             item.href === "/admin"
@@ -31,7 +31,7 @@ export function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors md:gap-3",
                 active
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",

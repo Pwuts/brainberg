@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback, FormEvent } from "react";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { SOURCE_LABELS, CATEGORY_LABELS } from "@/lib/utils";
 
 interface LumaSource {
@@ -86,10 +87,12 @@ export default function AdminScrapersPage() {
   const [lumaInput, setLumaInput] = useState("");
   const [lumaAdding, setLumaAdding] = useState(false);
   const [lumaError, setLumaError] = useState<string | null>(null);
+  const [lumaDialogOpen, setLumaDialogOpen] = useState(false);
   const [microdataSources, setMicrodataSources] = useState<MicrodataSource[]>([]);
   const [microdataForm, setMicrodataForm] = useState<MicrodataForm>(EMPTY_MICRODATA_FORM);
   const [microdataAdding, setMicrodataAdding] = useState(false);
   const [microdataError, setMicrodataError] = useState<string | null>(null);
+  const [microdataDialogOpen, setMicrodataDialogOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
 
   const load = useCallback(async () => {
@@ -150,10 +153,29 @@ export default function AdminScrapersPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-6xl space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Scrapers</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={runAll} disabled={running !== null}>
+            {running === "all" ? "Running All..." : "Run All Scrapers"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const res = await fetchAdmin("/api/admin/events/recategorize", {
+                method: "POST",
+                body: JSON.stringify({}),
+              });
+              const data = await res.json();
+              const mode = data.mode === "ai" ? "AI" : "regex";
+              const parts = [`${data.categoriesChanged} categories`, `${data.typesChanged} types`];
+              if (data.statusesChanged) parts.push(`${data.statusesChanged} statuses`);
+              alert(`[${mode}] ${parts.join(", ")} updated (${data.total} events, ${data.skippedLocked} locked)`);
+            }}
+          >
+            Re-categorize All
+          </Button>
           <Button
             variant="outline"
             disabled={backfilling}
@@ -177,25 +199,6 @@ export default function AdminScrapersPage() {
             }}
           >
             {backfilling ? "Backfilling..." : "Backfill Eventbrite Descriptions"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const res = await fetchAdmin("/api/admin/events/recategorize", {
-                method: "POST",
-                body: JSON.stringify({}),
-              });
-              const data = await res.json();
-              const mode = data.mode === "ai" ? "AI" : "regex";
-              const parts = [`${data.categoriesChanged} categories`, `${data.typesChanged} types`];
-              if (data.statusesChanged) parts.push(`${data.statusesChanged} statuses`);
-              alert(`[${mode}] ${parts.join(", ")} updated (${data.total} events, ${data.skippedLocked} locked)`);
-            }}
-          >
-            Re-categorize All
-          </Button>
-          <Button onClick={runAll} disabled={running !== null}>
-            {running === "all" ? "Running All..." : "Run All Scrapers"}
           </Button>
         </div>
       </div>
@@ -257,6 +260,29 @@ export default function AdminScrapersPage() {
       {/* Luma Subscriptions */}
       <LumaSubscriptions
         sources={lumaSources}
+        onAddClick={() => {
+          setLumaError(null);
+          setLumaDialogOpen(true);
+        }}
+        onDelete={async (id: number) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, { method: "DELETE" });
+          await load();
+        }}
+        onToggle={async (id: number, isActive: boolean) => {
+          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ isActive }),
+          });
+          await load();
+        }}
+      />
+
+      <LumaAddDialog
+        open={lumaDialogOpen}
+        onClose={() => {
+          setLumaDialogOpen(false);
+          setLumaError(null);
+        }}
         input={lumaInput}
         setInput={setLumaInput}
         adding={lumaAdding}
@@ -276,6 +302,7 @@ export default function AdminScrapersPage() {
               setLumaError(data.error ?? "Failed to add");
             } else {
               setLumaInput("");
+              setLumaDialogOpen(false);
               await load();
             }
           } catch {
@@ -283,6 +310,15 @@ export default function AdminScrapersPage() {
           } finally {
             setLumaAdding(false);
           }
+        }}
+      />
+
+      {/* Microdata Sources */}
+      <MicrodataSources
+        sources={microdataSources}
+        onAddClick={() => {
+          setMicrodataError(null);
+          setMicrodataDialogOpen(true);
         }}
         onDelete={async (id: number) => {
           await fetchAdmin(`/api/admin/scrapers/sources/${id}`, { method: "DELETE" });
@@ -297,9 +333,12 @@ export default function AdminScrapersPage() {
         }}
       />
 
-      {/* Microdata Sources */}
-      <MicrodataSources
-        sources={microdataSources}
+      <MicrodataAddDialog
+        open={microdataDialogOpen}
+        onClose={() => {
+          setMicrodataDialogOpen(false);
+          setMicrodataError(null);
+        }}
         form={microdataForm}
         setForm={setMicrodataForm}
         adding={microdataAdding}
@@ -322,6 +361,7 @@ export default function AdminScrapersPage() {
               setMicrodataError(data.error ?? "Failed to add");
             } else {
               setMicrodataForm(EMPTY_MICRODATA_FORM);
+              setMicrodataDialogOpen(false);
               await load();
             }
           } catch {
@@ -329,17 +369,6 @@ export default function AdminScrapersPage() {
           } finally {
             setMicrodataAdding(false);
           }
-        }}
-        onDelete={async (id: number) => {
-          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, { method: "DELETE" });
-          await load();
-        }}
-        onToggle={async (id: number, isActive: boolean) => {
-          await fetchAdmin(`/api/admin/scrapers/sources/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ isActive }),
-          });
-          await load();
         }}
       />
 
@@ -406,46 +435,27 @@ export default function AdminScrapersPage() {
 
 function LumaSubscriptions({
   sources,
-  input,
-  setInput,
-  adding,
-  error,
-  onAdd,
+  onAddClick,
   onDelete,
   onToggle,
 }: {
   sources: LumaSource[];
-  input: string;
-  setInput: (v: string) => void;
-  adding: boolean;
-  error: string | null;
-  onAdd: (e: FormEvent) => void;
+  onAddClick: () => void;
   onDelete: (id: number) => void;
   onToggle: (id: number, isActive: boolean) => void;
 }) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold">Luma Subscriptions</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Luma Subscriptions</h2>
+        <Button size="sm" onClick={onAddClick}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Calendar
+        </Button>
+      </div>
       <p className="mb-4 text-sm text-muted-foreground">
         Add Luma organizer calendars to automatically import their events.
       </p>
-
-      {/* Add form */}
-      <form onSubmit={onAdd} className="mb-4 flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="luma.com/organizer-slug"
-          className="max-w-sm"
-          disabled={adding}
-        />
-        <Button type="submit" disabled={adding || !input.trim()}>
-          {adding ? "Adding..." : "Add Calendar"}
-        </Button>
-      </form>
-      {error && (
-        <p className="mb-4 text-sm text-red-600">{error}</p>
-      )}
 
       {/* Sources list */}
       {sources.length > 0 ? (
@@ -509,10 +519,56 @@ function LumaSubscriptions({
         </div>
       ) : (
         <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-          No Luma calendars added yet. Paste an organizer URL above to get started.
+          No Luma calendars added yet. Click {'"'}Add Calendar{'"'} to get started.
         </div>
       )}
     </section>
+  );
+}
+
+function LumaAddDialog({
+  open,
+  onClose,
+  input,
+  setInput,
+  adding,
+  error,
+  onAdd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  input: string;
+  setInput: (v: string) => void;
+  adding: boolean;
+  error: string | null;
+  onAdd: (e: FormEvent) => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Add Luma Calendar"
+      description="Paste a Luma organizer URL to start importing their events."
+    >
+      <form onSubmit={onAdd} className="space-y-4">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="luma.com/organizer-slug"
+          disabled={adding}
+          autoFocus
+        />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={adding}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={adding || !input.trim()}>
+            {adding ? "Adding..." : "Add Calendar"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -522,27 +578,24 @@ function LumaSubscriptions({
 
 function MicrodataSources({
   sources,
-  form,
-  setForm,
-  adding,
-  error,
-  onAdd,
+  onAddClick,
   onDelete,
   onToggle,
 }: {
   sources: MicrodataSource[];
-  form: MicrodataForm;
-  setForm: (v: MicrodataForm) => void;
-  adding: boolean;
-  error: string | null;
-  onAdd: (e: FormEvent) => void;
+  onAddClick: () => void;
   onDelete: (id: number) => void;
   onToggle: (id: number, isActive: boolean) => void;
 }) {
-  const update = (patch: Partial<MicrodataForm>) => setForm({ ...form, ...patch });
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold">Microdata &amp; JSON-LD Sources</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Microdata &amp; JSON-LD Sources</h2>
+        <Button size="sm" onClick={onAddClick}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Source
+        </Button>
+      </div>
       <p className="mb-4 text-sm text-muted-foreground">
         Add any page that publishes Schema.org Event data — microdata
         (<code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD
@@ -550,8 +603,109 @@ function MicrodataSources({
         Fallback fields are used when the source doesn&apos;t carry that data (e.g. all Waag events are at the same venue).
       </p>
 
-      {/* Add form */}
-      <form onSubmit={onAdd} className="mb-4 grid gap-2 rounded-lg border p-4 sm:grid-cols-2">
+      {/* Sources list */}
+      {sources.length > 0 ? (
+        <div className="overflow-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/50">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Name</th>
+                <th className="px-4 py-2 text-left font-medium">URL</th>
+                <th className="px-4 py-2 text-left font-medium">Extraction</th>
+                <th className="px-4 py-2 text-right font-medium">Events</th>
+                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
+                <th className="px-4 py-2 text-center font-medium">Active</th>
+                <th className="px-4 py-2 text-center font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr key={s.id} className="border-b last:border-0">
+                  <td className="px-4 py-2 font-medium">{s.name}</td>
+                  <td className="max-w-[280px] truncate px-4 py-2">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {s.url}
+                    </a>
+                  </td>
+                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                    {s.config?.extraction ?? "microdata"}
+                  </td>
+                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onToggle(s.id, !s.isActive)}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {s.isActive ? "Active" : "Paused"}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <button
+                      onClick={() => onDelete(s.id)}
+                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+          No microdata sources added yet. Click {'"'}Add Source{'"'} to start scraping.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MicrodataAddDialog({
+  open,
+  onClose,
+  form,
+  setForm,
+  adding,
+  error,
+  onAdd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  form: MicrodataForm;
+  setForm: (v: MicrodataForm) => void;
+  adding: boolean;
+  error: string | null;
+  onAdd: (e: FormEvent) => void;
+}) {
+  const update = (patch: Partial<MicrodataForm>) => setForm({ ...form, ...patch });
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Add Microdata / JSON-LD Source"
+      description={
+        <>
+          Add any page that publishes Schema.org Event data — microdata
+          (<code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD
+          (<code className="rounded bg-muted px-1 text-xs">&lt;script type=&quot;application/ld+json&quot;&gt;</code>).
+          Fallback fields are used when the source doesn&apos;t carry that data.
+        </>
+      }
+      className="max-w-2xl"
+    >
+      <form onSubmit={onAdd} className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
           URL
           <Input
@@ -559,6 +713,7 @@ function MicrodataSources({
             onChange={(e) => update({ url: e.target.value })}
             placeholder="https://example.org/events/"
             disabled={adding}
+            autoFocus
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
@@ -639,79 +794,16 @@ function MicrodataSources({
             ))}
           </Select>
         </label>
-        <div className="sm:col-span-2">
+        {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+        <div className="flex justify-end gap-2 sm:col-span-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={adding}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={adding || !form.url.trim() || !form.name.trim()}>
             {adding ? "Adding..." : "Add source"}
           </Button>
         </div>
       </form>
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-
-      {/* Sources list */}
-      {sources.length > 0 ? (
-        <div className="overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium">Name</th>
-                <th className="px-4 py-2 text-left font-medium">URL</th>
-                <th className="px-4 py-2 text-left font-medium">Extraction</th>
-                <th className="px-4 py-2 text-right font-medium">Events</th>
-                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
-                <th className="px-4 py-2 text-center font-medium">Active</th>
-                <th className="px-4 py-2 text-center font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.id} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">{s.name}</td>
-                  <td className="max-w-[280px] truncate px-4 py-2">
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {s.url}
-                    </a>
-                  </td>
-                  <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {s.config?.extraction ?? "microdata"}
-                  </td>
-                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onToggle(s.id, !s.isActive)}
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {s.isActive ? "Active" : "Paused"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onDelete(s.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                      title="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-          No microdata sources added yet. Add one above to start scraping.
-        </div>
-      )}
-    </section>
+    </Dialog>
   );
 }
