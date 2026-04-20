@@ -1,13 +1,15 @@
 import { Suspense } from "react";
 import { MapFilters } from "@/components/map/map-filters";
 import { MapShell } from "./map-shell";
+import { buildMetadata } from "@/lib/metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: "Map View",
   description: "See tech events on a map of Europe",
-};
+  path: "/map",
+});
 
 export default function MapPage() {
   return (

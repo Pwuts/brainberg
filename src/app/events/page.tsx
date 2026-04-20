@@ -8,15 +8,17 @@ export const dynamic = "force-dynamic";
 import { EventFilters } from "@/components/events/event-filters";
 import { EventSearch } from "@/components/events/event-search";
 import { InfiniteEventGrid } from "@/components/events/infinite-event-grid";
+import { buildMetadata } from "@/lib/metadata";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>;
 }
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: "Browse Events",
   description: "Find and filter tech events across Europe",
-};
+  path: "/events",
+});
 
 export default async function BrowseEventsPage({ searchParams }: PageProps) {
   const params = await searchParams;

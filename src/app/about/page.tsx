@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { Github } from "lucide-react";
 
-export const metadata = {
+import { buildMetadata } from "@/lib/metadata";
+
+export const metadata = buildMetadata({
   title: "About",
   description: "What Brainberg is and how to get your event agenda included.",
-};
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

@@ -15,6 +15,8 @@ export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getEventBySlug } from "@/lib/events";
+import { buildMetadata, SITE_URL } from "@/lib/metadata";
+import { ShareEvent } from "@/components/events/share-event";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import {
@@ -40,18 +42,20 @@ export async function generateMetadata({
 
   const { event, city, country } = result;
   const location = [city?.name, country?.name].filter(Boolean).join(", ");
+  const description =
+    event.description?.slice(0, 160) ?? `${event.title} — ${location}`;
 
-  return {
+  // When the event has no imageUrl, pass `null` so buildMetadata leaves
+  // the image unset — Next.js then serves our route-segment
+  // opengraph-image.tsx fallback for this event.
+  return buildMetadata({
     title: event.title,
-    description:
-      event.description?.slice(0, 160) ??
-      `${event.title} — ${location}`,
-    openGraph: {
-      title: event.title,
-      description: event.description?.slice(0, 160) ?? undefined,
-      ...(event.imageUrl && { images: [event.imageUrl] }),
-    },
-  };
+    description,
+    image: event.imageUrl ?? null,
+    imageAlt: event.imageUrl ? event.title : undefined,
+    path: `/events/${event.slug}`,
+    type: "article",
+  });
 }
 
 export default async function EventPage({ params }: PageProps) {
@@ -101,10 +105,25 @@ export default async function EventPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Title */}
-      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-        {event.title}
-      </h1>
+      {/* Title + share — title takes full width on mobile, share moves to
+          the action-buttons row below. On sm+ they sit side-by-side. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <h1 className="text-3xl font-bold tracking-tight sm:flex-1 sm:text-4xl">
+          {event.title}
+        </h1>
+        <div className="hidden shrink-0 sm:block sm:pt-1">
+          <ShareEvent
+            url={`${SITE_URL}/events/${event.slug}`}
+            title={event.title}
+            subtitle={[
+              formatEventDate(event.startsAt, event.endsAt, event.timezone),
+              city?.name ?? (event.isOnline ? "Online" : null),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          />
+        </div>
+      </div>
 
       {/* Meta info */}
       <div className="mt-4 grid gap-3 text-muted-foreground sm:grid-cols-2">
@@ -155,6 +174,20 @@ export default async function EventPage({ params }: PageProps) {
             <Button variant="outline">Register</Button>
           </a>
         )}
+        {/* Share button only in the action row on mobile; desktop shows it
+            in the title row above. */}
+        <div className="sm:hidden">
+          <ShareEvent
+            url={`${SITE_URL}/events/${event.slug}`}
+            title={event.title}
+            subtitle={[
+              formatEventDate(event.startsAt, event.endsAt, event.timezone),
+              city?.name ?? (event.isOnline ? "Online" : null),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          />
+        </div>
       </div>
 
       {/* Description */}

@@ -38,6 +38,15 @@ pnpm dev        # Start dev server
   `extractJSON`, `fetchHTML`, `parseURL`, `getAPIKey` — not
   `extractJson`, `fetchHtml`, etc. The single exception is
   first-character lowercasing (`jsonLd`, `htmlToMarkdown`).
+- **Reuse shared components instead of reimplementing them.** Check
+  [`src/components/ui/`](src/components/ui/) before writing a raw HTML
+  button, input, select, card, or badge. A bespoke `<button
+  className="h-9 rounded-md border …">` will visibly drift from
+  everything next to it as soon as someone changes the shared styles
+  (see: the share button on the event detail page shipped with the
+  wrong height because it bypassed `Button`). If a shared component is
+  close but not quite right, extend it with a new variant rather than
+  forking.
 
 ## Design principle: self-correcting ingest
 

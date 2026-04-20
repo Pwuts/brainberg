@@ -1,7 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata = { title: "Calendar View" };
+export const metadata = buildMetadata({
+  title: "Calendar View",
+  description:
+    "Upcoming tech events across Europe in a month-at-a-glance calendar.",
+  path: "/calendar",
+});
 
 export default function CalendarPage() {
   return (

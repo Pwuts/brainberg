@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { buildMetadata, SITE_METADATA_BASE } from "@/lib/metadata";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,26 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://brainberg.eu"),
+  metadataBase: SITE_METADATA_BASE,
+  ...buildMetadata({
+    title: "Brainberg — AI & Tech Events Across Europe",
+    description:
+      "Discover AI meetups, tech conferences, hackathons, and startup events across Europe. Filter by country, category, size, and date.",
+    useTemplate: false,
+    path: "/",
+  }),
   title: {
     default: "Brainberg — AI & Tech Events Across Europe",
     template: "%s | Brainberg",
-  },
-  description:
-    "Discover AI meetups, tech conferences, hackathons, and startup events across Europe. Filter by country, category, size, and date.",
-  openGraph: {
-    title: "Brainberg — AI & Tech Events Across Europe",
-    description:
-      "Discover AI meetups, tech conferences, hackathons, and startup events across Europe.",
-    type: "website",
-    siteName: "Brainberg",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Brainberg — AI & Tech Events Across Europe",
-    description:
-      "Discover AI meetups, tech conferences, hackathons, and startup events across Europe.",
   },
 };
 

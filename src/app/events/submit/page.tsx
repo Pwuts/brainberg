@@ -1,7 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Send } from "lucide-react";
+import { buildMetadata } from "@/lib/metadata";
 
-export const metadata = { title: "Submit an Event" };
+export const metadata = buildMetadata({
+  title: "Submit an Event",
+  description:
+    "Know a tech event in Europe we don't have yet? Submit it to Brainberg.",
+  path: "/events/submit",
+});
 
 export default function SubmitEventPage() {
   return (
