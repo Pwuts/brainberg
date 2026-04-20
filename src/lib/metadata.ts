@@ -51,34 +51,36 @@ export function buildMetadata(input: BuildMetadataInput): Metadata {
 
   // Resolve image fallback semantics:
   //   undefined → root OG image
-  //   null      → leave images unset (let file-convention take over)
+  //   null      → omit `images` entirely so Next.js's route-segment
+  //               opengraph-image.tsx (if any) takes over
   //   string    → explicit image
   const resolvedImage: string | null =
     image === undefined ? DEFAULT_OG_IMAGE : image;
-  const images = resolvedImage
-    ? [{ url: resolvedImage, alt: imageAlt ?? title }]
-    : undefined;
-  const twitterImages = resolvedImage ? [resolvedImage] : undefined;
+
+  const openGraph: NonNullable<Metadata["openGraph"]> = {
+    title,
+    description,
+    url,
+    siteName: SITE_NAME,
+    type,
+    locale: "en_US",
+  };
+  const twitter: NonNullable<Metadata["twitter"]> = {
+    card: "summary_large_image",
+    title,
+    description,
+  };
+  if (resolvedImage) {
+    openGraph.images = [{ url: resolvedImage, alt: imageAlt ?? title }];
+    twitter.images = [resolvedImage];
+  }
 
   return {
     title: useTemplate ? title : { absolute: title },
     description,
     alternates: path ? { canonical: url } : undefined,
-    openGraph: {
-      title,
-      description,
-      url,
-      siteName: SITE_NAME,
-      type,
-      locale: "en_US",
-      images,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: twitterImages,
-    },
+    openGraph,
+    twitter,
   };
 }
 
