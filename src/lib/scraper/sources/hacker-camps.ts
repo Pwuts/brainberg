@@ -1,4 +1,4 @@
-import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
+import type { EventCategory, NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 /**
  * Curated list of European hacker camps, maker events, and community congresses.
@@ -24,6 +24,7 @@ interface HackerCampEntry {
   venueAddress?: string;
   websiteUrl: string;
   registrationUrl?: string;
+  category?: EventCategory; // defaults to "hacker_maker"
   size?: "small" | "medium" | "large" | "major";
   isFree?: boolean;
   priceFrom?: number;
@@ -155,6 +156,55 @@ const EVENTS: HackerCampEntry[] = [
     tags: ["CCC", "hacker camp", "community"],
   },
 
+  // ── Infosec / BSides-style conferences ─────────────────────
+  {
+    title: "Hack Glasgow 2026",
+    description: "One-day security conference at Platform, Glasgow. Two parallel speaking tracks, villages, sponsor area and an afterparty. Capacity ~400 attendees. Organised by Glasgow's infosec community.",
+    startsAt: "2026-04-25T09:00:00+01:00",
+    endsAt: "2026-04-25T23:30:00+01:00",
+    cityName: "Glasgow",
+    countryCode: "GB",
+    venueName: "Platform",
+    venueAddress: "253 Argyle Street, Glasgow G2 8DL",
+    websiteUrl: "https://hackglasgow.live/",
+    registrationUrl: "https://www.eventbrite.co.uk/e/hack-glasgow-2026-tickets-1446036587359",
+    category: "security",
+    size: "small",
+    isFree: false,
+    tags: ["security", "infosec", "BSides-style", "community"],
+  },
+  {
+    title: "BSides Luxembourg 2026",
+    description: "Community-driven cybersecurity conference in Belval, Luxembourg. Workshops on May 6, talks across May 7–8, with tracks covering offensive security, defensive tooling, research and policy.",
+    startsAt: "2026-05-06T09:00:00+02:00",
+    endsAt: "2026-05-08T18:00:00+02:00",
+    cityName: "Esch-sur-Alzette",
+    countryCode: "LU",
+    venueName: "Digital Learning Hub Luxembourg",
+    venueAddress: "14 Porte de France, L-4360 Esch-Belval",
+    websiteUrl: "https://2026.bsides.lu/",
+    registrationUrl: "https://pretix.eu/BSidesLux/2026/",
+    category: "security",
+    size: "medium",
+    isFree: false,
+    currency: "EUR",
+    tags: ["security", "infosec", "BSides"],
+  },
+  {
+    title: "No Hat 2026",
+    description: "Italian computer security conference organised by non-profit Berghem-in-the-Middle, now in its 8th edition. Held entirely in English with four parallel tracks of technical and research-oriented talks and workshops.",
+    startsAt: "2026-10-10T09:00:00+02:00",
+    endsAt: "2026-10-10T19:00:00+02:00",
+    cityName: "Bergamo",
+    countryCode: "IT",
+    venueName: "Centro Congressi Giovanni XXIII",
+    venueAddress: "Viale Papa Giovanni XXIII 106, Bergamo",
+    websiteUrl: "https://www.nohat.it/",
+    category: "security",
+    size: "medium",
+    tags: ["security", "infosec", "research"],
+  },
+
   // ── Maker events ────────────────────────────────────────────
   {
     title: "Maker Faire Hannover 2026",
@@ -189,14 +239,14 @@ export const hackerCampsScraper: Scraper = {
         title: entry.title,
         description: entry.description,
         shortDescription: entry.description.slice(0, 200) + "…",
-        category: "hacker_maker",
+        category: entry.category ?? "hacker_maker",
         eventType: "conference",
         size: entry.size,
         tags: entry.tags,
         startsAt,
         endsAt,
         timezone: "UTC",
-        isMultiDay: true,
+        isMultiDay: startsAt.toDateString() !== endsAt.toDateString(),
         cityName: entry.cityName,
         countryCode: entry.countryCode,
         venueName: entry.venueName,
