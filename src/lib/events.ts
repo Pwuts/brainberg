@@ -378,8 +378,25 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
   return results as MapEvent[];
 }
 
+/**
+ * Turn user input into a prefix-matching `to_tsquery` expression —
+ * `"ds rott"` becomes `"ds:* & rott:*"` so partial words match
+ * (e.g. "rott" hits "Rotterdam"). Strips `to_tsquery`'s operator
+ * characters so arbitrary input can't break the query.
+ */
+function toPrefixTsQuery(query: string): string {
+  return query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map((token) => `${token}:*`)
+    .join(" & ");
+}
+
 export async function searchEvents(query: string, autocomplete = false) {
   const limit = autocomplete ? 8 : 20;
+  const tsQuery = toPrefixTsQuery(query);
+  if (!tsQuery) return autocomplete ? { suggestions: [] } : { results: [] };
 
   if (autocomplete) {
     const results = await db
@@ -399,10 +416,10 @@ export async function searchEvents(query: string, autocomplete = false) {
         and(
           eq(events.status, "approved"),
           gte(events.startsAt, new Date()),
-          sql`${events.searchVector} @@ plainto_tsquery('english', ${query})`,
+          sql`${events.searchVector} @@ to_tsquery('english', ${tsQuery})`,
         )
       )
-      .orderBy(sql`ts_rank(${events.searchVector}, plainto_tsquery('english', ${query})) DESC`)
+      .orderBy(sql`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery})) DESC`)
       .limit(limit);
 
     return { suggestions: results };
@@ -413,8 +430,8 @@ export async function searchEvents(query: string, autocomplete = false) {
       event: publicEventColumns,
       city: cities,
       country: countries,
-      rank: sql<number>`ts_rank(${events.searchVector}, plainto_tsquery('english', ${query}))`.as("rank"),
-      headline: sql<string>`ts_headline('english', ${events.title}, plainto_tsquery('english', ${query}))`.as("headline"),
+      rank: sql<number>`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery}))`.as("rank"),
+      headline: sql<string>`ts_headline('english', ${events.title}, to_tsquery('english', ${tsQuery}))`.as("headline"),
     })
     .from(events)
     .leftJoin(cities, eq(events.cityId, cities.id))
@@ -422,7 +439,7 @@ export async function searchEvents(query: string, autocomplete = false) {
     .where(
       and(
         eq(events.status, "approved"),
-        sql`${events.searchVector} @@ plainto_tsquery('english', ${query})`,
+        sql`${events.searchVector} @@ to_tsquery('english', ${tsQuery})`,
       )
     )
     .orderBy(sql`rank DESC`)
