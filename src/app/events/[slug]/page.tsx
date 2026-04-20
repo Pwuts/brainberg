@@ -195,7 +195,7 @@ export default async function EventPage({ params }: PageProps) {
         <Card className="mt-8">
           <CardContent className="p-6">
             <h2 className="mb-3 text-lg font-semibold">About this event</h2>
-            <div className="prose prose-sm max-w-none text-muted-foreground">
+            <div className="prose prose-sm max-w-none text-muted-foreground prose-hr:my-[1.4em]">
               <Markdown remarkPlugins={[remarkBreaks]}>{event.description}</Markdown>
             </div>
           </CardContent>
