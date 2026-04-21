@@ -107,6 +107,51 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
   };
 }
 
+const MEETUP_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml",
+};
+
+/**
+ * Fetch and normalize Meetup events for a single (city, country) pair.
+ * Exported so admin tooling (e.g. city preview) can invoke a single-city
+ * query without triggering the full scraper loop or DB ingestion.
+ */
+export async function fetchMeetupCity(
+  cityName: string,
+  countryCode: string,
+  options?: { dateFrom?: Date; dateTo?: Date },
+): Promise<NormalizedEvent[]> {
+  const locationParam = `${countryCode.toLowerCase()}--${cityName}`;
+  const searchUrl = `https://www.meetup.com/find/?location=${encodeURIComponent(locationParam)}&source=EVENTS&eventType=upcoming&categoryId=546`;
+
+  let html: string;
+  try {
+    const res = await fetch(searchUrl, { headers: MEETUP_HEADERS });
+    if (!res.ok) {
+      console.warn(`[meetup] Failed to fetch ${cityName}: ${res.status}`);
+      return [];
+    }
+    html = await res.text();
+  } catch (err) {
+    console.warn(`[meetup] Error fetching ${cityName}:`, err);
+    return [];
+  }
+
+  const out: NormalizedEvent[] = [];
+  for (const ev of extractEventsFromHtml(html)) {
+    const normalized = normalizeMeetupEvent(ev);
+    if (!normalized) continue;
+    if (options?.dateFrom && normalized.startsAt < options.dateFrom) continue;
+    if (options?.dateTo && normalized.startsAt > options.dateTo) continue;
+    if (!normalized.cityName) normalized.cityName = cityName;
+    normalized.isHybrid = !normalized.isOnline && !!ev.eventUrl?.includes("online");
+    out.push(normalized);
+  }
+  return out;
+}
+
 /** Fetch and normalize a single Meetup event page by URL. */
 export async function scrapeMeetupEvent(url: string): Promise<NormalizedEvent | null> {
   let parsed: URL;
@@ -118,12 +163,7 @@ export async function scrapeMeetupEvent(url: string): Promise<NormalizedEvent | 
   if (parsed.protocol !== "https:") return null;
   if (parsed.hostname !== "www.meetup.com" && parsed.hostname !== "meetup.com") return null;
 
-  const res = await fetch(parsed.toString(), {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml",
-    },
-  });
+  const res = await fetch(parsed.toString(), { headers: MEETUP_HEADERS });
   if (!res.ok) return null;
   const html = await res.text();
   const pageEvents = extractEventsFromHtml(html);
@@ -237,53 +277,21 @@ export const meetupScraper: Scraper = {
 
       // Report progress
       options?.onProgress?.(
-        Math.round(((i) / totalCities) * 100),
+        Math.round((i / totalCities) * 100),
         `Searching ${city.name} (${i + 1}/${totalCities})`,
       );
 
       // Rate limit between cities
       await sleep(2500);
 
-      // Meetup requires {countrycode}--{city} format for correct geo-targeting
-      const locationParam = `${city.countryCode}--${city.name}`;
-      const searchUrl = `https://www.meetup.com/find/?location=${encodeURIComponent(locationParam)}&source=EVENTS&eventType=upcoming&categoryId=546`;
+      const normalizedEvents = await fetchMeetupCity(city.name, city.countryCode, {
+        dateFrom: options?.dateFrom,
+        dateTo: options?.dateTo,
+      });
 
-      let html: string;
-      try {
-        const res = await fetch(searchUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            Accept: "text/html,application/xhtml+xml",
-          },
-        });
-        if (!res.ok) {
-          console.warn(`[meetup] Failed to fetch ${city.name}: ${res.status}`);
-          continue;
-        }
-        html = await res.text();
-      } catch (err) {
-        console.warn(`[meetup] Error fetching ${city.name}:`, err);
-        continue;
-      }
-
-      const events = extractEventsFromHtml(html);
-
-      for (const ev of events) {
-        const normalized = normalizeMeetupEvent(ev);
-        if (!normalized) continue;
-
-        // Apply date filters
-        if (options?.dateFrom && normalized.startsAt < options.dateFrom) continue;
-        if (options?.dateTo && normalized.startsAt > options.dateTo) continue;
-
-        // Fall back to searched city name when venue city is missing
-        if (!normalized.cityName) normalized.cityName = city.name;
-        // Mark hybrid if URL hints at it
-        normalized.isHybrid = !normalized.isOnline && !!ev.eventUrl?.includes("online");
-
+      for (const normalized of normalizedEvents) {
         yield normalized;
-
-        if (ev.eventUrl) seenEventUrls.add(ev.eventUrl);
+        if (normalized.meetupUrl) seenEventUrls.add(normalized.meetupUrl);
       }
     }
 

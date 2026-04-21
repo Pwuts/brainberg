@@ -13,12 +13,25 @@ export interface PickedLocation {
   countryCode: string;
 }
 
+// Nominatim's `addresstype` field is the canonical category for the node.
+// City-level searches come back as `boundary/administrative` but with
+// `addresstype=city` (or town/village/municipality), so we filter on that.
+const CITY_ADDRESS_TYPES = new Set([
+  "city",
+  "town",
+  "village",
+  "municipality",
+  "hamlet",
+]);
+
 interface NominatimResult {
   display_name: string;
   name?: string;
   lat: string;
   lon: string;
+  class?: string;
   type: string;
+  addresstype?: string;
   address?: {
     amenity?: string;
     tourism?: string;
@@ -82,9 +95,19 @@ interface Props {
   currentCountry: { code: string; name: string } | null;
   currentAddress: string | null;
   onPick: (location: PickedLocation) => void | Promise<void>;
+  /** When true, restricts results to city-type places and hides venue/address UI. */
+  cityOnly?: boolean;
+  placeholder?: string;
 }
 
-export function LocationPicker({ currentCity, currentCountry, currentAddress, onPick }: Props) {
+export function LocationPicker({
+  currentCity,
+  currentCountry,
+  currentAddress,
+  onPick,
+  cityOnly = false,
+  placeholder,
+}: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -131,7 +154,12 @@ export function LocationPicker({ currentCity, currentCountry, currentAddress, on
       );
       if (res.ok) {
         const data: NominatimResult[] = await res.json();
-        setResults(data.filter((r) => extractCity(r) && r.address?.country_code));
+        const filtered = data.filter((r) => {
+          if (!extractCity(r) || !r.address?.country_code) return false;
+          if (cityOnly) return !!r.addresstype && CITY_ADDRESS_TYPES.has(r.addresstype);
+          return true;
+        });
+        setResults(filtered);
         setOpen(true);
       }
     } finally {
@@ -176,7 +204,7 @@ export function LocationPicker({ currentCity, currentCountry, currentAddress, on
           value={query}
           onChange={(e) => handleInput(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="Search address, venue, or city..."
+          placeholder={placeholder ?? (cityOnly ? "Search for a city..." : "Search address, venue, or city...")}
           disabled={saving}
           className="h-8 w-[420px] rounded-md border border-input bg-background pl-8 pr-7 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-60"
         />
@@ -184,17 +212,23 @@ export function LocationPicker({ currentCity, currentCountry, currentAddress, on
           <Loader2 className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
       </div>
-      {currentCity || currentCountry || currentAddress ? (
+      {currentCity || currentCountry || (!cityOnly && currentAddress) ? (
         <div className="text-xs text-muted-foreground">
           <span className="font-medium">
             {currentCity ?? "—"}
             {currentCountry ? ` ${countryFlag(currentCountry.code)} ${currentCountry.name}` : ""}
           </span>
-          <br/>
-          {currentAddress ? <span className="mt-20">{currentAddress}</span> : null}
+          {!cityOnly && currentAddress && (
+            <>
+              <br />
+              <span className="mt-20">{currentAddress}</span>
+            </>
+          )}
         </div>
       ) : (
-        <div className="text-xs text-red-400">No location set</div>
+        <div className="text-xs text-red-400">
+          {cityOnly ? "No city picked" : "No location set"}
+        </div>
       )}
       {open && results.length > 0 && (
         <div className="absolute left-0 top-full z-50 mt-1 w-[420px] rounded-lg border bg-background shadow-lg">
@@ -207,8 +241,18 @@ export function LocationPicker({ currentCity, currentCountry, currentAddress, on
             >
               <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
               <div className="flex-1">
-                <div className="font-medium">{formatAddress(r)}</div>
-                <div className="text-xs text-muted-foreground">{extractCity(r)}, {r.address?.country}</div>
+                {cityOnly ? (
+                  <div className="font-medium">
+                    {extractCity(r)}, {r.address?.country}
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-medium">{formatAddress(r)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {extractCity(r)}, {r.address?.country}
+                    </div>
+                  </>
+                )}
               </div>
               <span className="mt-0.5 text-xs text-muted-foreground">{r.type}</span>
             </button>

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Toaster } from "sonner";
 import { AdminAuthProvider } from "@/components/admin/admin-auth-provider";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
@@ -20,6 +21,7 @@ export default function AdminLayout({
           <Suspense>{children}</Suspense>
         </main>
       </div>
+      <Toaster position="bottom-center" richColors closeButton />
     </AdminAuthProvider>
   );
 }

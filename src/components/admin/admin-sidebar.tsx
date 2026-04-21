@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Bot, Zap } from "lucide-react";
+import { LayoutDashboard, Calendar, Bot, MapPin, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/events", label: "Events", icon: Calendar },
   { href: "/admin/scrapers", label: "Scrapers", icon: Bot },
+  { href: "/admin/cities", label: "Cities", icon: MapPin },
 ];
 
 export function AdminSidebar() {
