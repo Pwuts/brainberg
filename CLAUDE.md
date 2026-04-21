@@ -23,6 +23,35 @@ pnpm dev        # Start dev server
   countries table is empty
 - The migration runner is bundled with esbuild during Docker build
 
+## Environment variables
+
+When adding a new env var, update **every** place it needs to flow through —
+missing one usually fails silently (undefined at runtime, or an empty string
+baked into the client bundle).
+
+**Private server-side var** (e.g. `ANTHROPIC_API_KEY`, `EVENTBRITE_API_TOKEN`):
+
+1. [`.env.example`](.env.example) — documents the var for contributors.
+2. [`docker/docker-compose.yml`](docker/docker-compose.yml) under
+   `services.app.environment:` — passes it into the production container at
+   runtime.
+
+**Public client-side var** (`NEXT_PUBLIC_*`): Next.js inlines these into the
+client bundle at **build time**, not runtime, so they need to flow through
+the build — not the container environment:
+
+1. [`.env.example`](.env.example) — documents the var for contributors.
+2. [`docker/Dockerfile`](docker/Dockerfile) in the `builder` stage — add both
+   `ARG NEXT_PUBLIC_FOO` and `ENV NEXT_PUBLIC_FOO=$NEXT_PUBLIC_FOO` before
+   `pnpm run build`.
+3. [`docker/docker-compose.yml`](docker/docker-compose.yml) under
+   `services.app.build.args:` — forwards the host env into the build.
+
+No `services.app.environment:` entry needed — the value is baked into the
+built image by step 2. Conversely, skip step 2 or 3 and the var will be
+empty in the browser even though `process.env.NEXT_PUBLIC_FOO` looks correct
+on the server.
+
 ## Code style
 
 - **Top-down module ordering.** A function appears before the helpers
