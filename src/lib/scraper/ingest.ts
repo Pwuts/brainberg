@@ -45,6 +45,11 @@ export async function ingestEvents(
 }
 
 async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
+  // Normalize whitespace: sources occasionally ship titles with a leading
+  // space or non-breaking space, which sorts before all letters and pushes
+  // such events to the top of title-sorted admin views.
+  event.title = event.title.replace(/\s+/g, " ").trim();
+
   // Filter out non-tech events across all sources
   if (NON_TECH_REGEX.test(event.title)) return;
 
