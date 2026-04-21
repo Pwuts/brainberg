@@ -6,6 +6,11 @@ import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  SortableTable,
+  type SortState,
+  type TableColumn,
+} from "@/components/ui/sortable-table";
 import { X } from "lucide-react";
 import {
   CATEGORY_LABELS,
@@ -58,7 +63,7 @@ export default function AdminEventsPage() {
     dateFrom: searchParams.get("dateFrom") ?? "",
     dateTo: searchParams.get("dateTo") ?? "",
     q: searchParams.get("q") ?? "",
-    sort: searchParams.get("sort") ?? "-date",
+    sort: searchParams.get("sort") ?? "-created",
   };
   const offset = parseInt(searchParams.get("offset") ?? "0");
   const limit = parseInt(searchParams.get("limit") ?? "50");
@@ -67,7 +72,7 @@ export default function AdminEventsPage() {
   const load = useCallback(async () => {
     // Build API query from current URL params
     const params = new URLSearchParams(searchParams.toString());
-    if (!params.has("sort")) params.set("sort", "-date");
+    if (!params.has("sort")) params.set("sort", "-created");
     params.set("limit", String(limit));
 
     const res = await fetchAdmin(`/api/admin/events?${params.toString()}`);
@@ -137,18 +142,15 @@ export default function AdminEventsPage() {
 
   const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.dateFrom || filters.dateTo || filters.q;
 
-  const toggleSort = (field: string) => {
+  const sortState: SortState = filters.sort.startsWith("-")
+    ? { key: filters.sort.slice(1), dir: "desc" }
+    : { key: filters.sort, dir: "asc" };
+
+  const onSortChange = (next: SortState) => {
     const params = currentParams();
-    const current = params.get("sort") ?? "-date";
-    params.set("sort", current === field ? `-${field}` : field);
+    params.set("sort", next.dir === "desc" ? `-${next.key}` : next.key);
     params.delete("offset");
     router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const sortIcon = (field: string) => {
-    if (filters.sort === field) return " ↑";
-    if (filters.sort === `-${field}`) return " ↓";
-    return "";
   };
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -312,90 +314,113 @@ export default function AdminEventsPage() {
       )}
 
       {/* Table */}
-      <div className="overflow-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr>
-              <th className="px-3 py-2 text-left">
-                <input type="checkbox" checked={selected.size === events.length && events.length > 0} onChange={toggleAll} />
-              </th>
-              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("title")}>
-                Title{sortIcon("title")}
-              </th>
-              <th className="px-3 py-2 text-left font-medium">Status</th>
-              <th className="px-3 py-2 text-left font-medium">Source</th>
-              <th className="px-3 py-2 text-left font-medium">Category</th>
-              <th className="px-3 py-2 text-left font-medium">Location</th>
-              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("date")}>
-                Date{sortIcon("date")}
-              </th>
-              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("created")}>
-                Created{sortIcon("created")}
-              </th>
-              <th className="cursor-pointer px-3 py-2 text-left font-medium" onClick={() => toggleSort("updated")}>
-                Updated{sortIcon("updated")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((row) => (
-              <tr
-                key={row.event.id}
-                className="cursor-pointer border-b hover:bg-accent/50 last:border-0"
-                onClick={() => router.push(`/admin/events/${row.event.id}`)}
+      <SortableTable
+        columns={[
+          {
+            key: "select",
+            label: (
+              <input
+                type="checkbox"
+                checked={selected.size === events.length && events.length > 0}
+                onChange={toggleAll}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ),
+            cell: (row) => (
+              <span onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(row.event.id)}
+                  onChange={() => toggleSelect(row.event.id)}
+                />
+              </span>
+            ),
+          },
+          {
+            key: "title",
+            label: "Title",
+            sortable: true,
+            className: "max-w-75 truncate font-medium",
+            cell: (row) => row.event.title,
+          },
+          {
+            key: "status",
+            label: "Status",
+            cell: (row) => (
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                row.event.status === "approved" ? "bg-green-100 text-green-800"
+                : row.event.status === "pending" ? "bg-yellow-100 text-yellow-800"
+                : row.event.status === "rejected" ? "bg-red-100 text-red-800"
+                : "bg-gray-100 text-gray-800"
+              }`}>
+                {row.event.status}
+              </span>
+            ),
+          },
+          {
+            key: "source",
+            label: "Source",
+            className: "text-muted-foreground",
+            cell: (row) => SOURCE_LABELS[row.event.source] ?? row.event.source,
+          },
+          {
+            key: "category",
+            label: "Category",
+            cell: (row) => (
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[row.event.category] ?? "bg-gray-100 text-gray-800"}`}
+                title={CATEGORY_DESCRIPTIONS[row.event.category]}
               >
-                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.event.id)}
-                    onChange={() => toggleSelect(row.event.id)}
-                  />
-                </td>
-                <td className="max-w-[300px] truncate px-3 py-2 font-medium">{row.event.title}</td>
-                <td className="px-3 py-2">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    row.event.status === "approved" ? "bg-green-100 text-green-800"
-                    : row.event.status === "pending" ? "bg-yellow-100 text-yellow-800"
-                    : row.event.status === "rejected" ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-                  }`}>
-                    {row.event.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {SOURCE_LABELS[row.event.source] ?? row.event.source}
-                </td>
-                <td className="px-3 py-2">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[row.event.category] ?? "bg-gray-100 text-gray-800"}`} title={CATEGORY_DESCRIPTIONS[row.event.category]}>
-                    {CATEGORY_LABELS[row.event.category] ?? row.event.category}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {row.city?.name}
-                  {row.country ? ` ${countryFlag(row.country.code)}` : ""}
-                  {!row.city && !row.country && <span className="text-red-400">—</span>}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {new Date(row.event.startsAt).toLocaleDateString()}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {new Date(row.event.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {new Date(row.event.updatedAt).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
-            {events.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
-                  No events found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                {CATEGORY_LABELS[row.event.category] ?? row.event.category}
+              </span>
+            ),
+          },
+          {
+            key: "location",
+            label: "Location",
+            className: "text-muted-foreground",
+            cell: (row) => (
+              <>
+                {row.city?.name}
+                {row.country ? ` ${countryFlag(row.country.code)}` : ""}
+                {!row.city && !row.country && (
+                  <span className="text-red-400">—</span>
+                )}
+              </>
+            ),
+          },
+          {
+            key: "date",
+            label: "Date",
+            sortable: true,
+            defaultDir: "desc",
+            className: "text-muted-foreground",
+            cell: (row) => new Date(row.event.startsAt).toLocaleDateString(),
+          },
+          {
+            key: "created",
+            label: "Created",
+            sortable: true,
+            defaultDir: "desc",
+            className: "text-xs text-muted-foreground",
+            cell: (row) => new Date(row.event.createdAt).toLocaleDateString(),
+          },
+          {
+            key: "updated",
+            label: "Updated",
+            sortable: true,
+            defaultDir: "desc",
+            className: "text-xs text-muted-foreground",
+            cell: (row) => new Date(row.event.updatedAt).toLocaleDateString(),
+          },
+        ]}
+        rows={events}
+        rowKey={(row) => row.event.id}
+        sort={sortState}
+        onSortChange={onSortChange}
+        onRowClick={(row) => router.push(`/admin/events/${row.event.id}`)}
+        emptyMessage="No events found."
+      />
 
       {/* Pagination */}
       <div className="flex items-center justify-between">

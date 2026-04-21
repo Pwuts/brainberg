@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SortableTable, type TableColumn } from "@/components/ui/sortable-table";
 import { Plus, Trash2 } from "lucide-react";
 import { SOURCE_LABELS, CATEGORY_LABELS } from "@/lib/utils";
 
@@ -77,6 +78,80 @@ interface ScraperRun {
   startedAt: string;
   completedAt: string | null;
 }
+
+const RUN_HISTORY_COLUMNS: TableColumn<ScraperRun>[] = [
+  {
+    key: "source",
+    label: "Source",
+    sortable: true,
+    sortValue: (r) => (SOURCE_LABELS[r.source] ?? r.source).toLowerCase(),
+    cell: (r) => SOURCE_LABELS[r.source] ?? r.source,
+  },
+  {
+    key: "status",
+    label: "Status",
+    sortable: true,
+    sortValue: (r) => r.status,
+    cell: (r) => (
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        r.status === "completed" ? "bg-green-100 text-green-800"
+        : r.status === "failed" ? "bg-red-100 text-red-800"
+        : "bg-yellow-100 text-yellow-800"
+      }`}>
+        {r.status === "running" ? `${r.progress}%` : r.status}
+      </span>
+    ),
+  },
+  {
+    key: "found",
+    label: "Found",
+    align: "right",
+    sortable: true,
+    sortValue: (r) => r.eventsFound,
+    cell: (r) => r.eventsFound,
+  },
+  {
+    key: "created",
+    label: "Created",
+    align: "right",
+    sortable: true,
+    sortValue: (r) => r.eventsCreated,
+    cell: (r) => r.eventsCreated,
+  },
+  {
+    key: "updated",
+    label: "Updated",
+    align: "right",
+    sortable: true,
+    sortValue: (r) => r.eventsUpdated,
+    cell: (r) => r.eventsUpdated,
+  },
+  {
+    key: "deduped",
+    label: "Deduped",
+    align: "right",
+    sortable: true,
+    sortValue: (r) => r.eventsDeduplicated,
+    cell: (r) => r.eventsDeduplicated,
+  },
+  {
+    key: "error",
+    label: "Error",
+    className: "max-w-50 truncate text-red-600",
+    cell: (r) => r.errorMessage ?? "—",
+  },
+  {
+    key: "started",
+    label: "Started",
+    sortable: true,
+    sortValue: (r) => new Date(r.startedAt).getTime(),
+    cell: (r) => (
+      <span className="text-muted-foreground">
+        {new Date(r.startedAt).toLocaleString()}
+      </span>
+    ),
+  },
+];
 
 export default function AdminScrapersPage() {
   const { fetchAdmin } = useAdminAuth();
@@ -375,55 +450,13 @@ export default function AdminScrapersPage() {
       {/* Run history */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">Run History</h2>
-        <div className="overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium">Source</th>
-                <th className="px-4 py-2 text-left font-medium">Status</th>
-                <th className="px-4 py-2 text-right font-medium">Found</th>
-                <th className="px-4 py-2 text-right font-medium">Created</th>
-                <th className="px-4 py-2 text-right font-medium">Updated</th>
-                <th className="px-4 py-2 text-right font-medium">Deduped</th>
-                <th className="px-4 py-2 text-left font-medium">Error</th>
-                <th className="px-4 py-2 text-left font-medium">Started</th>
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((run) => (
-                <tr key={run.id} className="border-b last:border-0">
-                  <td className="px-4 py-2">{SOURCE_LABELS[run.source] ?? run.source}</td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      run.status === "completed" ? "bg-green-100 text-green-800"
-                      : run.status === "failed" ? "bg-red-100 text-red-800"
-                      : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {run.status === "running" ? `${run.progress}%` : run.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-right">{run.eventsFound}</td>
-                  <td className="px-4 py-2 text-right">{run.eventsCreated}</td>
-                  <td className="px-4 py-2 text-right">{run.eventsUpdated}</td>
-                  <td className="px-4 py-2 text-right">{run.eventsDeduplicated}</td>
-                  <td className="max-w-[200px] truncate px-4 py-2 text-red-600">
-                    {run.errorMessage ?? "—"}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {new Date(run.startedAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-              {runs.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    No runs yet. Click {'"'}Run Now{'"'} on a scraper to start.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SortableTable
+          columns={RUN_HISTORY_COLUMNS}
+          rows={runs}
+          rowKey={(run) => run.id}
+          defaultSort={{ key: "started", dir: "desc" }}
+          emptyMessage={`No runs yet. Click "Run Now" on a scraper to start.`}
+        />
       </section>
     </div>
   );
@@ -444,6 +477,82 @@ function LumaSubscriptions({
   onDelete: (id: number) => void;
   onToggle: (id: number, isActive: boolean) => void;
 }) {
+  const columns: TableColumn<LumaSource>[] = [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+      sortValue: (s) => s.name.toLowerCase(),
+      cell: (s) => <span className="font-medium">{s.name}</span>,
+    },
+    {
+      key: "slug",
+      label: "Slug",
+      sortable: true,
+      sortValue: (s) => s.url.toLowerCase(),
+      cell: (s) => (
+        <a
+          href={`https://lu.ma/${s.url}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          {s.url}
+        </a>
+      ),
+    },
+    {
+      key: "events",
+      label: "Events",
+      align: "right",
+      sortable: true,
+      sortValue: (s) => s.eventsFound,
+      cell: (s) => s.eventsFound,
+    },
+    {
+      key: "lastScrapedAt",
+      label: "Last Scraped",
+      sortable: true,
+      sortValue: (s) => (s.lastScrapedAt ? new Date(s.lastScrapedAt).getTime() : null),
+      cell: (s) => (
+        <span className="text-muted-foreground">
+          {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
+        </span>
+      ),
+    },
+    {
+      key: "active",
+      label: "Active",
+      align: "center",
+      sortable: true,
+      sortValue: (s) => (s.isActive ? 1 : 0),
+      cell: (s) => (
+        <button
+          onClick={() => onToggle(s.id, !s.isActive)}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {s.isActive ? "Active" : "Paused"}
+        </button>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center",
+      cell: (s) => (
+        <button
+          onClick={() => onDelete(s.id)}
+          className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+          title="Remove"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      ),
+    },
+  ];
+
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
@@ -457,71 +566,12 @@ function LumaSubscriptions({
         Add Luma organizer calendars to automatically import their events.
       </p>
 
-      {/* Sources list */}
-      {sources.length > 0 ? (
-        <div className="overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium">Name</th>
-                <th className="px-4 py-2 text-left font-medium">Slug</th>
-                <th className="px-4 py-2 text-right font-medium">Events</th>
-                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
-                <th className="px-4 py-2 text-center font-medium">Active</th>
-                <th className="px-4 py-2 text-center font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.id} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">{s.name}</td>
-                  <td className="px-4 py-2">
-                    <a
-                      href={`https://lu.ma/${s.url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {s.url}
-                    </a>
-                  </td>
-                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {s.lastScrapedAt
-                      ? new Date(s.lastScrapedAt).toLocaleString()
-                      : "Never"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onToggle(s.id, !s.isActive)}
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {s.isActive ? "Active" : "Paused"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onDelete(s.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                      title="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-          No Luma calendars added yet. Click {'"'}Add Calendar{'"'} to get started.
-        </div>
-      )}
+      <SortableTable
+        columns={columns}
+        rows={sources}
+        rowKey={(s) => s.id}
+        emptyMessage={`No Luma calendars added yet. Click "Add Calendar" to get started.`}
+      />
     </section>
   );
 }
@@ -587,6 +637,94 @@ function MicrodataSources({
   onDelete: (id: number) => void;
   onToggle: (id: number, isActive: boolean) => void;
 }) {
+  const columns: TableColumn<MicrodataSource>[] = [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+      sortValue: (s) => s.name.toLowerCase(),
+      cell: (s) => <span className="font-medium">{s.name}</span>,
+    },
+    {
+      key: "url",
+      label: "URL",
+      sortable: true,
+      sortValue: (s) => s.url.toLowerCase(),
+      className: "max-w-70 truncate",
+      cell: (s) => (
+        <a
+          href={s.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          {s.url}
+        </a>
+      ),
+    },
+    {
+      key: "extraction",
+      label: "Extraction",
+      sortable: true,
+      sortValue: (s) => s.config?.extraction ?? "microdata",
+      cell: (s) => (
+        <span className="text-xs text-muted-foreground">
+          {s.config?.extraction ?? "microdata"}
+        </span>
+      ),
+    },
+    {
+      key: "events",
+      label: "Events",
+      align: "right",
+      sortable: true,
+      sortValue: (s) => s.eventsFound,
+      cell: (s) => s.eventsFound,
+    },
+    {
+      key: "lastScrapedAt",
+      label: "Last Scraped",
+      sortable: true,
+      sortValue: (s) => (s.lastScrapedAt ? new Date(s.lastScrapedAt).getTime() : null),
+      cell: (s) => (
+        <span className="text-muted-foreground">
+          {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
+        </span>
+      ),
+    },
+    {
+      key: "active",
+      label: "Active",
+      align: "center",
+      sortable: true,
+      sortValue: (s) => (s.isActive ? 1 : 0),
+      cell: (s) => (
+        <button
+          onClick={() => onToggle(s.id, !s.isActive)}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {s.isActive ? "Active" : "Paused"}
+        </button>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center",
+      cell: (s) => (
+        <button
+          onClick={() => onDelete(s.id)}
+          className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+          title="Remove"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      ),
+    },
+  ];
+
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
@@ -603,71 +741,12 @@ function MicrodataSources({
         Fallback fields are used when the source doesn&apos;t carry that data (e.g. all Waag events are at the same venue).
       </p>
 
-      {/* Sources list */}
-      {sources.length > 0 ? (
-        <div className="overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium">Name</th>
-                <th className="px-4 py-2 text-left font-medium">URL</th>
-                <th className="px-4 py-2 text-left font-medium">Extraction</th>
-                <th className="px-4 py-2 text-right font-medium">Events</th>
-                <th className="px-4 py-2 text-left font-medium">Last Scraped</th>
-                <th className="px-4 py-2 text-center font-medium">Active</th>
-                <th className="px-4 py-2 text-center font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.id} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">{s.name}</td>
-                  <td className="max-w-[280px] truncate px-4 py-2">
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {s.url}
-                    </a>
-                  </td>
-                  <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {s.config?.extraction ?? "microdata"}
-                  </td>
-                  <td className="px-4 py-2 text-right">{s.eventsFound}</td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "Never"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onToggle(s.id, !s.isActive)}
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {s.isActive ? "Active" : "Paused"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => onDelete(s.id)}
-                      className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                      title="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-          No microdata sources added yet. Click {'"'}Add Source{'"'} to start scraping.
-        </div>
-      )}
+      <SortableTable
+        columns={columns}
+        rows={sources}
+        rowKey={(s) => s.id}
+        emptyMessage={`No microdata sources added yet. Click "Add Source" to start scraping.`}
+      />
     </section>
   );
 }

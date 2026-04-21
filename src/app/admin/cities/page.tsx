@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SortableTable, type TableColumn } from "@/components/ui/sortable-table";
 import { ExternalLink, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn, CATEGORY_LABELS, formatEventDate } from "@/lib/utils";
@@ -59,6 +60,77 @@ interface CountryRow {
 }
 
 type View = "list" | "map";
+
+const CITY_COLUMNS: TableColumn<CityRow>[] = [
+  {
+    key: "name",
+    label: "City",
+    sortable: true,
+    sortValue: (c) => c.name.toLowerCase(),
+    cell: (c) => (
+      <span className="font-medium">
+        {c.name}
+        {c.isPopular && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            popular
+          </span>
+        )}
+      </span>
+    ),
+  },
+  {
+    key: "country",
+    label: "Country",
+    sortable: true,
+    sortValue: (c) => c.countryName.toLowerCase(),
+    cell: (c) => (
+      <>
+        <span className="text-muted-foreground">{c.countryCode}</span>{" "}
+        {c.countryName}
+      </>
+    ),
+  },
+  {
+    key: "timezone",
+    label: "Timezone",
+    sortable: true,
+    sortValue: (c) => c.timezone,
+    cell: (c) => <span className="text-muted-foreground">{c.timezone}</span>,
+  },
+  {
+    key: "approved",
+    label: "Approved",
+    align: "right",
+    sortable: true,
+    sortValue: (c) => c.approvedEventCount,
+    cell: (c) => c.approvedEventCount,
+  },
+  {
+    key: "total",
+    label: "Total",
+    align: "right",
+    sortable: true,
+    sortValue: (c) => c.totalEventCount,
+    cell: (c) => (
+      <span className="text-muted-foreground">{c.totalEventCount}</span>
+    ),
+  },
+  {
+    key: "coords",
+    label: "Coordinates",
+    className: "font-mono text-xs text-muted-foreground",
+    cell: (c) => (
+      <a
+        href={`https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}&zoom=11`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:text-primary hover:underline"
+      >
+        {c.latitude.toFixed(3)}, {c.longitude.toFixed(3)}
+      </a>
+    ),
+  },
+];
 
 export default function AdminCitiesPage() {
   const { fetchAdmin } = useAdminAuth();
@@ -253,65 +325,16 @@ export default function AdminCitiesPage() {
       {view === "map" ? (
         <CitiesMap cities={mapCities} />
       ) : (
-        <div className="overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium">City</th>
-                <th className="px-4 py-2 text-left font-medium">Country</th>
-                <th className="px-4 py-2 text-left font-medium">Timezone</th>
-                <th className="px-4 py-2 text-right font-medium">Approved</th>
-                <th className="px-4 py-2 text-right font-medium">Total</th>
-                <th className="px-4 py-2 text-left font-medium">Coordinates</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-medium">
-                    {c.name}
-                    {c.isPopular && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        popular
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className="text-muted-foreground">{c.countryCode}</span>{" "}
-                    {c.countryName}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">{c.timezone}</td>
-                  <td className="px-4 py-2 text-right">{c.approvedEventCount}</td>
-                  <td className="px-4 py-2 text-right text-muted-foreground">
-                    {c.totalEventCount}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                    <a
-                      href={`https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}&zoom=11`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary hover:underline"
-                    >
-                      {c.latitude.toFixed(3)}, {c.longitude.toFixed(3)}
-                    </a>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    {cities.length === 0
-                      ? "No cities yet."
-                      : "No cities match the filter."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SortableTable
+          columns={CITY_COLUMNS}
+          rows={filtered}
+          rowKey={(c) => c.id}
+          emptyMessage={
+            cities.length === 0
+              ? "No cities yet."
+              : "No cities match the filter."
+          }
+        />
       )}
 
       <Dialog
