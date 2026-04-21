@@ -55,12 +55,17 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
   if (isNaN(startsAt.getTime())) return null;
 
   const endsAt = ev.endTime ? new Date(ev.endTime) : undefined;
-  const isOnline = ev.eventType === "ONLINE";
+  // Meetup's eventType is ONLINE | PHYSICAL | HYBRID. In our model `isOnline`
+  // means "(also) available online" — hybrid events get the Online badge too.
+  // `isOnlineOnly` is what gates clearing the physical venue.
+  const isOnlineOnly = ev.eventType === "ONLINE";
+  const isHybrid    = ev.eventType === "HYBRID";
+  const isOnline    = isOnlineOnly || isHybrid;
 
   // Meetup's city-search pages occasionally return events from neighbouring
   // groups outside Europe. Skip in-person events whose venue country is known
   // and non-European so they don't leak into the platform.
-  if (!isOnline && ev.venue?.country && !isEuropean(ev.venue.country)) {
+  if (!isOnlineOnly && ev.venue?.country && !isEuropean(ev.venue.country)) {
     return null;
   }
   const topicUrlkeys = ev.topics?.map((t) => t.urlkey).filter(Boolean) as string[] ?? [];
@@ -75,6 +80,13 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
   // venue objects. A partial coordinate plots on null island in Leaflet.
   const hasBothCoords = typeof ev.venue?.lat === "number" && typeof ev.venue?.lng === "number";
 
+  // For ONLINE-only events Meetup returns a placeholder venue like
+  // `{city:"",name:"Online event",address:"",country:""}` — drop it entirely
+  // so the event doesn't get stamped with a physical location. Hybrid events
+  // keep their venue because they have a real physical location too.
+  const venue = isOnlineOnly ? undefined : ev.venue;
+  const cityName = isOnlineOnly ? undefined : venue?.city || undefined;
+
   return {
     title: ev.title,
     description,
@@ -86,13 +98,14 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
     startsAt,
     endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
     timezone: "UTC",
-    cityName: ev.venue?.city,
-    countryCode: ev.venue?.country,
-    venueName: ev.venue?.name,
-    venueAddress: ev.venue?.address,
-    latitude: hasBothCoords ? ev.venue!.lat : undefined,
-    longitude: hasBothCoords ? ev.venue!.lng : undefined,
+    cityName,
+    countryCode: isOnlineOnly ? undefined : venue?.country || undefined,
+    venueName: isOnlineOnly ? undefined : venue?.name || undefined,
+    venueAddress: isOnlineOnly ? undefined : venue?.address || undefined,
+    latitude: !isOnlineOnly && hasBothCoords ? venue!.lat : undefined,
+    longitude: !isOnlineOnly && hasBothCoords ? venue!.lng : undefined,
     isOnline,
+    isHybrid,
     websiteUrl: ev.eventUrl,
     meetupUrl: ev.eventUrl,
     imageUrl: ev.imageUrl ?? ev.featuredEventPhoto?.highResUrl,
@@ -145,8 +158,10 @@ export async function fetchMeetupCity(
     if (!normalized) continue;
     if (options?.dateFrom && normalized.startsAt < options.dateFrom) continue;
     if (options?.dateTo && normalized.startsAt > options.dateTo) continue;
-    if (!normalized.cityName) normalized.cityName = cityName;
-    normalized.isHybrid = !normalized.isOnline && !!ev.eventUrl?.includes("online");
+    // Historically we stamped the searched city when Meetup gave us no venue,
+    // but that tagged online events and events-from-nearby-groups to the wrong
+    // city (e.g. "AWS UG Nürnberg" surfaced under Erlangen's search). Without
+    // a venue in the payload we genuinely don't know where the event is.
     out.push(normalized);
   }
   return out;

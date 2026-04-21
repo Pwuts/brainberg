@@ -379,7 +379,8 @@ export const lumaScraper: Scraper = {
             countryCode: countryCode ?? TIMEZONE_TO_COUNTRY[event.timezone],
             latitude: event.coordinate?.latitude,
             longitude: event.coordinate?.longitude,
-            isOnline: event.location_type === "online",
+            // `isOnline` means "(also) online" — hybrid events get the Online badge too.
+            isOnline: event.location_type === "online" || event.location_type === "hybrid",
             isHybrid: event.location_type === "hybrid",
             websiteUrl,
             registrationUrl: lumaUrl,

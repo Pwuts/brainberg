@@ -254,13 +254,15 @@ async function updateExistingEvent(
       category: existing?.categoryLocked ? undefined : event.category,
       description: event.description || undefined,
       shortDescription: event.shortDescription || undefined,
-      // Fill in location if missing
-      cityId: location.cityId ?? undefined,
-      countryId: location.countryId ?? undefined,
-      venueName: event.venueName || undefined,
-      venueAddress: event.venueAddress || undefined,
-      latitude: eventLat ?? undefined,
-      longitude: eventLng ?? undefined,
+      // Venue/geo are authoritative from the new source — overwrite, including
+      // with null. This lets improved scrapers (e.g. Meetup no longer stamping
+      // search-city on city-less events) heal existing rows on re-ingest.
+      cityId: location.cityId ?? null,
+      countryId: location.countryId ?? null,
+      venueName: event.venueName ?? null,
+      venueAddress: event.venueAddress ?? null,
+      latitude: eventLat ?? null,
+      longitude: eventLng ?? null,
       size: event.size || undefined,
       imageUrl: event.imageUrl || undefined,
       thumbnailUrl: event.thumbnailUrl || undefined,
