@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Select } from "@/components/ui/select";
@@ -69,36 +69,47 @@ export default function AdminEventsPage() {
   const limit = parseInt(searchParams.get("limit") ?? "50");
   const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 
-  const load = useCallback(async () => {
-    // Build API query from current URL params
-    const params = new URLSearchParams(searchParams.toString());
-    if (!params.has("sort")) params.set("sort", "-created");
-    params.set("limit", String(limit));
-
-    const res = await fetchAdmin(`/api/admin/events?${params.toString()}`);
-    const data = await res.json();
-    setEvents(data.events ?? []);
-    setTotal(data.total ?? 0);
-
-    // Extract unique countries from results for the country filter dropdown
-    if (countries.length === 0) {
-      const unique = new Map<string, string>();
-      for (const row of data.events ?? []) {
-        if (row.country) unique.set(row.country.code, row.country.name);
-      }
-      if (unique.size > 0) {
-        setCountries([...unique.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name)));
-      }
-    }
-  }, [fetchAdmin, searchParams, countries.length]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
-
   // Always read live query string from window.location to avoid stale closures
   // (React Compiler memoizes callbacks across renders, so captured searchParams
   // can diverge from the actual URL after navigations).
   const currentParams = () => new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+
+  // Depend on a primitive (the search string) so the effect reliably fires
+  // after every navigation — a `searchParams` object dep can be over-memoized
+  // by React Compiler and miss URL changes.
+  const searchString = searchParams.toString();
+  const [reloadKey, setReloadKey] = useState(0);
+  const load = () => setReloadKey((k) => k + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const params = currentParams();
+      if (!params.has("sort")) params.set("sort", "-created");
+      if (!params.has("limit")) params.set("limit", "50");
+
+      const res = await fetchAdmin(`/api/admin/events?${params.toString()}`);
+      const data = await res.json();
+      if (cancelled) return;
+      setEvents(data.events ?? []);
+      setTotal(data.total ?? 0);
+
+      // Populate the country filter dropdown once, from the first non-empty
+      // result set. Functional setState avoids a dep on `countries.length`.
+      setCountries((prev) => {
+        if (prev.length > 0) return prev;
+        const unique = new Map<string, string>();
+        for (const row of data.events ?? []) {
+          if (row.country) unique.set(row.country.code, row.country.name);
+        }
+        if (unique.size === 0) return prev;
+        return [...unique.entries()]
+          .map(([code, name]) => ({ code, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [searchString, fetchAdmin, reloadKey]);
 
   const setFilter = (key: string, value: string | boolean) => {
     const params = currentParams();
