@@ -242,10 +242,40 @@ async function updateExistingEvent(
   // event type, online flags) — not just fill blanks. This lets improved
   // scraper data heal existing rows on re-ingest.
   const [existing] = await db
-    .select({ categoryLocked: events.categoryLocked })
+    .select({
+      status: events.status,
+      categoryLocked: events.categoryLocked,
+      title: events.title,
+      description: events.description,
+    })
     .from(events)
     .where(eq(events.id, eventId))
     .limit(1);
+
+  // Re-moderate pending events when title or description materially changes —
+  // enrichment from a higher-priority scraper (e.g. Meetup Pass 2 filling in a
+  // real description that was previously a stub) gives the AI enough to
+  // reclassify from pending to approved or reject.
+  const titleChanged = existing && event.title !== existing.title;
+  const descChanged =
+    existing && (event.description ?? "") !== (existing.description ?? "");
+  const shouldRemoderate =
+    existing?.status === "pending" && (titleChanged || descChanged);
+
+  const remoderation = shouldRemoderate ? await moderateEvent(event) : null;
+  if (remoderation) {
+    console.log(
+      `[ai-moderate] Re-moderated "${event.title}" (${existing?.status} → ${remoderation.decision}): ${remoderation.reason}`,
+    );
+  }
+
+  const newStatus = remoderation
+    ? remoderation.decision === "reject"
+      ? "rejected"
+      : remoderation.decision === "pending"
+        ? "pending"
+        : "approved"
+    : undefined;
 
   await db
     .update(events)
@@ -253,10 +283,12 @@ async function updateExistingEvent(
       title: event.title,
       startsAt: event.startsAt,
       endsAt: event.endsAt ?? undefined,
-      eventType: event.eventType,
+      eventType: remoderation?.eventType ?? event.eventType,
       isOnline: event.isOnline,
       isHybrid: event.isHybrid ?? false,
-      category: existing?.categoryLocked ? undefined : event.category,
+      category: existing?.categoryLocked
+        ? undefined
+        : (remoderation?.category ?? event.category),
       description: event.description || undefined,
       shortDescription: event.shortDescription || undefined,
       // Venue/geo are authoritative from the new source — overwrite, including
@@ -281,6 +313,9 @@ async function updateExistingEvent(
       meetupUrl: event.meetupUrl || undefined,
       confsTechUrl: event.confsTechUrl || undefined,
       devEventsUrl: event.devEventsUrl || undefined,
+      status: newStatus,
+      moderatedByAI: remoderation ? true : undefined,
+      aiModerationReason: remoderation?.reason,
       updatedAt: new Date(),
     })
     .where(eq(events.id, eventId));
