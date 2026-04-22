@@ -96,20 +96,22 @@ interface LumaCalendar {
 }
 
 interface LumaEvent {
-  api_id: string;
+  api_id?: string; // evt-xxx, only set for native Luma events (not external calendar entries)
   name: string;
   start_at: string;
-  end_at: string | null;
+  end_at?: string | null;
   timezone: string;
-  url: string; // event slug
-  location_type: string;
+  url: string; // slug for native events, full URL for external entries
+  location_type?: string;
   cover_url?: string;
-  geo_address_info?: { mode?: string; address?: string; city?: string; [key: string]: unknown };
+  geo_address_info?: { mode?: string; address?: string; city?: string; [key: string]: unknown } | null;
   coordinate?: { latitude: number; longitude: number } | null;
   visibility?: string;
 }
 
 interface LumaEntry {
+  api_id: string; // calev-xxx, always present (distinct from event.api_id which is only set for native Luma events)
+  platform?: "luma" | "external";
   event: LumaEvent;
   hosts?: { name?: string; username?: string }[];
   ticket_info?: {
@@ -305,6 +307,10 @@ export const lumaScraper: Scraper = {
         for (const entry of entries) {
           const event = entry.event;
 
+          // External entries are third-party events promoted on a Luma calendar: they lack
+          // `event.api_id`, carry a full URL in `event.url`, and have no /event/get detail.
+          const isExternal = !event.api_id;
+
           const startsAt = new Date(event.start_at);
           if (isNaN(startsAt.getTime())) continue;
 
@@ -318,10 +324,12 @@ export const lumaScraper: Scraper = {
             if (!countryCode || !isEuropean(countryCode)) continue;
           }
 
-          await sleep(500);
-
-          // Fetch event detail for description + tickets
-          const detail = await getEventDetail(event.api_id);
+          // Fetch event detail for description + tickets (native Luma events only)
+          let detail: LumaEventDetail | null = null;
+          if (!isExternal) {
+            await sleep(500);
+            detail = await getEventDetail(event.api_id!);
+          }
 
           const endsAt = event.end_at ? new Date(event.end_at) : undefined;
           const { cityName, countryCode } = parseGeoAddress(event);
@@ -354,10 +362,8 @@ export const lumaScraper: Scraper = {
           const host = detail?.hosts?.[0] ?? entry.hosts?.[0];
           const organizerName = host?.name ?? source.name;
 
-          // event.url can be a slug ("abc123") or a full external URL
-          const isExternalUrl = event.url.startsWith("http");
-          const lumaUrl = isExternalUrl ? `https://lu.ma/${event.api_id}` : `https://lu.ma/${event.url}`;
-          const websiteUrl = isExternalUrl ? event.url : lumaUrl;
+          const lumaUrl = isExternal ? undefined : `https://lu.ma/${event.url}`;
+          const websiteUrl = isExternal ? event.url : lumaUrl!;
 
           const title = event.name;
           const category = resolveCategory(undefined, {}, title);
@@ -383,7 +389,7 @@ export const lumaScraper: Scraper = {
             isOnline: event.location_type === "online" || event.location_type === "hybrid",
             isHybrid: event.location_type === "hybrid",
             websiteUrl,
-            registrationUrl: lumaUrl,
+            registrationUrl: lumaUrl ?? websiteUrl,
             lumaUrl,
             imageUrl: event.cover_url,
             isFree,
@@ -393,8 +399,10 @@ export const lumaScraper: Scraper = {
             organizerName,
             organizerUrl: `https://lu.ma/${source.url}`,
             source: "luma",
-            sourceId: event.api_id,
-            sourceUrl: lumaUrl,
+            // Prefer evt-xxx for native events so dedup matches historical rows;
+            // fall back to the entry's calev-xxx for external entries that have no evt id.
+            sourceId: event.api_id ?? entry.api_id,
+            sourceUrl: websiteUrl,
             rawData: { entry, detail },
           };
         }
