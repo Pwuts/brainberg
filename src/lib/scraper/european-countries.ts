@@ -34,3 +34,30 @@ export function isEuropean(country: string | undefined | null): boolean {
   if (!country) return false;
   return toCountryCode(country) !== undefined;
 }
+
+/**
+ * Rough lat/lng box covering mainland Europe plus the Azores (west), Canary
+ * Islands (south-west), Cyprus (south-east), and the Caucasus (east).
+ * Intentionally loose so legitimate edge-of-Europe events pass; per-scraper
+ * country filters are the primary defense, this is a last-resort catch for
+ * coordinates obviously far away.
+ */
+export const EUROPE_BBOX = {
+  minLat: 27,
+  maxLat: 72,
+  minLng: -32,
+  maxLng: 45,
+} as const;
+
+export function isInEuropeBox(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+): boolean {
+  if (typeof latitude !== "number" || typeof longitude !== "number") return true;
+  return (
+    latitude >= EUROPE_BBOX.minLat &&
+    latitude <= EUROPE_BBOX.maxLat &&
+    longitude >= EUROPE_BBOX.minLng &&
+    longitude <= EUROPE_BBOX.maxLng
+  );
+}

@@ -2,6 +2,7 @@ import { db } from "./db";
 import { events, cities, countries } from "./db/schema";
 import { eq, and, gte, lte, asc, inArray, sql, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
+import { EUROPE_BBOX } from "./scraper/european-countries";
 
 // Fields exposed to unauthenticated visitors. Deliberately excludes
 // organizerEmail, moderation fields (aiModerationReason, moderatedByAI,
@@ -341,11 +342,19 @@ export interface MapEvent {
 }
 
 export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor">): Promise<MapEvent[]> {
+  // Exclude events whose (event-or-city-fallback) coordinates fall outside the
+  // Europe bounding box — hybrid events with a non-European physical venue
+  // would otherwise stretch the map view even though they're online-accessible.
+  const lat = sql<number>`COALESCE(${events.latitude}, ${cities.latitude})`;
+  const lng = sql<number>`COALESCE(${events.longitude}, ${cities.longitude})`;
+
   const conditions: SQL[] = [
     eq(events.status, "approved"),
     gte(events.startsAt, new Date()),
-    sql`COALESCE(${events.latitude}, ${cities.latitude}) IS NOT NULL`,
-    sql`COALESCE(${events.longitude}, ${cities.longitude}) IS NOT NULL`,
+    sql`${lat} IS NOT NULL`,
+    sql`${lng} IS NOT NULL`,
+    sql`${lat} BETWEEN ${EUROPE_BBOX.minLat} AND ${EUROPE_BBOX.maxLat}`,
+    sql`${lng} BETWEEN ${EUROPE_BBOX.minLng} AND ${EUROPE_BBOX.maxLng}`,
     ...buildCommonEventConditions(filters),
   ];
 
@@ -369,8 +378,8 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
       timezone: events.timezone,
       isFree: events.isFree,
       isOnline: events.isOnline,
-      latitude: sql<number>`COALESCE(${events.latitude}, ${cities.latitude})`.as("latitude"),
-      longitude: sql<number>`COALESCE(${events.longitude}, ${cities.longitude})`.as("longitude"),
+      latitude: lat.as("latitude"),
+      longitude: lng.as("longitude"),
       cityName: cities.name,
       countryCode: countries.code,
       countryName: countries.name,

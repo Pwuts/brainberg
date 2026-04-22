@@ -7,6 +7,7 @@ import { checkDuplicate } from "./dedup";
 import { normalizeUrl } from "./url-utils";
 import { exactFingerprint } from "./fingerprint";
 import { NON_TECH_REGEX } from "./category-map";
+import { isInEuropeBox } from "./european-countries";
 import { moderateEvent } from "./ai-moderate";
 import type { NormalizedEvent, IngestStats } from "./types";
 
@@ -54,19 +55,9 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
   if (NON_TECH_REGEX.test(event.title)) return;
 
   // Skip in-person events obviously outside Europe based on supplied coords.
-  // Box is lat 27°–72°, lng -32° to 45° — covers mainland Europe plus the
-  // Azores (west), Canary Islands (south-west), Cyprus (south-east), and the
-  // Caucasus (east). Intentionally loose so legitimate edge-of-Europe events
-  // pass; per-scraper country filters are the primary defense, this is just
-  // a last-resort catch for coordinates obviously far away.
-  if (!event.isOnline && typeof event.latitude === "number" && typeof event.longitude === "number") {
-    const lat = event.latitude;
-    const lng = event.longitude;
-    const inEurope = lat >= 27 && lat <= 72 && lng >= -32 && lng <= 45;
-    if (!inEurope) {
-      console.log(`[ingest] Rejecting non-European event "${event.title}" at (${lat}, ${lng}) from ${event.source}`);
-      return;
-    }
+  if (!event.isOnline && !isInEuropeBox(event.latitude, event.longitude)) {
+    console.log(`[ingest] Rejecting non-European event "${event.title}" at (${event.latitude}, ${event.longitude}) from ${event.source}`);
+    return;
   }
 
   // 1. Resolve location

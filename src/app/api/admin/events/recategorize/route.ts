@@ -4,6 +4,7 @@ import { isAdminAuthorized } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { events, cities, countries } from "@/lib/db/schema";
 import { resolveCategory, resolveEventType } from "@/lib/scraper/category-map";
+import { isInEuropeBox } from "@/lib/scraper/european-countries";
 import { moderateEvent } from "@/lib/scraper/ai-moderate";
 import type { NormalizedEvent } from "@/lib/scraper/types";
 
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
         source: events.source,
         tags: events.tags,
         isOnline: events.isOnline,
+        latitude: events.latitude,
+        longitude: events.longitude,
         venueName: events.venueName,
         venueAddress: events.venueAddress,
         organizerName: events.organizerName,
@@ -75,6 +78,24 @@ export async function POST(request: NextRequest) {
       }
 
       const updates: Record<string, unknown> = {};
+
+      // Geo-fence: in-person events with coordinates obviously outside Europe
+      // should be rejected, not re-moderated. The AI only sees text fields and
+      // can't infer location from "Rock Bottom, 28256 Diehl Rd" — it'd happily
+      // re-approve based on content. Match the ingest-time check.
+      if (!event.isOnline && !isInEuropeBox(event.latitude, event.longitude)) {
+        if (event.status !== "rejected") {
+          console.log(
+            `[recategorize] Geo-fence: "${event.title}" ${event.status} → rejected (${event.latitude}, ${event.longitude})`,
+          );
+          updates.status = "rejected";
+          updates.aiModerationReason = `Coordinates (${event.latitude}, ${event.longitude}) fall outside Europe box`;
+          updates.updatedAt = new Date();
+          await db.update(events).set(updates).where(eq(events.id, event.id));
+          statusesChanged++;
+        }
+        continue;
+      }
 
       if (useAi) {
         // Build description with moderation context for the AI
