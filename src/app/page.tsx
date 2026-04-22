@@ -6,6 +6,7 @@ import { getEventsByTimeGroup } from "@/lib/events";
 import { EventList } from "@/components/events/event-list";
 import { EventSearch } from "@/components/events/event-search";
 import { CategoryBubbles } from "@/components/home/category-bubbles";
+import { SiteJsonLD } from "@/components/seo/site-json-ld";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Globe, MapPin, Calendar } from "lucide-react";
 import Link from "next/link";
@@ -57,6 +58,8 @@ export default async function HomePage() {
 
   return (
     <div>
+      <SiteJsonLD />
+
       {/* Hero */}
       <section className="relative border-b border-border bg-gradient-to-b from-primary/5 to-background overflow-hidden min-h-[600px] sm:min-h-[700px]">
         {/* Background bubbles — clickable, positioned around center content */}

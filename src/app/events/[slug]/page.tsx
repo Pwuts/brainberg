@@ -1,12 +1,10 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import Link from "next/link";
 import {
   Calendar,
   MapPin,
   Users,
   ExternalLink,
-  ArrowLeft,
   Globe,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +16,7 @@ import { getEventBySlug } from "@/lib/events";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
 import { ShareEvent } from "@/components/events/share-event";
 import { EventJsonLD } from "@/components/seo/event-json-ld";
+import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import {
@@ -75,14 +74,13 @@ export default async function EventPage({ params }: PageProps) {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <EventJsonLD event={event} city={city} country={country} />
 
-      {/* Back link */}
-      <Link
-        href="/events"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to events
-      </Link>
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Events", href: "/events" },
+          { label: event.title },
+        ]}
+      />
 
       {/* Header image */}
       {event.imageUrl && (
