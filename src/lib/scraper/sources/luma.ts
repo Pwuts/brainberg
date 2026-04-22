@@ -234,7 +234,14 @@ function parseGeoAddress(
     }
   }
 
-  // Fallback: derive country from timezone
+  // For offline events with no usable address and no coordinate, the organizer's
+  // calendar timezone isn't a reliable proxy for the venue country: we've seen
+  // Amsterdam meetups set to Europe/Brussels. Only use the TZ→country fallback
+  // when the event is online/hybrid (no physical venue to get wrong) or we at
+  // least have a coordinate as a sanity anchor.
+  const hasLocationSignal = event.location_type !== "offline" || !!event.coordinate;
+  if (!hasLocationSignal) return {};
+
   const cc = TIMEZONE_TO_COUNTRY[event.timezone];
   if (cc) return { countryCode: cc };
 
@@ -382,7 +389,7 @@ export const lumaScraper: Scraper = {
             timezone: event.timezone,
             isMultiDay: !!(endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000),
             cityName,
-            countryCode: countryCode ?? TIMEZONE_TO_COUNTRY[event.timezone],
+            countryCode,
             latitude: event.coordinate?.latitude,
             longitude: event.coordinate?.longitude,
             // `isOnline` means "(also) online" — hybrid events get the Online badge too.
