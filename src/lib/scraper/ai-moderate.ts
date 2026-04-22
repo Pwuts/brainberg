@@ -27,7 +27,7 @@ const responseSchema = z.object({
   decision: z.enum(["approve", "pending", "reject"]),
   category: z.enum(CATEGORIES).nullable(),
   eventType: z.enum(EVENT_TYPES).nullable(),
-  reason: z.string().max(500),
+  reason: z.string().transform((s) => s.slice(0, 500)),
   confidence: z.number().min(0).max(1),
 });
 
@@ -132,7 +132,14 @@ function buildEventPrompt(event: NormalizedEvent): string {
     parts.push(`Description: ${event.description.slice(0, 800)}`);
   }
 
-  return parts.join("\n");
+  return stripLoneSurrogates(parts.join("\n"));
+}
+
+const LONE_SURROGATE_RE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+function stripLoneSurrogates(s: string): string {
+  return s.replace(LONE_SURROGATE_RE, "\uFFFD");
 }
 
 // ============================================================
@@ -156,7 +163,7 @@ export async function moderateEvent(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildEventPrompt(event);
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
@@ -187,17 +194,24 @@ export async function moderateEvent(
 
       return result;
     } catch (err) {
-      if (err instanceof Anthropic.RateLimitError && attempt === 0) {
-        console.warn("[ai-moderate] Rate limited, retrying in 2s...");
-        await sleep(2000);
-        continue;
-      }
+      const isLastAttempt = attempt === 2;
+      const isRateLimit = err instanceof Anthropic.RateLimitError;
+      const log = isLastAttempt ? console.error : console.warn;
 
-      console.warn(
+      log(
         `[ai-moderate] Failed for "${event.title}" (attempt ${attempt + 1}):`,
         err instanceof Error ? err.message : err,
       );
-      return null;
+
+      if (isLastAttempt) return null;
+
+      if (isRateLimit) {
+        console.warn("[ai-moderate] Rate limited, retrying in 2s...");
+        await sleep(2000);
+      }
+      // Non-rate-limit errors (bad JSON, schema violation, transient API
+      // failure) — retry immediately. The model often emits a valid
+      // response on the second try.
     }
   }
 
