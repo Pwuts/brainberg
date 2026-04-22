@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { cities, countries, events } from "@/lib/db/schema";
-import { eq, and, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, isNotNull, ne } from "drizzle-orm";
 import { MEETUP_TOPIC_MAP, resolveCategoryFromTags } from "../category-map";
 import { truncate } from "../html-utils";
 import { isEuropean } from "../european-countries";
@@ -121,8 +121,7 @@ function normalizeMeetupEvent(ev: MeetupEvent): NormalizedEvent | null {
 }
 
 const MEETUP_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "User-Agent": "Brainberg/1.0 (https://brainberg.eu)",
   Accept: "text/html,application/xhtml+xml",
 };
 
@@ -310,11 +309,14 @@ export const meetupScraper: Scraper = {
       }
     }
 
-    // Pass 2: Fetch Meetup events referenced by dev.events that we haven't scraped yet
+    // Pass 2: Fetch Meetup events referenced by other scrapers (e.g. dev.events)
+    // whose authoritative source isn't Meetup yet. Relying on `latitude IS NULL`
+    // misses events that got city-center coords from a non-Meetup scraper and
+    // would still benefit from real venue/organizer/description data.
     const unscrapedMeetupUrls = await db
       .select({ id: events.id, meetupUrl: events.meetupUrl })
       .from(events)
-      .where(and(isNotNull(events.meetupUrl), isNull(events.latitude)));
+      .where(and(isNotNull(events.meetupUrl), ne(events.source, "meetup")));
 
     // Filter to only URLs we haven't already seen in this run
     const newMeetupUrls = unscrapedMeetupUrls.filter(
