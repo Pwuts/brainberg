@@ -44,6 +44,10 @@ const MARKER_COLORS: Record<string, string> = {
   entrepreneurship: "#4f46e5",// indigo
   hardware_iot: "#d97706",    // amber
   hacker_maker: "#65a30d",    // lime
+  game_dev: "#c026d3",        // fuchsia
+  policy_ethics: "#78716c",   // stone
+  leadership_product: "#2563eb", // blue
+  bio_health: "#0d9488",      // teal
   other: "#6b7280",           // gray
 };
 

@@ -40,6 +40,18 @@ export const NON_TECH_REGEX =
 export const HARDWARE_IOT_REGEX =
   /\b(robotics|robotica|robot\b|IoT|Internet.of.Things|Arduino|ESP32|Raspberry.Pi|embedded.system|3D.print|3D.design|Stampa.3D|CAD|electronics|circuit|sensor|drone|DJI|hardware|microcontroller|SmartHome|battery)\b/i;
 
+export const GAME_DEV_REGEX =
+  /\b(game.dev|gamedev|game.development|game.design|indie.game|playtest|game.jam|Unity|Unreal.Engine|Godot|video.?game|videogame|videogioc|jeu.?vid[eé]o|juego|HTML5.game|game.makers|game.summit|games.co.?op)\b/i;
+
+export const POLICY_ETHICS_REGEX =
+  /\b(AI.governance|AI.safety|AI.ethic|AI.policy|AI.act|responsible.AI|digital.ethic|tech.ethic|AI.regulation|tech.regulation|AI.compliance|NIS.?2|GDPR|data.protection|policy.practice|governance.risk|tech.policy|digital.rights|algorithmic.accountability)\b/i;
+
+export const LEADERSHIP_PRODUCT_REGEX =
+  /\b(CTO.?Craft|LeadDev|engineering.leader|engineering.leadership|tech.lead|principal.dev|platform.engineering.leader|product.management|product.manager|product.owner|ProductTank|product.tank|product.crew|product.mixer|scrum|agile|lean.coffee|team.coach|agile.coach|scrum.master|product.discovery|product.strategy)\b/i;
+
+export const BIO_HEALTH_REGEX =
+  /\b(biotech|bio.tech|healthtech|health.tech|medtech|med.tech|digital.health|e.?health|life.science|bioinformatic|genomic|clinical.trial|medical.device|pharma|longevity|digital.medicine|health.?innovation|biohacking|neurotech)\b/i;
+
 // ============================================================
 // confs.tech — filename → category
 // ============================================================
@@ -165,17 +177,23 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 /** Check title against all keyword regexes. Returns a category override or null.
  *  Order matters: more specific categories take priority.
  *  AI research regex is checked before AI dev regex so research-specific
- *  terms (MLOps, PyTorch, training) win over generic "AI" matches. */
+ *  terms (MLOps, PyTorch, training) win over generic "AI" matches.
+ *  Policy/ethics is checked before AI so "AI Governance" → policy_ethics,
+ *  not ai_applied. */
 function titleOverride(title: string): EventCategory | null {
   if (HACKER_MAKER_REGEX.test(title)) return "hacker_maker";
+  if (POLICY_ETHICS_REGEX.test(title)) return "policy_ethics";
   if (AI_RESEARCH_REGEX.test(title)) return "ai_ml_research";
   if (AI_DEV_REGEX.test(title)) return "ai_applied";
+  if (GAME_DEV_REGEX.test(title)) return "game_dev";
   if (WEB3_KEYWORD_REGEX.test(title)) return "blockchain_web3";
   if (SECURITY_KEYWORD_REGEX.test(title)) return "security";
   if (DEVOPS_KEYWORD_REGEX.test(title)) return "cloud_devops";
   if (DATA_KEYWORD_REGEX.test(title)) return "data_analytics";
   if (UX_KEYWORD_REGEX.test(title)) return "design_ux";
+  if (BIO_HEALTH_REGEX.test(title)) return "bio_health";
   if (HARDWARE_IOT_REGEX.test(title)) return "hardware_iot";
+  if (LEADERSHIP_PRODUCT_REGEX.test(title)) return "leadership_product";
   if (ENTREPRENEURSHIP_REGEX.test(title)) return "entrepreneurship";
   return null;
 }
@@ -216,8 +234,10 @@ export function resolveCategoryFromTags(
 
 /** Infer event type from title keywords. Returns null if no match. */
 export function resolveEventType(title: string): EventType | null {
-  if (/\b(workshop|bootcamp|masterclass|hands.on|training.course|lab.day|coding.gym|dojo)\b/i.test(title)) return "workshop";
+  if (/\b(ISTQB|certification.(course|training|exam)|training.course|academy.(class|training)|Odoo.Academy|Foundation.Exam)\b/i.test(title)) return "training";
+  if (/\b(workshop|bootcamp|masterclass|hands.on|lab.day|coding.gym|dojo)\b/i.test(title)) return "workshop";
   if (/\b(hackathon|hack.day|hack.night|CodeRetreat)\b/i.test(title)) return "hackathon";
+  if (/\b(coworking|co.?working|cowork|code.and.coffee|coding.and.coffee|coding.&.coffee)\b/i.test(title)) return "coworking";
   if (/\b(webinar|online.event)\b/i.test(title)) return "webinar";
   if (/\b(networking|social|mixer|stammtisch|afterwork|drinks|breakfast|coffee|apéro|brunch|beer|club)\b/i.test(title)) return "networking";
   if (/\b(conference|summit|congress|forum|expo|symposium|convention)\b/i.test(title)) return "conference";

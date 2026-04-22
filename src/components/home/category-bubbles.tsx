@@ -14,7 +14,12 @@ const BUBBLE_COLORS: Record<string, string> = {
   design_ux: "#ec4899",
   blockchain_web3: "#ea580c",
   entrepreneurship: "#4f46e5",
+  hardware_iot: "#d97706",
   hacker_maker: "#65a30d",
+  game_dev: "#c026d3",
+  policy_ethics: "#78716c",
+  leadership_product: "#2563eb",
+  bio_health: "#0d9488",
   other: "#6b7280",
 };
 

@@ -16,12 +16,16 @@ export const eventStatusEnum = pgEnum("event_status", [
 export const eventCategoryEnum = pgEnum("event_category", [
   "ai_ml_research", "ai_applied", "software_dev", "data_analytics",
   "cloud_devops", "security", "design_ux", "blockchain_web3",
-  "entrepreneurship", "hardware_iot", "hacker_maker", "other",
+  "entrepreneurship", "hardware_iot", "hacker_maker",
+  "game_dev", "policy_ethics", "leadership_product", "bio_health",
+  "other",
 ]);
 
 export const eventTypeEnum = pgEnum("event_type", [
   "conference", "meetup", "hackathon", "workshop", "webinar",
-  "networking", "demo_day", "panel", "career_fair", "other",
+  "networking", "demo_day", "panel", "career",
+  "training", "coworking",
+  "other",
 ]);
 
 export const eventSizeEnum = pgEnum("event_size", [

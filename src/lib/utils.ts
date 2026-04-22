@@ -17,6 +17,10 @@ export const CATEGORY_LABELS: Record<string, string> = {
   entrepreneurship: "Entrepreneurship",
   hardware_iot: "Hardware, Robotics & IoT",
   hacker_maker: "Hacker / Maker Community",
+  game_dev: "Game Development",
+  policy_ethics: "Policy, Ethics & Governance",
+  leadership_product: "Tech Leadership & Product",
+  bio_health: "Bio & Health Tech",
   other: "Other",
 };
 
@@ -32,6 +36,10 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   entrepreneurship: "Startups, product management, leadership, fundraising, growth",
   hardware_iot: "Robotics, IoT, embedded systems, 3D printing, electronics, Arduino, drones",
   hacker_maker: "Hacker camps, hackerspaces, maker faires, community congresses",
+  game_dev: "Game development, engines (Unity, Unreal, Godot), indie dev, playtesting, game design",
+  policy_ethics: "AI governance, AI safety, tech regulation, digital ethics, compliance as a topic",
+  leadership_product: "Engineering leadership, CTO & tech-lead content, product management, agile & scrum practice",
+  bio_health: "Biotech, healthtech, medtech, digital health, bioinformatics, medical devices",
   other: "Events that don't fit other categories",
 };
 
@@ -47,6 +55,10 @@ export const CATEGORY_COLORS: Record<string, string> = {
   entrepreneurship: "bg-indigo-100 text-indigo-800",
   hardware_iot: "bg-amber-100 text-amber-800",
   hacker_maker: "bg-lime-100 text-lime-800",
+  game_dev: "bg-fuchsia-100 text-fuchsia-800",
+  policy_ethics: "bg-stone-100 text-stone-800",
+  leadership_product: "bg-blue-100 text-blue-800",
+  bio_health: "bg-teal-100 text-teal-800",
   other: "bg-gray-100 text-gray-800",
 };
 
@@ -59,7 +71,9 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   networking: "Networking",
   demo_day: "Demo Day",
   panel: "Panel",
-  career_fair: "Career Fair",
+  career: "Career",
+  training: "Training",
+  coworking: "Coworking",
   other: "Other",
 };
 
