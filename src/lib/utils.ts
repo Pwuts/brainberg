@@ -6,21 +6,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  ai_ml_research: "AI/ML Research & Engineering",
-  ai_applied: "AI Integration & Application",
   software_dev: "Software Engineering",
-  data_analytics: "Data & Analytics",
+  ai_applied: "AI Integration & Application",
+  entrepreneurship: "Entrepreneurship",
   cloud_devops: "Cloud & DevOps",
   security: "Security",
-  design_ux: "Design & UX",
-  blockchain_web3: "Web3 & Blockchain",
-  entrepreneurship: "Entrepreneurship",
-  hardware_iot: "Hardware, Robotics & IoT",
+  data_analytics: "Data & Analytics",
   hacker_maker: "Hacker / Maker Community",
-  game_dev: "Game Development",
-  policy_ethics: "Policy, Ethics & Governance",
+  design_ux: "Design & UX",
   leadership_product: "Tech Leadership & Product",
+  hardware_iot: "Hardware, Robotics & IoT",
+  ai_ml_research: "AI/ML Research & Engineering",
+  game_dev: "Game Development",
   bio_health: "Bio & Health Tech",
+  policy_ethics: "Policy, Ethics & Governance",
+  blockchain_web3: "Web3 & Blockchain",
   other: "Other",
 };
 

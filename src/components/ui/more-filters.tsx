@@ -10,9 +10,39 @@ interface MoreFiltersProps {
   className?: string;
 }
 
+// Popover width in px — must match the `w-[...]` class below.
+const MAX_POPOVER_WIDTH = 320; // 20rem
+// Matches the page content's `px-4` padding so the popover doesn't
+// get closer to the viewport edge than the content itself.
+const VIEWPORT_MARGIN = 16;
+
+function computePosition(buttonRect: DOMRect): { top: number; left: number } {
+  const vw = window.innerWidth;
+  const w = Math.min(vw - 2 * VIEWPORT_MARGIN, MAX_POPOVER_WIDTH);
+  // Start centered on the button
+  const ideal = (buttonRect.left + buttonRect.right) / 2 - w / 2;
+  // Clamp so popover fully contains the button horizontally:
+  //   popover.left  ≤ button.left   → left ≤ button.left
+  //   popover.right ≥ button.right  → left ≥ button.right - w
+  // and stays within the viewport margins.
+  const minLeft = Math.max(VIEWPORT_MARGIN, buttonRect.right - w);
+  const maxLeft = Math.min(vw - w - VIEWPORT_MARGIN, buttonRect.left);
+  const left = Math.max(minLeft, Math.min(maxLeft, ideal));
+  return { top: buttonRect.bottom + 4, left };
+}
+
 export function MoreFilters({ children, activeCount = 0, className }: MoreFiltersProps) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggle = () => {
+    if (!open && buttonRef.current) {
+      setPos(computePosition(buttonRef.current.getBoundingClientRect()));
+    }
+    setOpen(!open);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -21,15 +51,27 @@ export function MoreFilters({ children, activeCount = 0, className }: MoreFilter
         setOpen(false);
       }
     }
+    function handleReposition() {
+      if (buttonRef.current) {
+        setPos(computePosition(buttonRef.current.getBoundingClientRect()));
+      }
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", handleReposition, true);
+    window.addEventListener("resize", handleReposition);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", handleReposition, true);
+      window.removeEventListener("resize", handleReposition);
+    };
   }, [open]);
 
   return (
     <div ref={ref} className={cn("relative", className)}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className={cn(
           "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-sm transition-colors",
           activeCount > 0
@@ -47,7 +89,10 @@ export function MoreFilters({ children, activeCount = 0, className }: MoreFilter
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 flex w-64 flex-col gap-2 rounded-lg border bg-background p-3 shadow-lg [&>*]:w-full [&_button]:w-full">
+        <div
+          style={{ top: pos.top, left: pos.left }}
+          className="fixed z-50 flex w-[min(calc(100vw-2rem),20rem)] flex-col gap-2 rounded-lg border bg-background p-3 shadow-lg [&>*]:w-full [&_button]:w-full"
+        >
           {children}
         </div>
       )}

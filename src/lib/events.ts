@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { events, cities, countries } from "./db/schema";
-import { eq, and, gte, lte, asc, sql, type SQL } from "drizzle-orm";
+import { eq, and, gte, lte, asc, inArray, sql, type SQL } from "drizzle-orm";
 import type { eventCategoryEnum, eventTypeEnum, eventSizeEnum } from "./db/schema";
 
 // Fields exposed to unauthenticated visitors. Deliberately excludes
@@ -136,7 +136,14 @@ export function buildCommonEventConditions(filters: CommonEventFilters): SQL[] {
     conditions.push(eq(cities.slug, filters.city));
   }
   if (filters.category) {
-    conditions.push(eq(events.category, filters.category as (typeof eventCategoryEnum.enumValues)[number]));
+    const categories = filters.category
+      .split(",")
+      .filter(Boolean) as (typeof eventCategoryEnum.enumValues)[number][];
+    if (categories.length === 1) {
+      conditions.push(eq(events.category, categories[0]));
+    } else if (categories.length > 1) {
+      conditions.push(inArray(events.category, categories));
+    }
   }
   if (filters.eventType) {
     conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));

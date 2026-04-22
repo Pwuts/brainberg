@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { LocationFilter } from "@/components/ui/location-filter";
 import { Dropdown } from "@/components/ui/dropdown";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { MoreFilters } from "@/components/ui/more-filters";
 import { ArrowUp, ArrowDown, X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
@@ -70,14 +71,17 @@ export function EventFilters({ countries }: FilterProps) {
   const hasLocation = !!searchParams.get("lat");
 
   // Secondary controls (collapsed into "Filters" popover on mobile)
+  const categoryValues = (searchParams.get("category") ?? "")
+    .split(",")
+    .filter(Boolean);
   const categoryEl = (
-    <Dropdown
-      value={searchParams.get("category") ?? ""}
+    <MultiSelect
+      values={categoryValues}
       options={CATEGORY_OPTIONS}
       placeholder="Category"
-      onChange={(v) => setFilter("category", v)}
+      onChange={(vs) => setFilter("category", vs.join(","))}
       className="w-28"
-      panelWidth="w-80"
+      panelWidth="w-full md:w-80"
     />
   );
   const typeEl = (
