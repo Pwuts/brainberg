@@ -217,6 +217,7 @@ function isEuropeanTimezone(tz: string): boolean {
 
 function parseGeoAddress(
   event: LumaEvent,
+  isExternal: boolean,
 ): { cityName?: string; countryCode?: string } {
   // Try geo_address_info fields
   const gai = event.geo_address_info;
@@ -234,13 +235,16 @@ function parseGeoAddress(
     }
   }
 
-  // For offline events with no usable address and no coordinate, the organizer's
-  // calendar timezone isn't a reliable proxy for the venue country: we've seen
-  // Amsterdam meetups set to Europe/Brussels. Only use the TZ→country fallback
-  // when the event is online/hybrid (no physical venue to get wrong) or we at
-  // least have a coordinate as a sanity anchor.
-  const hasLocationSignal = event.location_type !== "offline" || !!event.coordinate;
-  if (!hasLocationSignal) return {};
+  // The organizer's calendar timezone is an unreliable proxy for the venue
+  // country in two cases:
+  //   - External calendar entries: the TZ is the calendar owner's, not the
+  //     event's (e.g. a Berlin-based roadshow calendar listing a UK webinar).
+  //   - Native offline events with obfuscated address and no coord: we've seen
+  //     Amsterdam meetups with Europe/Brussels set as the TZ.
+  // Only fall back to TZ→country when neither condition applies.
+  const canTrustTz = !isExternal
+    && (event.location_type !== "offline" || !!event.coordinate);
+  if (!canTrustTz) return {};
 
   const cc = TIMEZONE_TO_COUNTRY[event.timezone];
   if (cc) return { countryCode: cc };
@@ -327,7 +331,7 @@ export const lumaScraper: Scraper = {
 
           // European filter: check timezone first (cheap), then resolved country
           if (!isEuropeanTimezone(event.timezone)) {
-            const { countryCode } = parseGeoAddress(event);
+            const { countryCode } = parseGeoAddress(event, isExternal);
             if (!countryCode || !isEuropean(countryCode)) continue;
           }
 
@@ -339,7 +343,7 @@ export const lumaScraper: Scraper = {
           }
 
           const endsAt = event.end_at ? new Date(event.end_at) : undefined;
-          const { cityName, countryCode } = parseGeoAddress(event);
+          const { cityName, countryCode } = parseGeoAddress(event, isExternal);
 
           // Description from ProseMirror JSON
           let description: string | undefined;
@@ -374,6 +378,13 @@ export const lumaScraper: Scraper = {
 
           const title = event.name;
           const category = resolveCategory(undefined, {}, title);
+          const eventType = resolveEventType(title);
+
+          // External entries don't set `location_type`; infer online from the
+          // event type for webinars, which are online by definition.
+          const isOnline = event.location_type === "online"
+            || event.location_type === "hybrid"
+            || (!event.location_type && eventType === "webinar");
 
           eventsFound++;
 
@@ -382,7 +393,7 @@ export const lumaScraper: Scraper = {
             description,
             shortDescription: description ? truncate(description, 500) : undefined,
             category,
-            eventType: resolveEventType(title),
+            eventType,
             tags: entry.tags?.map((t) => t.name).filter(Boolean) as string[] | undefined,
             startsAt,
             endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
@@ -393,7 +404,7 @@ export const lumaScraper: Scraper = {
             latitude: event.coordinate?.latitude,
             longitude: event.coordinate?.longitude,
             // `isOnline` means "(also) online" — hybrid events get the Online badge too.
-            isOnline: event.location_type === "online" || event.location_type === "hybrid",
+            isOnline,
             isHybrid: event.location_type === "hybrid",
             websiteUrl,
             registrationUrl: lumaUrl ?? websiteUrl,
