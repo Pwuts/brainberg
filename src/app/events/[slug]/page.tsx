@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getEventBySlug } from "@/lib/events";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
 import { ShareEvent } from "@/components/events/share-event";
+import { EventJsonLD } from "@/components/seo/event-json-ld";
 import Markdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import {
@@ -72,6 +73,8 @@ export default async function EventPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <EventJsonLD event={event} city={city} country={country} />
+
       {/* Back link */}
       <Link
         href="/events"
