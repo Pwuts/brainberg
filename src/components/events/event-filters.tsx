@@ -90,9 +90,9 @@ export function EventFilters({
   const clearAll = useCallback(() => router.push(pathname), [router, pathname]);
 
   // Ignore date range filter because it is persisted in local storage and won't be cleared anyway
-  const hasFilters = searchParams
-    .keys()
-    .some((k) => !["from", "to", "tzo"].includes(k));
+  const hasFilters = Array.from(searchParams.keys()).some(
+    (k) => !["from", "to", "tzo"].includes(k),
+  );
   const hasLocation = !!searchParams.get("lat");
 
   // Secondary controls (collapsed into "Filters" popover on mobile)
