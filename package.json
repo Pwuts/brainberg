@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
@@ -62,7 +62,7 @@
   "packageManager": "pnpm@10.27.0",
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs}": [
-      "eslint --fix",
+      "eslint --fix --max-warnings=0",
       "prettier --write"
     ],
     "*.{json,md,css,yml,yaml,html}": [

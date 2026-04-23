@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Share2, Copy, Check, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,14 +19,12 @@ interface ShareEventProps {
 export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [hasWebShare, setHasWebShare] = useState(false);
+  const hasWebShare = useSyncExternalStore(
+    subscribeNoop,
+    getHasWebShare,
+    getHasWebShareServer,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setHasWebShare(
-      typeof navigator !== "undefined" && typeof navigator.share === "function",
-    );
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -143,9 +141,7 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
             >
-              <span className="flex h-4 w-4 items-center justify-center">
-                {d.icon}
-              </span>
+              <span className="flex h-4 w-4 items-center justify-center">{d.icon}</span>
               <span>{d.label}</span>
             </a>
           ))}
@@ -153,6 +149,16 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
       )}
     </div>
   );
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+function getHasWebShare() {
+  return typeof navigator !== "undefined" && typeof navigator.share === "function";
+}
+function getHasWebShareServer() {
+  return false;
 }
 
 // ============================================================

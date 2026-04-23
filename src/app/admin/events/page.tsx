@@ -6,11 +6,7 @@ import { useAdminAuth } from "@/components/admin/admin-auth-provider";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  SortableTable,
-  type SortState,
-  type TableColumn,
-} from "@/components/ui/sortable-table";
+import { SortableTable, type SortState } from "@/components/ui/sortable-table";
 import { X } from "lucide-react";
 import {
   CATEGORY_LABELS,
@@ -72,7 +68,8 @@ export default function AdminEventsPage() {
   // Always read live query string from window.location to avoid stale closures
   // (React Compiler memoizes callbacks across renders, so captured searchParams
   // can diverge from the actual URL after navigations).
-  const currentParams = () => new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const currentParams = () =>
+    new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
 
   // Depend on a primitive (the search string) so the effect reliably fires
   // after every navigation — a `searchParams` object dep can be over-memoized
@@ -108,7 +105,9 @@ export default function AdminEventsPage() {
           .sort((a, b) => a.name.localeCompare(b.name));
       });
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [searchString, fetchAdmin, reloadKey]);
 
   const setFilter = (key: string, value: string | boolean) => {
@@ -151,7 +150,18 @@ export default function AdminEventsPage() {
     searchTimer.current = setTimeout(() => setFilter("q", val), 300);
   };
 
-  const hasFilters = filters.status || filters.source || filters.category || filters.type || filters.size || filters.country || filters.noLocation || filters.moderated || filters.dateFrom || filters.dateTo || filters.q;
+  const hasFilters =
+    filters.status ||
+    filters.source ||
+    filters.category ||
+    filters.type ||
+    filters.size ||
+    filters.country ||
+    filters.noLocation ||
+    filters.moderated ||
+    filters.dateFrom ||
+    filters.dateTo ||
+    filters.q;
 
   const sortState: SortState = filters.sort.startsWith("-")
     ? { key: filters.sort.slice(1), dir: "desc" }
@@ -168,7 +178,11 @@ export default function AdminEventsPage() {
 
   const bulkAction = async (action: "approve" | "reject" | "pending" | "delete") => {
     if (selected.size === 0) return;
-    if (action === "delete" && !confirm(`Delete ${selected.size} event(s)? This cannot be undone.`)) return;
+    if (
+      action === "delete" &&
+      !confirm(`Delete ${selected.size} event(s)? This cannot be undone.`)
+    )
+      return;
     setBusy(action);
     try {
       await fetchAdmin("/api/admin/events/bulk", {
@@ -200,7 +214,8 @@ export default function AdminEventsPage() {
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -225,42 +240,76 @@ export default function AdminEventsPage() {
           placeholder="Search title, city, organizer..."
           className="w-[220px]"
         />
-        <Select value={filters.status} onChange={(e) => setFilter("status", e.target.value)} className="w-[130px]">
+        <Select
+          value={filters.status}
+          onChange={(e) => setFilter("status", e.target.value)}
+          className="w-[130px]"
+        >
           <option value="">All Statuses</option>
           <option value="approved">Approved</option>
           <option value="pending">Pending</option>
           <option value="rejected">Rejected</option>
           <option value="draft">Draft</option>
         </Select>
-        <Select value={filters.source} onChange={(e) => setFilter("source", e.target.value)} className="w-[140px]">
+        <Select
+          value={filters.source}
+          onChange={(e) => setFilter("source", e.target.value)}
+          className="w-[140px]"
+        >
           <option value="">All Sources</option>
           {Object.entries(SOURCE_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val}>
+              {label}
+            </option>
           ))}
         </Select>
-        <Select value={filters.category} onChange={(e) => setFilter("category", e.target.value)} className="w-[160px]">
+        <Select
+          value={filters.category}
+          onChange={(e) => setFilter("category", e.target.value)}
+          className="w-[160px]"
+        >
           <option value="">All Categories</option>
           {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val} title={CATEGORY_DESCRIPTIONS[val]}>{label}</option>
+            <option key={val} value={val} title={CATEGORY_DESCRIPTIONS[val]}>
+              {label}
+            </option>
           ))}
         </Select>
-        <Select value={filters.type} onChange={(e) => setFilter("type", e.target.value)} className="w-[140px]">
+        <Select
+          value={filters.type}
+          onChange={(e) => setFilter("type", e.target.value)}
+          className="w-[140px]"
+        >
           <option value="">All Types</option>
           {Object.entries(EVENT_TYPE_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val}>
+              {label}
+            </option>
           ))}
         </Select>
-        <Select value={filters.size} onChange={(e) => setFilter("size", e.target.value)} className="w-[130px]">
+        <Select
+          value={filters.size}
+          onChange={(e) => setFilter("size", e.target.value)}
+          className="w-[130px]"
+        >
           <option value="">Any Size</option>
           {Object.entries(SIZE_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val}>
+              {label}
+            </option>
           ))}
         </Select>
         {countries.length > 0 && (
-          <Select value={filters.country} onChange={(e) => setFilter("country", e.target.value)} className="w-[150px]">
+          <Select
+            value={filters.country}
+            onChange={(e) => setFilter("country", e.target.value)}
+            className="w-[150px]"
+          >
             <option value="">All Countries</option>
             {countries.map((c) => (
-              <option key={c.code} value={c.code}>{c.name}</option>
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
             ))}
           </Select>
         )}
@@ -271,7 +320,11 @@ export default function AdminEventsPage() {
         >
           No Location
         </Button>
-        <Select value={filters.moderated} onChange={(e) => setFilter("moderated", e.target.value)} className="w-[150px]">
+        <Select
+          value={filters.moderated}
+          onChange={(e) => setFilter("moderated", e.target.value)}
+          className="w-[150px]"
+        >
           <option value="">Any AI state</option>
           <option value="ai">AI-moderated</option>
           <option value="not_ai">Not AI-moderated</option>
@@ -305,20 +358,47 @@ export default function AdminEventsPage() {
       {/* Bulk actions */}
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-          <Button size="sm" disabled={busy !== null} onClick={() => bulkAction("approve")}>
+          <span className="text-sm text-muted-foreground">
+            {selected.size} selected
+          </span>
+          <Button
+            size="sm"
+            disabled={busy !== null}
+            onClick={() => bulkAction("approve")}
+          >
             {busy === "approve" ? "Approving..." : "Approve"}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("pending")}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => bulkAction("pending")}
+          >
             {busy === "pending" ? "Setting..." : "Set Pending"}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("reject")}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => bulkAction("reject")}
+          >
             {busy === "reject" ? "Rejecting..." : "Reject"}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy !== null} onClick={bulkRemoderate}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={bulkRemoderate}
+          >
             {busy === "remoderate" ? "Re-moderating..." : "Re-moderate"}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => bulkAction("delete")} className="border-red-300 text-red-700 hover:bg-red-50">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => bulkAction("delete")}
+            className="border-red-300 text-red-700 hover:bg-red-50"
+          >
             {busy === "delete" ? "Deleting..." : "Delete"}
           </Button>
         </div>
@@ -358,12 +438,17 @@ export default function AdminEventsPage() {
             key: "status",
             label: "Status",
             cell: (row) => (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                row.event.status === "approved" ? "bg-green-100 text-green-800"
-                : row.event.status === "pending" ? "bg-yellow-100 text-yellow-800"
-                : row.event.status === "rejected" ? "bg-red-100 text-red-800"
-                : "bg-gray-100 text-gray-800"
-              }`}>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  row.event.status === "approved"
+                    ? "bg-green-100 text-green-800"
+                    : row.event.status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : row.event.status === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
+                }`}
+              >
                 {row.event.status}
               </span>
             ),
@@ -394,9 +479,7 @@ export default function AdminEventsPage() {
               <>
                 {row.city?.name}
                 {row.country ? ` ${countryFlag(row.country.code)}` : ""}
-                {!row.city && !row.country && (
-                  <span className="text-red-400">—</span>
-                )}
+                {!row.city && !row.country && <span className="text-red-400">—</span>}
               </>
             ),
           },
@@ -445,20 +528,34 @@ export default function AdminEventsPage() {
             Per page
             <Select
               value={String(limit)}
-              onChange={(e) => setFilter("limit", e.target.value === "50" ? "" : e.target.value)}
+              onChange={(e) =>
+                setFilter("limit", e.target.value === "50" ? "" : e.target.value)
+              }
               className="w-[80px]"
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={String(n)}>{n}</option>
+                <option key={n} value={String(n)}>
+                  {n}
+                </option>
               ))}
             </Select>
           </label>
           {total > limit && (
             <>
-              <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - limit))}
+              >
                 Previous
               </Button>
-              <Button size="sm" variant="outline" disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={offset + limit >= total}
+                onClick={() => setOffset(offset + limit)}
+              >
                 Next
               </Button>
             </>

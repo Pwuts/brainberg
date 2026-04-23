@@ -9,17 +9,25 @@ import { Select } from "@/components/ui/select";
 import { Trash2, Sparkles, Clock } from "lucide-react";
 import { LocationPicker } from "@/components/admin/location-picker";
 import {
-  CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS, SOURCE_LABELS, EVENT_TYPE_LABELS,
-  countryFlag, formatEventDate,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  CATEGORY_DESCRIPTIONS,
+  SOURCE_LABELS,
+  EVENT_TYPE_LABELS,
 } from "@/lib/utils";
 
 interface EventDetail {
   event: Record<string, unknown>;
   city: { name: string } | null;
   country: { code: string; name: string } | null;
-  sources: { source: string; sourceId: string; sourceUrl: string | null; firstSeenAt: string; lastSeenAt: string }[];
+  sources: {
+    source: string;
+    sourceId: string;
+    sourceUrl: string | null;
+    firstSeenAt: string;
+    lastSeenAt: string;
+  }[];
 }
-
 
 export default function AdminEventDetailPage({
   params: paramsPromise,
@@ -114,7 +122,9 @@ export default function AdminEventDetailPage({
   const handleRejectNext = async () => {
     await fetchAdmin(`/api/admin/events/${id}/reject`, {
       method: "POST",
-      body: JSON.stringify({ reason: (ev.aiModerationReason as string) ?? "Rejected during review" }),
+      body: JSON.stringify({
+        reason: (ev.aiModerationReason as string) ?? "Rejected during review",
+      }),
     });
     await goToNextPending();
   };
@@ -131,7 +141,9 @@ export default function AdminEventDetailPage({
         alert(`Failed: ${result.message ?? result.error ?? "Unknown error"}`);
         return;
       }
-      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) =>
+        r.json(),
+      );
       setData(refreshed);
     } finally {
       setEnriching(false);
@@ -151,7 +163,9 @@ export default function AdminEventDetailPage({
         alert(`Failed: ${result.message ?? result.error ?? "Unknown error"}`);
         return;
       }
-      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) =>
+        r.json(),
+      );
       setData(refreshed);
     } finally {
       setRemoderating(false);
@@ -175,13 +189,21 @@ export default function AdminEventDetailPage({
         <div>
           <h1 className="text-2xl font-bold">{ev.title as string}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              status === "approved" ? "bg-green-100 text-green-800"
-              : status === "pending" ? "bg-yellow-100 text-yellow-800"
-              : status === "rejected" ? "bg-red-100 text-red-800"
-              : "bg-gray-100 text-gray-800"
-            }`}>
-              {status}{status === "pending" && pendingCount != null && pendingCount > 0 ? ` (+${pendingCount - 1})` : ""}
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                status === "approved"
+                  ? "bg-green-100 text-green-800"
+                  : status === "pending"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : status === "rejected"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {status}
+              {status === "pending" && pendingCount != null && pendingCount > 0
+                ? ` (+${pendingCount - 1})`
+                : ""}
             </span>
             <Select
               value={category}
@@ -190,7 +212,9 @@ export default function AdminEventDetailPage({
               title={CATEGORY_DESCRIPTIONS[category]}
             >
               {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
+                <option key={val} value={val}>
+                  {label}
+                </option>
               ))}
             </Select>
             <Select
@@ -199,7 +223,9 @@ export default function AdminEventDetailPage({
               className="h-auto! w-auto rounded-full border py-1! px-3 text-xs font-medium"
             >
               {Object.entries(EVENT_TYPE_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
+                <option key={val} value={val}>
+                  {label}
+                </option>
               ))}
             </Select>
             <span className="text-sm text-muted-foreground">
@@ -227,7 +253,8 @@ export default function AdminEventDetailPage({
                   type="datetime-local"
                   defaultValue={toLocalInputValue(ev.startsAt as string)}
                   onBlur={(e) => {
-                    if (!e.target.value || e.target.value === e.target.defaultValue) return;
+                    if (!e.target.value || e.target.value === e.target.defaultValue)
+                      return;
                     patchField("startsAt", new Date(e.target.value).toISOString());
                   }}
                   className="h-8 w-auto text-sm"
@@ -239,7 +266,10 @@ export default function AdminEventDetailPage({
                   defaultValue={ev.endsAt ? toLocalInputValue(ev.endsAt as string) : ""}
                   onBlur={(e) => {
                     if (e.target.value === e.target.defaultValue) return;
-                    patchField("endsAt", e.target.value ? new Date(e.target.value).toISOString() : null);
+                    patchField(
+                      "endsAt",
+                      e.target.value ? new Date(e.target.value).toISOString() : null,
+                    );
                   }}
                   className="h-8 w-auto text-sm"
                 />
@@ -261,12 +291,17 @@ export default function AdminEventDetailPage({
                   currentAddress={(ev.venueAddress as string) ?? null}
                   onPick={async (result) => {
                     setSaving("location");
-                    const res = await fetchAdmin(`/api/admin/events/${id}/set-location`, {
-                      method: "POST",
-                      body: JSON.stringify(result),
-                    });
+                    const res = await fetchAdmin(
+                      `/api/admin/events/${id}/set-location`,
+                      {
+                        method: "POST",
+                        body: JSON.stringify(result),
+                      },
+                    );
                     if (res.ok) {
-                      const refreshed = await fetchAdmin(`/api/admin/events/${id}`).then((r) => r.json());
+                      const refreshed = await fetchAdmin(
+                        `/api/admin/events/${id}`,
+                      ).then((r) => r.json());
                       setData(refreshed);
                     }
                     setTimeout(() => setSaving(null), 800);
@@ -291,19 +326,35 @@ export default function AdminEventDetailPage({
                     checked={!!ev.isOnline}
                     onChange={(e) => {
                       patchField("isOnline", e.target.checked as unknown as string);
-                      setData((prev) => prev ? { ...prev, event: { ...prev.event, isOnline: e.target.checked } } : prev);
+                      setData((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              event: { ...prev.event, isOnline: e.target.checked },
+                            }
+                          : prev,
+                      );
                     }}
                   />
-                  <span className="text-muted-foreground">This event is (also) online</span>
+                  <span className="text-muted-foreground">
+                    This event is (also) online
+                  </span>
                 </label>
               </Row>
             </div>
             {(!!ev.organizerName || !!ev.websiteUrl) && (
               <div className="flex flex-col gap-4">
-                {ev.organizerName ? <Row label="Organizer">{String(ev.organizerName)}</Row> : null}
+                {ev.organizerName ? (
+                  <Row label="Organizer">{String(ev.organizerName)}</Row>
+                ) : null}
                 {ev.websiteUrl ? (
                   <Row label="Website">
-                    <a href={String(ev.websiteUrl)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <a
+                      href={String(ev.websiteUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
                       {String(ev.websiteUrl)}
                     </a>
                   </Row>
@@ -341,19 +392,19 @@ export default function AdminEventDetailPage({
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Data Sources</h2>
-            {ev.source === "dev_events"
-              && !!ev.meetupUrl
-              && !data.sources.some((s) => s.source === "meetup") && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleEnrichMeetup}
-                disabled={enriching}
-                title="Fetch additional data from the linked Meetup event"
-              >
-                {enriching ? "Enriching..." : "Enrich from Meetup"}
-              </Button>
-            )}
+            {ev.source === "dev_events" &&
+              !!ev.meetupUrl &&
+              !data.sources.some((s) => s.source === "meetup") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEnrichMeetup}
+                  disabled={enriching}
+                  title="Fetch additional data from the linked Meetup event"
+                >
+                  {enriching ? "Enriching..." : "Enrich from Meetup"}
+                </Button>
+              )}
           </div>
           <div className="overflow-auto rounded-lg border">
             <table className="w-full text-sm">
@@ -373,13 +424,22 @@ export default function AdminEventDetailPage({
                     <td className="px-4 py-2 font-mono text-xs">{s.sourceId}</td>
                     <td className="px-4 py-2">
                       {s.sourceUrl && (
-                        <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        <a
+                          href={s.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
                           Link
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground">{new Date(s.firstSeenAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{new Date(s.lastSeenAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {new Date(s.firstSeenAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {new Date(s.lastSeenAt).toLocaleDateString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -389,56 +449,101 @@ export default function AdminEventDetailPage({
       )}
 
       {/* Moderation card — always visible */}
-      <div className={`rounded-lg border p-5 ${
+      <div
+        className={`rounded-lg border p-5 ${
           status === "approved"
             ? "border-border bg-muted/30"
             : "border-yellow-300 bg-yellow-50/60"
-        }`}>
-          {ev.aiModerationReason ? (
-            <p className="mb-4 text-base">
-              <span className={`font-semibold ${status === "approved" ? "" : "text-yellow-900"}`}>AI says: </span>
-              <span className={status === "approved" ? "text-muted-foreground" : "text-yellow-800"}>{String(ev.aiModerationReason)}</span>
-            </p>
-          ) : null}
-          {ev.rejectionReason ? (
-            <p className="mb-4 text-base">
-              <span className="font-semibold text-red-800">Rejection note: </span>
-              <span className="text-red-700">{String(ev.rejectionReason)}</span>
-            </p>
-          ) : null}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {status !== "approved" && (
-                <>
-                  <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleApproveNext}>Approve & Next</Button>
-                  <Button size="lg" className="border-green-300 text-green-700 hover:bg-green-50" variant="outline" onClick={handleApprove}>Approve</Button>
-                </>
-              )}
+        }`}
+      >
+        {ev.aiModerationReason ? (
+          <p className="mb-4 text-base">
+            <span
+              className={`font-semibold ${status === "approved" ? "" : "text-yellow-900"}`}
+            >
+              AI says:{" "}
+            </span>
+            <span
+              className={
+                status === "approved" ? "text-muted-foreground" : "text-yellow-800"
+              }
+            >
+              {String(ev.aiModerationReason)}
+            </span>
+          </p>
+        ) : null}
+        {ev.rejectionReason ? (
+          <p className="mb-4 text-base">
+            <span className="font-semibold text-red-800">Rejection note: </span>
+            <span className="text-red-700">{String(ev.rejectionReason)}</span>
+          </p>
+        ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {status !== "approved" && (
+              <>
+                <Button
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleApproveNext}
+                >
+                  Approve & Next
+                </Button>
+                <Button
+                  size="lg"
+                  className="border-green-300 text-green-700 hover:bg-green-50"
+                  variant="outline"
+                  onClick={handleApprove}
+                >
+                  Approve
+                </Button>
+              </>
+            )}
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleRemoderate}
+              disabled={remoderating}
+              title="Re-run AI moderation on this event"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {remoderating ? "Moderating..." : "Re-moderate"}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {status !== "approved" && status !== "rejected" && (
+              <>
+                <Button
+                  size="lg"
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                  variant="outline"
+                  onClick={handleReject}
+                >
+                  Reject
+                </Button>
+                <Button
+                  size="lg"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleRejectNext}
+                >
+                  Reject & Next
+                </Button>
+              </>
+            )}
+            {status === "approved" && (
               <Button
                 size="lg"
+                className="border-red-300 text-red-700 hover:bg-red-50"
                 variant="outline"
-                onClick={handleRemoderate}
-                disabled={remoderating}
-                title="Re-run AI moderation on this event"
+                onClick={handleReject}
               >
-                <Sparkles className="mr-2 h-4 w-4" />
-                {remoderating ? "Moderating..." : "Re-moderate"}
+                Reject
               </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {status !== "approved" && status !== "rejected" && (
-                <>
-                  <Button size="lg" className="border-red-300 text-red-700 hover:bg-red-50" variant="outline" onClick={handleReject}>Reject</Button>
-                  <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white" onClick={handleRejectNext}>Reject & Next</Button>
-                </>
-              )}
-              {status === "approved" && (
-                <Button size="lg" className="border-red-300 text-red-700 hover:bg-red-50" variant="outline" onClick={handleReject}>Reject</Button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
+    </div>
   );
 }
 
@@ -448,7 +553,15 @@ function toLocalInputValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function Row({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+function Row({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`flex items-center gap-3${className ? ` ${className}` : ""}`}>
       <dt className="w-20 shrink-0 text-right text-muted-foreground">{label}</dt>
