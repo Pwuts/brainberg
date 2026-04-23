@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { events, cities, countries } from "@/lib/db/schema";
 import { asc, eq, lte, and, count, countDistinct, sql } from "drizzle-orm";
@@ -15,43 +16,16 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+// Short TTL: event listings change when new events get approved, so
+// keep this snappy enough that new approvals appear within a few minutes.
+const EVENT_DATA_TTL_SECONDS = 300;
+// Longer TTL: countries + landing-city counts are stable enough that an
+// hour of staleness is invisible to users.
+const SEO_DATA_TTL_SECONDS = 3600;
+
 export default async function HomePage() {
-  const threeMonths = new Date();
-  threeMonths.setMonth(threeMonths.getMonth() + 3);
-
-  const [groups, [statsRow], [statsRow3m], [cityCountRow], topCities, allCountries] =
-    await Promise.all([
-      getEventsByTimeGroup(),
-      db
-        .select({ count: count() })
-        .from(events)
-        .where(
-          and(
-            eq(events.status, "approved"),
-            // Include currently running multi-day events.
-            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
-          ),
-        ),
-      db
-        .select({ count: count() })
-        .from(events)
-        .where(
-          and(
-            eq(events.status, "approved"),
-            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
-            lte(events.startsAt, threeMonths),
-          ),
-        ),
-      db.select({ count: countDistinct(cities.id) }).from(cities),
-      getLandingCities(24),
-      db
-        .select({ code: countries.code, name: countries.name })
-        .from(countries)
-        .orderBy(asc(countries.name)),
-    ]);
-
-  const eventsNext3m = statsRow3m?.count ?? 0;
-  const cityCount = cityCountRow?.count ?? 0;
+  const [{ groups, totalUpcomingEvents, eventsNext3m, cityCount }, seo] =
+    await Promise.all([getCachedEventData(), getCachedSeoData()]);
 
   // Cap to ~30 items (10 rows × 3 columns) across all groups
   const maxItems = 30;
@@ -61,7 +35,6 @@ export default async function HomePage() {
   const thisWeek = groups.thisWeek.slice(0, remaining);
   remaining -= thisWeek.length;
   const upcoming = groups.upcoming.slice(0, remaining);
-  const totalUpcomingEvents = statsRow?.count ?? 0;
 
   return (
     <div>
@@ -196,7 +169,62 @@ export default async function HomePage() {
         )}
       </section>
 
-      <SeoSections topCities={topCities} countries={allCountries} />
+      <SeoSections topCities={seo.topCities} countries={seo.countries} />
     </div>
   );
 }
+
+const getCachedEventData = unstable_cache(
+  async () => {
+    const threeMonths = new Date();
+    threeMonths.setMonth(threeMonths.getMonth() + 3);
+
+    const [groups, [statsRow], [statsRow3m], [cityCountRow]] = await Promise.all([
+      getEventsByTimeGroup(),
+      db
+        .select({ count: count() })
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "approved"),
+            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
+          ),
+        ),
+      db
+        .select({ count: count() })
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "approved"),
+            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
+            lte(events.startsAt, threeMonths),
+          ),
+        ),
+      db.select({ count: countDistinct(cities.id) }).from(cities),
+    ]);
+
+    return {
+      groups,
+      totalUpcomingEvents: statsRow?.count ?? 0,
+      eventsNext3m: statsRow3m?.count ?? 0,
+      cityCount: cityCountRow?.count ?? 0,
+    };
+  },
+  ["home-event-data"],
+  { revalidate: EVENT_DATA_TTL_SECONDS },
+);
+
+const getCachedSeoData = unstable_cache(
+  async () => {
+    const [topCities, countryRows] = await Promise.all([
+      getLandingCities(24),
+      db
+        .select({ code: countries.code, name: countries.name })
+        .from(countries)
+        .orderBy(asc(countries.name)),
+    ]);
+    return { topCities, countries: countryRows };
+  },
+  ["home-seo-data"],
+  { revalidate: SEO_DATA_TTL_SECONDS },
+);
