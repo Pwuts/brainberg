@@ -13,14 +13,11 @@ import { db } from "@/lib/db";
 import { cities, countries, events } from "@/lib/db/schema";
 import { countryFlag } from "@/lib/utils";
 
-export const revalidate = 600;
-
-// Don't prebuild. Pages render on first request and then sit in the
-// ISR cache for `revalidate` seconds. Keeping the build DB-free is
-// more important than a warm cache for landing pages.
-export function generateStaticParams() {
-  return [];
-}
+// Pages read `searchParams` for filter forwarding, which makes them
+// inherently dynamic. Skipping prerender keeps the build DB-free
+// (see commit notes); skipping ISR avoids a DYNAMIC_SERVER_USAGE
+// error when Next tries to cache a render that reads request state.
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ category: string; city: string }>;

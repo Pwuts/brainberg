@@ -14,14 +14,11 @@ import { countryFlag } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { countries } from "@/lib/db/schema";
 
-export const revalidate = 600;
-
-// No prebuild — pages are ISR-generated on first request. The build
-// step doesn't need DB access this way, and sitemap + internal
-// linking still guide Google to every valid landing URL.
-export function generateStaticParams() {
-  return [];
-}
+// Pages read `searchParams` for filter forwarding, which makes them
+// inherently dynamic. Skipping prerender keeps the build DB-free
+// (see commit notes); skipping ISR avoids a DYNAMIC_SERVER_USAGE
+// error when Next tries to cache a render that reads request state.
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ country: string }>;
