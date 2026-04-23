@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
-import { eq, gte, lte, and, count } from "drizzle-orm";
+import { eq, lte, and, count, sql } from "drizzle-orm";
 import { CATEGORY_LABELS } from "@/lib/utils";
 import { AnimatedBubbles } from "./animated-bubbles";
 
@@ -33,7 +33,8 @@ export async function CategoryBubbles() {
     .where(
       and(
         eq(events.status, "approved"),
-        gte(events.startsAt, new Date()),
+        // Include currently running multi-day events.
+        sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
         lte(events.startsAt, horizon),
       ),
     )

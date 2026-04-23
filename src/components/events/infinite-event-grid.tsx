@@ -31,7 +31,18 @@ interface InitialData {
   nextCursor: string | null;
 }
 
-export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
+interface InfiniteEventGridProps {
+  initial: InitialData;
+  /**
+   * Filters baked into every fetch — used by landing pages (e.g. a
+   * category page where `category` must always be set regardless of
+   * what's in the URL search params). URL params take precedence
+   * when both are set.
+   */
+  baseFilters?: Record<string, string>;
+}
+
+export function InfiniteEventGrid({ initial, baseFilters }: InfiniteEventGridProps) {
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<EventRow[]>(initial.events);
   const [cursor, setCursor] = useState<string | null>(initial.nextCursor);
@@ -54,6 +65,11 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
     setLoading(true);
     try {
       const params = new URLSearchParams(searchParams.toString());
+      if (baseFilters) {
+        for (const [k, v] of Object.entries(baseFilters)) {
+          if (!params.has(k)) params.set(k, v);
+        }
+      }
       params.set("cursor", cursor);
       params.set("limit", "30");
       const res = await fetch(`/api/events?${params.toString()}`);
@@ -65,7 +81,7 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
     } finally {
       setLoading(false);
     }
-  }, [cursor, loading, searchParams]);
+  }, [cursor, loading, searchParams, baseFilters]);
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -75,7 +91,7 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
       (entries) => {
         if (entries[0].isIntersecting) loadMore();
       },
-      { rootMargin: "400px" }
+      { rootMargin: "400px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -84,9 +100,7 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
   if (events.length === 0) {
     return (
       <div className="col-span-full rounded-lg border border-dashed border-border py-16 text-center">
-        <p className="text-lg text-muted-foreground">
-          No events match your filters.
-        </p>
+        <p className="text-lg text-muted-foreground">No events match your filters.</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or{" "}
           <Link href="/events" className="text-primary hover:underline">
@@ -118,9 +132,7 @@ export function InfiniteEventGrid({ initial }: { initial: InitialData }) {
       {/* Scroll sentinel */}
       {cursor && (
         <div ref={sentinelRef} className="mt-8 flex justify-center">
-          {loading && (
-            <p className="text-sm text-muted-foreground">Loading more...</p>
-          )}
+          {loading && <p className="text-sm text-muted-foreground">Loading more...</p>}
         </div>
       )}
     </>

@@ -36,10 +36,8 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, city, country }: EventCardProps) {
-  const categoryColor =
-    CATEGORY_COLORS[event.category] ?? "bg-gray-100 text-gray-800";
-  const categoryLabel =
-    CATEGORY_LABELS[event.category] ?? event.category;
+  const categoryColor = CATEGORY_COLORS[event.category] ?? "bg-gray-100 text-gray-800";
+  const categoryLabel = CATEGORY_LABELS[event.category] ?? event.category;
   const typeLabel = EVENT_TYPE_LABELS[event.eventType] ?? event.eventType;
 
   return (
@@ -47,14 +45,15 @@ export function EventCard({ event, city, country }: EventCardProps) {
       <Link href={`/events/${event.slug}`} className="block flex-1 p-5">
         {/* Badges */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Badge className={categoryColor} title={CATEGORY_DESCRIPTIONS[event.category]}>{categoryLabel}</Badge>
+          <Badge
+            className={categoryColor}
+            title={CATEGORY_DESCRIPTIONS[event.category]}
+          >
+            {categoryLabel}
+          </Badge>
           <Badge variant="outline">{typeLabel}</Badge>
-          {event.isFree && (
-            <Badge className="bg-green-100 text-green-800">Free</Badge>
-          )}
-          {event.isOnline && (
-            <Badge className="bg-sky-100 text-sky-800">Online</Badge>
-          )}
+          {event.isFree && <Badge className="bg-green-100 text-green-800">Free</Badge>}
+          {event.isOnline && <Badge className="bg-sky-100 text-sky-800">Online</Badge>}
         </div>
 
         {/* Title */}
@@ -69,7 +68,9 @@ export function EventCard({ event, city, country }: EventCardProps) {
             {city?.name}
             {city && country && ", "}
             {country && (
-              <span>{countryFlag(country.code)} {country.name}</span>
+              <span>
+                {countryFlag(country.code)} {country.name}
+              </span>
             )}
           </p>
         )}
@@ -83,6 +84,16 @@ export function EventCard({ event, city, country }: EventCardProps) {
                 // Card is wrapped in a Link; render markdown links as plain
                 // text to avoid nested <a> hydration error.
                 a: ({ children }) => <>{children}</>,
+                // Markdown headings in an event description would otherwise
+                // emit <h1>/<h2> tags that pollute the page's heading
+                // hierarchy (bad for SEO). The card visually clips to two
+                // lines anyway, so collapse headings to plain text.
+                h1: ({ children }) => <span>{children}</span>,
+                h2: ({ children }) => <span>{children}</span>,
+                h3: ({ children }) => <span>{children}</span>,
+                h4: ({ children }) => <span>{children}</span>,
+                h5: ({ children }) => <span>{children}</span>,
+                h6: ({ children }) => <span>{children}</span>,
               }}
             >
               {event.description}

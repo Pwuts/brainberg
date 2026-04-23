@@ -5,22 +5,44 @@ import { Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 type DatePreset =
-  | "today" | "this-week" | "this-month" | "this-year"
-  | "next-7" | "next-14" | "next-30" | "next-6-months"
+  | "anytime"
+  | "today"
+  | "this-week"
+  | "next-7"
+  | "next-14"
+  | "next-30"
+  | "next-3-months"
+  | "next-6-months"
+  | "next-12-months"
   | "custom";
 
-// Left column: calendar-anchored ranges. Right column: rolling windows.
-const PRESET_ROWS: [
-  { value: DatePreset; label: string },
-  { value: DatePreset; label: string },
-][] = [
-  [{ value: "today", label: "Today" },           { value: "next-14", label: "Next 2 Weeks" }],
-  [{ value: "this-week", label: "This Week" },    { value: "next-7", label: "Next 7 Days" }],
-  [{ value: "this-month", label: "This Month" },  { value: "next-30", label: "Next 30 Days" }],
-  [{ value: "this-year", label: "This Year" },    { value: "next-6-months", label: "Next 6 Months" }],
+// Top row is calendar-anchored; the rest are rolling forward windows.
+// "Future events" spans the top and serves as the no-filter default.
+type PresetCell = { value: DatePreset; label: string } | null;
+const PRESET_ROWS: [PresetCell, PresetCell][] = [
+  [
+    { value: "today", label: "Today" },
+    { value: "this-week", label: "This week" },
+  ],
+  [
+    { value: "next-7", label: "Next 7 days" },
+    { value: "next-14", label: "Next 2 weeks" },
+  ],
+  [
+    { value: "next-30", label: "Next 30 days" },
+    { value: "next-3-months", label: "Next 3 months" },
+  ],
+  [
+    { value: "next-6-months", label: "Next 6 months" },
+    { value: "next-12-months", label: "Next 12 months" },
+  ],
 ];
 
-const ALL_PRESETS = PRESET_ROWS.flat();
+const ANYTIME_PRESET = { value: "anytime" as const, label: "Future events" };
+const ALL_PRESETS = [
+  ANYTIME_PRESET,
+  ...PRESET_ROWS.flat().filter((p): p is NonNullable<PresetCell> => p !== null),
+];
 
 function getPresetRange(preset: DatePreset): { from: string; to: string } {
   const now = new Date();
@@ -29,9 +51,22 @@ function getPresetRange(preset: DatePreset): { from: string; to: string } {
   const pad = (n: number) => String(n).padStart(2, "0");
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const addDays = (n: number) => { const d = new Date(now); d.setDate(d.getDate() + n); return d; };
+  const addDays = (n: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + n);
+    return d;
+  };
+
+  const addMonths = (n: number) => {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + n);
+    return d;
+  };
 
   switch (preset) {
+    case "anytime":
+    case "custom":
+      return { from: "", to: "" };
     case "today":
       return { from: fmt(now), to: fmt(now) };
     case "this-week": {
@@ -42,29 +77,18 @@ function getPresetRange(preset: DatePreset): { from: string; to: string } {
       sunday.setDate(monday.getDate() + 6);
       return { from: fmt(monday), to: fmt(sunday) };
     }
-    case "this-month": {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      return { from: fmt(start), to: fmt(end) };
-    }
-    case "this-year": {
-      const start = new Date(now.getFullYear(), 0, 1);
-      const end = new Date(now.getFullYear(), 11, 31);
-      return { from: fmt(start), to: fmt(end) };
-    }
     case "next-7":
       return { from: fmt(now), to: fmt(addDays(7)) };
     case "next-14":
       return { from: fmt(now), to: fmt(addDays(14)) };
     case "next-30":
       return { from: fmt(now), to: fmt(addDays(30)) };
-    case "next-6-months": {
-      const end = new Date(now);
-      end.setMonth(end.getMonth() + 6);
-      return { from: fmt(now), to: fmt(end) };
-    }
-    case "custom":
-      return { from: "", to: "" };
+    case "next-3-months":
+      return { from: fmt(now), to: fmt(addMonths(3)) };
+    case "next-6-months":
+      return { from: fmt(now), to: fmt(addMonths(6)) };
+    case "next-12-months":
+      return { from: fmt(now), to: fmt(addMonths(12)) };
   }
 }
 
@@ -74,7 +98,8 @@ const STORAGE_KEY = "brainberg-date-preset";
 function loadPreset(): DatePreset {
   if (typeof window === "undefined") return DEFAULT_PRESET;
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored && ALL_PRESETS.some((p) => p.value === stored)) return stored as DatePreset;
+  if (stored && ALL_PRESETS.some((p) => p.value === stored))
+    return stored as DatePreset;
   return DEFAULT_PRESET;
 }
 
@@ -93,7 +118,10 @@ function detectPreset(from: string, to: string): DatePreset | null {
     if (range.from === from && range.to === to) return p.value;
   }
   if (from || to) return "custom";
-  return null; // no date params — caller should apply default
+  // Both empty = "anytime" (no date filter). We detect it rather than
+  // returning null, so the UI shows "Future events" instead of falling
+  // through to whatever's in localStorage.
+  return "anytime";
 }
 
 function formatLabel(preset: DatePreset, from: string, to: string): string {
@@ -109,34 +137,45 @@ interface DateRangeFilterProps {
   from: string;
   to: string;
   onChange: (from: string, to: string) => void;
+  /**
+   * When true (default), on first mount with no URL params the filter
+   * auto-applies the last-used preset from localStorage (or
+   * DEFAULT_PRESET). When false, the filter leaves the URL alone and
+   * renders as "Future events" — used on topical landing pages where a
+   * remembered 2-week window would unexpectedly hide most events.
+   */
+  autoApplyStoredPreset?: boolean;
 }
 
-export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
+export function DateRangeFilter({
+  from,
+  to,
+  onChange,
+  autoApplyStoredPreset = true,
+}: DateRangeFilterProps) {
   const [open, setOpen] = useState(false);
   const [preset, setPreset] = useState<DatePreset>(DEFAULT_PRESET);
   const ref = useRef<HTMLDivElement>(null);
   const appliedDefault = useRef(false);
 
-  // Derive preset from current URL params (replaces sync effects)
-  const derivedPreset = (() => {
-    const detected = detectPreset(from, to);
-    if (detected) return detected;
-    return loadPreset();
-  })();
+  // Derive preset from current URL params. detectPreset now covers the
+  // (empty, empty) case as "anytime", so no localStorage fallback is
+  // needed for display.
+  const derivedPreset = detectPreset(from, to) ?? "anytime";
   if (derivedPreset !== preset) {
     setPreset(derivedPreset);
   }
 
   // On mount: if no date params in URL, apply the stored/default preset
+  // unless the caller opted out.
   useEffect(() => {
     if (appliedDefault.current) return;
     appliedDefault.current = true;
-    const detected = detectPreset(from, to);
-    if (!detected) {
-      const saved = loadPreset();
-      const range = getPresetRange(saved);
-      onChange(range.from, range.to);
-    }
+    if (!autoApplyStoredPreset) return;
+    if (from || to) return;
+    const saved = loadPreset();
+    const range = getPresetRange(saved);
+    onChange(range.from, range.to);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on outside click
@@ -172,32 +211,43 @@ export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border bg-background p-1 shadow-lg">
-          {/* Presets — two columns */}
+          {/* "Future events" — full-width, acts as "clear date filter" */}
+          <button
+            type="button"
+            onClick={() => selectPreset("anytime")}
+            className={`mb-0.5 w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+              preset === "anytime"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent"
+            }`}
+          >
+            Future events
+          </button>
+
+          {/* Presets — two columns. Rows may have one null cell (the
+              last row with an odd preset count), which renders as a
+              placeholder to keep the grid balanced. */}
           <div className="grid grid-cols-2 gap-0.5">
-            {PRESET_ROWS.map(([left, right]) => (
-              <Fragment key={left.value}>
-                <button
-                  type="button"
-                  onClick={() => selectPreset(left.value)}
-                  className={`rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                    preset === left.value
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  {left.label}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectPreset(right.value)}
-                  className={`rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                    preset === right.value
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  {right.label}
-                </button>
+            {PRESET_ROWS.map(([left, right], i) => (
+              <Fragment key={i}>
+                {left ? (
+                  <PresetButton
+                    cell={left}
+                    selected={preset === left.value}
+                    onSelect={selectPreset}
+                  />
+                ) : (
+                  <span />
+                )}
+                {right ? (
+                  <PresetButton
+                    cell={right}
+                    selected={preset === right.value}
+                    onSelect={selectPreset}
+                  />
+                ) : (
+                  <span />
+                )}
               </Fragment>
             ))}
           </div>
@@ -240,5 +290,27 @@ export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function PresetButton({
+  cell,
+  selected,
+  onSelect,
+}: {
+  cell: NonNullable<PresetCell>;
+  selected: boolean;
+  onSelect: (p: DatePreset) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(cell.value)}
+      className={`rounded-md px-3 py-2 text-left text-sm transition-colors ${
+        selected ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+      }`}
+    >
+      {cell.label}
+    </button>
   );
 }

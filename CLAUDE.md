@@ -70,12 +70,43 @@ on the server.
 - **Reuse shared components instead of reimplementing them.** Check
   [`src/components/ui/`](src/components/ui/) before writing a raw HTML
   button, input, select, card, or badge. A bespoke `<button
-  className="h-9 rounded-md border …">` will visibly drift from
+className="h-9 rounded-md border …">` will visibly drift from
   everything next to it as soon as someone changes the shared styles
   (see: the share button on the event detail page shipped with the
   wrong height because it bypassed `Button`). If a shared component is
   close but not quite right, extend it with a new variant rather than
   forking.
+
+## Copy style (category/city/country intros and other user-facing prose)
+
+The landing-page intros in [`src/lib/categories.ts`](src/lib/categories.ts)
+and [`src/lib/geo.ts`](src/lib/geo.ts) are the biggest body of public copy
+on the site. Edits to them — and any new user-facing prose (SeoSections,
+about page, etc.) — should match the voice that's already there:
+
+- **No em dashes.** Single clearest AI-writing tell. Rewrite with
+  periods, commas, colons, parentheses, or subordinate clauses. One
+  per full intro at most, only when it genuinely adds rhythm.
+- **Scene-setting opener, not meta.** Start with a claim about the
+  subject, not about the page. Good: "Berlin runs one of the densest
+  tech-event calendars in Europe." Weak: "This page covers the Berlin
+  event scene." "This is the category for X."
+- **Specific over generic.** Name actual events, venues, cities,
+  communities, stacks. Generic fills ("a mix of meetups and conferences
+  for the local community") read AI-generated at any length.
+- **Base claims on reality.** Check what's actually in the data before
+  writing. Don't claim "nightly meetups covering DevOps" for a
+  single-event-per-year village. The generic city template
+  (`buildGenericCityLanding` in [`src/lib/geo.ts`](src/lib/geo.ts))
+  stays one honest sentence for exactly this reason.
+- **Don't enumerate our source platforms in descriptions.** It's irrelevant information that may go out of date very quickly. Describe the value ("one European-wide feed", "aggregated
+  in one place") without naming the underlying platforms.
+- **Structure.** Typical intro is three paragraphs: opener (scene
+  claim, who it's for); middle (anchor events, community layer, topic
+  breadth); close (value prop — one unified European feed).
+
+Internal code comments and PR descriptions follow normal rules. This
+guide is specifically for text that reaches users.
 
 ## Design principle: self-correcting ingest
 

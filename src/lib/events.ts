@@ -63,7 +63,7 @@ export interface EventWithRelations {
   country: typeof countries.$inferSelect | null;
 }
 
-interface EventFilters {
+export interface EventFilters {
   country?: string;
   city?: string;
   category?: string;
@@ -147,16 +147,33 @@ export function buildCommonEventConditions(filters: CommonEventFilters): SQL[] {
     }
   }
   if (filters.eventType) {
-    conditions.push(eq(events.eventType, filters.eventType as (typeof eventTypeEnum.enumValues)[number]));
+    conditions.push(
+      eq(
+        events.eventType,
+        filters.eventType as (typeof eventTypeEnum.enumValues)[number],
+      ),
+    );
   }
   if (filters.size) {
-    conditions.push(eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]));
+    conditions.push(
+      eq(events.size, filters.size as (typeof eventSizeEnum.enumValues)[number]),
+    );
   }
   if (filters.dateFrom) {
-    conditions.push(gte(events.startsAt, parseDateBound(filters.dateFrom, filters.tzOffsetMinutes ?? 0, false)));
+    conditions.push(
+      gte(
+        events.startsAt,
+        parseDateBound(filters.dateFrom, filters.tzOffsetMinutes ?? 0, false),
+      ),
+    );
   }
   if (filters.dateTo) {
-    conditions.push(lte(events.startsAt, parseDateBound(filters.dateTo, filters.tzOffsetMinutes ?? 0, true)));
+    conditions.push(
+      lte(
+        events.startsAt,
+        parseDateBound(filters.dateTo, filters.tzOffsetMinutes ?? 0, true),
+      ),
+    );
   }
   if (filters.isFree) {
     conditions.push(eq(events.isFree, true));
@@ -165,6 +182,34 @@ export function buildCommonEventConditions(filters: CommonEventFilters): SQL[] {
     conditions.push(eq(events.isOnline, true));
   }
   return conditions;
+}
+
+/**
+ * Extract the filter subset of a Next.js `searchParams` object into the
+ * shape {@link getFilteredEvents} expects. Used by pages that forward
+ * raw URL filters into the DB query (the /events browse page and all
+ * landing pages under /events/c/ and /events/in/).
+ */
+export function eventFiltersFromSearchParams(
+  sp: Record<string, string | undefined>,
+): EventFilters {
+  return {
+    country: sp.country,
+    city: sp.city,
+    category: sp.category,
+    eventType: sp.type,
+    size: sp.size,
+    dateFrom: sp.from,
+    dateTo: sp.to,
+    tzOffsetMinutes: sp.tzo ? parseInt(sp.tzo, 10) : undefined,
+    isFree: sp.free === "1",
+    isOnline: sp.online === "1",
+    search: sp.q,
+    latitude: sp.lat ? parseFloat(sp.lat) : undefined,
+    longitude: sp.lng ? parseFloat(sp.lng) : undefined,
+    radius: sp.radius ? parseInt(sp.radius) : undefined,
+    sort: sp.sort,
+  };
 }
 
 export async function getEventsByTimeGroup() {
@@ -189,8 +234,10 @@ export async function getEventsByTimeGroup() {
     .where(
       and(
         eq(events.status, "approved"),
-        gte(events.startsAt, now),
-      )
+        // Include currently running multi-day events: filter by
+        // end-date (falling back to start-date when endsAt is null).
+        sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
+      ),
     )
     .orderBy(asc(events.startsAt))
     .limit(100);
@@ -232,13 +279,15 @@ export async function getEventBySlug(slug: string) {
 export async function getFilteredEvents(filters: EventFilters) {
   const conditions: SQL[] = [
     eq(events.status, "approved"),
-    gte(events.startsAt, new Date()),
+    // Include currently running multi-day events: end-date (falling
+    // back to start-date) must be at or after now.
+    sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
     ...buildCommonEventConditions(filters),
   ];
 
   if (filters.search) {
     conditions.push(
-      sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`
+      sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`,
     );
   }
   if (filters.latitude != null && filters.longitude != null && filters.radius) {
@@ -251,7 +300,7 @@ export async function getFilteredEvents(filters: EventFilters) {
         ), 4326)::geography,
         ST_SetSRID(ST_MakePoint(${filters.longitude}, ${filters.latitude}), 4326)::geography,
         ${radiusMeters}
-      )`
+      )`,
     );
   }
 
@@ -261,7 +310,7 @@ export async function getFilteredEvents(filters: EventFilters) {
     conditions.push(
       sql`(${events.startsAt}, ${events.id}) > (
         SELECT starts_at, id FROM events WHERE id = ${filters.cursor}
-      )`
+      )`,
     );
   }
 
@@ -284,7 +333,11 @@ export async function getFilteredEvents(filters: EventFilters) {
           WHEN 'medium' THEN 3 WHEN 'small' THEN 4 ELSE 5
         END ASC, ${events.startsAt} ASC`;
     orderExpr = sizeOrder;
-  } else if (sortField === "distance" && filters.latitude != null && filters.longitude != null) {
+  } else if (
+    sortField === "distance" &&
+    filters.latitude != null &&
+    filters.longitude != null
+  ) {
     orderExpr = sql`ST_Distance(
       ST_SetSRID(ST_MakePoint(
         COALESCE(${events.longitude}, ${cities.longitude}),
@@ -294,9 +347,8 @@ export async function getFilteredEvents(filters: EventFilters) {
     ) ASC NULLS LAST`;
   } else {
     // date (default)
-    orderExpr = dir === "DESC"
-      ? sql`${events.startsAt} DESC`
-      : sql`${events.startsAt} ASC`;
+    orderExpr =
+      dir === "DESC" ? sql`${events.startsAt} DESC` : sql`${events.startsAt} ASC`;
   }
 
   const results = await db
@@ -341,7 +393,9 @@ export interface MapEvent {
   countryName: string | null;
 }
 
-export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor">): Promise<MapEvent[]> {
+export async function getMapEvents(
+  filters: Omit<EventFilters, "limit" | "cursor">,
+): Promise<MapEvent[]> {
   // Exclude events whose (event-or-city-fallback) coordinates fall outside the
   // Europe bounding box — hybrid events with a non-European physical venue
   // would otherwise stretch the map view even though they're online-accessible.
@@ -350,7 +404,8 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
 
   const conditions: SQL[] = [
     eq(events.status, "approved"),
-    gte(events.startsAt, new Date()),
+    // Include currently running multi-day events.
+    sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
     sql`${lat} IS NOT NULL`,
     sql`${lng} IS NOT NULL`,
     sql`${lat} BETWEEN ${EUROPE_BBOX.minLat} AND ${EUROPE_BBOX.maxLat}`,
@@ -360,7 +415,7 @@ export async function getMapEvents(filters: Omit<EventFilters, "limit" | "cursor
 
   if (filters.search) {
     conditions.push(
-      sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`
+      sql`${events.searchVector} @@ plainto_tsquery('english', ${filters.search})`,
     );
   }
 
@@ -431,11 +486,14 @@ export async function searchEvents(query: string, autocomplete = false) {
       .where(
         and(
           eq(events.status, "approved"),
-          gte(events.startsAt, new Date()),
+          // Include currently running multi-day events.
+          sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
           sql`${events.searchVector} @@ to_tsquery('english', ${tsQuery})`,
-        )
+        ),
       )
-      .orderBy(sql`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery})) DESC`)
+      .orderBy(
+        sql`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery})) DESC`,
+      )
       .limit(limit);
 
     return { suggestions: results };
@@ -446,8 +504,13 @@ export async function searchEvents(query: string, autocomplete = false) {
       event: publicEventColumns,
       city: cities,
       country: countries,
-      rank: sql<number>`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery}))`.as("rank"),
-      headline: sql<string>`ts_headline('english', ${events.title}, to_tsquery('english', ${tsQuery}))`.as("headline"),
+      rank: sql<number>`ts_rank(${events.searchVector}, to_tsquery('english', ${tsQuery}))`.as(
+        "rank",
+      ),
+      headline:
+        sql<string>`ts_headline('english', ${events.title}, to_tsquery('english', ${tsQuery}))`.as(
+          "headline",
+        ),
     })
     .from(events)
     .leftJoin(cities, eq(events.cityId, cities.id))
@@ -456,7 +519,7 @@ export async function searchEvents(query: string, autocomplete = false) {
       and(
         eq(events.status, "approved"),
         sql`${events.searchVector} @@ to_tsquery('english', ${tsQuery})`,
-      )
+      ),
     )
     .orderBy(sql`rank DESC`)
     .limit(limit);

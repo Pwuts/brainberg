@@ -9,16 +9,71 @@ import { EventFilters } from "@/components/events/event-filters";
 import { EventSearch } from "@/components/events/event-search";
 import { InfiniteEventGrid } from "@/components/events/infinite-event-grid";
 import { buildMetadata } from "@/lib/metadata";
+import { categoryToSlug } from "@/lib/categories";
+import { findCountryByCode } from "@/lib/landing-data";
+import { countrySlug } from "@/lib/geo";
+import type { Metadata } from "next";
+import type { eventCategoryEnum } from "@/lib/db/schema";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>;
 }
 
-export const metadata = buildMetadata({
-  title: "Browse Events",
-  description: "Find and filter tech events across Europe",
-  path: "/events",
-});
+/**
+ * Collapse a filtered /events?… URL onto its canonical landing page
+ * when one exists. Any filters beyond category/country/city (search,
+ * date, size, free, online) force the canonical back to /events to
+ * prevent an unbounded set of canonical targets.
+ */
+async function canonicalPathForFilters(
+  params: Record<string, string | undefined>,
+): Promise<string> {
+  const nonCanonicalKeys = [
+    "q",
+    "from",
+    "to",
+    "size",
+    "type",
+    "free",
+    "online",
+    "lat",
+    "lng",
+    "radius",
+    "sort",
+    "tzo",
+  ];
+  if (nonCanonicalKeys.some((k) => params[k])) return "/events";
+
+  const catSlug = params.category
+    ? categoryToSlug(params.category as (typeof eventCategoryEnum.enumValues)[number])
+    : null;
+
+  if (catSlug && params.city) {
+    return `/events/c/${catSlug}/${params.city}`;
+  }
+  if (params.country && params.city) {
+    const country = await findCountryByCode(params.country);
+    if (country) return `/events/in/${countrySlug(country.name)}/${params.city}`;
+  }
+  if (catSlug) {
+    return `/events/c/${catSlug}`;
+  }
+  if (params.country) {
+    const country = await findCountryByCode(params.country);
+    if (country) return `/events/in/${countrySlug(country.name)}`;
+  }
+  return "/events";
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const path = await canonicalPathForFilters(params);
+  return buildMetadata({
+    title: "Browse Events",
+    description: "Find and filter tech events across Europe",
+    path,
+  });
+}
 
 export default async function BrowseEventsPage({ searchParams }: PageProps) {
   const params = await searchParams;
@@ -51,10 +106,12 @@ export default async function BrowseEventsPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
+      <div className="mb-6 max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight">Browse Events</h1>
-        <p className="mt-1 text-muted-foreground">
-          Find tech events across Europe
+        <p className="mt-2 text-muted-foreground leading-relaxed">
+          Every upcoming tech event across Europe, in one place. Filter by category,
+          location, format (conference, meetup, hackathon, workshop, etc.), size, and
+          date.
         </p>
       </div>
 

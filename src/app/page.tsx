@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { db } from "@/lib/db";
-import { events, cities } from "@/lib/db/schema";
-import { eq, gte, lte, and, count, countDistinct } from "drizzle-orm";
+import { events, cities, countries } from "@/lib/db/schema";
+import { asc, eq, lte, and, count, countDistinct, sql } from "drizzle-orm";
 import { getEventsByTimeGroup } from "@/lib/events";
 import { EventList } from "@/components/events/event-list";
 import { EventSearch } from "@/components/events/event-search";
 import { CategoryBubbles } from "@/components/home/category-bubbles";
+import { SeoSections } from "@/components/home/seo-sections";
 import { SiteJsonLD } from "@/components/seo/site-json-ld";
+import { getLandingCities } from "@/lib/landing-data";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Globe, MapPin, Calendar } from "lucide-react";
 import Link from "next/link";
@@ -17,31 +19,36 @@ export default async function HomePage() {
   const threeMonths = new Date();
   threeMonths.setMonth(threeMonths.getMonth() + 3);
 
-  const [groups, [statsRow], [statsRow3m], [cityCountRow]] = await Promise.all([
-    getEventsByTimeGroup(),
-    db
-      .select({ count: count() })
-      .from(events)
-      .where(
-        and(
-          eq(events.status, "approved"),
-          gte(events.startsAt, new Date()),
+  const [groups, [statsRow], [statsRow3m], [cityCountRow], topCities, allCountries] =
+    await Promise.all([
+      getEventsByTimeGroup(),
+      db
+        .select({ count: count() })
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "approved"),
+            // Include currently running multi-day events.
+            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
+          ),
         ),
-      ),
-    db
-      .select({ count: count() })
-      .from(events)
-      .where(
-        and(
-          eq(events.status, "approved"),
-          gte(events.startsAt, new Date()),
-          lte(events.startsAt, threeMonths),
+      db
+        .select({ count: count() })
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "approved"),
+            sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
+            lte(events.startsAt, threeMonths),
+          ),
         ),
-      ),
-    db
-      .select({ count: countDistinct(cities.id) })
-      .from(cities),
-  ]);
+      db.select({ count: countDistinct(cities.id) }).from(cities),
+      getLandingCities(24),
+      db
+        .select({ code: countries.code, name: countries.name })
+        .from(countries)
+        .orderBy(asc(countries.name)),
+    ]);
 
   const eventsNext3m = statsRow3m?.count ?? 0;
   const cityCount = cityCountRow?.count ?? 0;
@@ -83,39 +90,39 @@ export default async function HomePage() {
               }}
             />
             <div className="relative px-4 py-8 text-center *:pointer-events-auto sm:px-10 sm:py-12">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-              <Zap className="h-3.5 w-3.5" />
-              {totalUpcomingEvents} upcoming events across Europe
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Discover Tech Events
-              <span className="block text-primary">Across Europe</span>
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Find AI meetups, startup conferences, hackathons, and more. Filter
-              by country, category, size, and date.
-            </p>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                <Zap className="h-3.5 w-3.5" />
+                {totalUpcomingEvents} upcoming events across Europe
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                Discover Tech Events
+                <span className="block text-primary">Across Europe</span>
+              </h1>
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
+                Find AI meetups, startup conferences, hackathons, and more. Filter by
+                country, category, size, and date.
+              </p>
 
-            <div className="mx-auto mt-8 max-w-xl">
-              <Suspense>
-                <EventSearch />
-              </Suspense>
-            </div>
+              <div className="mx-auto mt-8 max-w-xl">
+                <Suspense>
+                  <EventSearch />
+                </Suspense>
+              </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/events">
-                <Button>
-                  Browse All Events
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/map">
-                <Button variant="outline">
-                  <Globe className="mr-2 h-4 w-4" />
-                  Map View
-                </Button>
-              </Link>
-            </div>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Link href="/events">
+                  <Button>
+                    Browse All Events
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/map">
+                  <Button variant="outline">
+                    <Globe className="mr-2 h-4 w-4" />
+                    Map View
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -130,9 +137,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h3 className="font-semibold">{eventsNext3m} events</h3>
-              <p className="text-sm text-muted-foreground">
-                in the next 3 months
-              </p>
+              <p className="text-sm text-muted-foreground">in the next 3 months</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -141,9 +146,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h3 className="font-semibold">In {cityCount} cities cross Europe</h3>
-              <p className="text-sm text-muted-foreground">
-                ... and counting
-              </p>
+              <p className="text-sm text-muted-foreground">... and counting</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -169,15 +172,10 @@ export default async function HomePage() {
 
           {totalUpcomingEvents === 0 && (
             <div className="rounded-lg border border-dashed border-border py-16 text-center">
-              <p className="text-lg text-muted-foreground">
-                No upcoming events yet.
-              </p>
+              <p className="text-lg text-muted-foreground">No upcoming events yet.</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Be the first to{" "}
-                <Link
-                  href="/events/submit"
-                  className="text-primary hover:underline"
-                >
+                <Link href="/events/submit" className="text-primary hover:underline">
                   submit an event
                 </Link>
                 !
@@ -197,6 +195,8 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      <SeoSections topCities={topCities} countries={allCountries} />
     </div>
   );
 }

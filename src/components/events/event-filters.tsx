@@ -8,7 +8,13 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { MoreFilters } from "@/components/ui/more-filters";
 import { ArrowUp, ArrowDown, X } from "lucide-react";
-import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_DESCRIPTIONS,
+  EVENT_TYPE_LABELS,
+  SIZE_LABELS,
+  cn,
+} from "@/lib/utils";
 
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
   value,
@@ -28,9 +34,25 @@ const SIZE_OPTIONS = Object.entries(SIZE_LABELS).map(([value, label]) => ({
 
 interface FilterProps {
   countries: { code: string; name: string }[];
+  /** Hide the category multi-select (e.g. on a category landing page). */
+  hideCategory?: boolean;
+  /** Hide the location filter (country/city/radius/online) on a
+   *  country or city landing page where location is fixed by the path. */
+  hideLocation?: boolean;
+  /**
+   * Forwarded to DateRangeFilter. Defaults to true (auto-apply
+   * last-used preset). Landing pages pass false so they open with
+   * "Future events" regardless of what was stored in localStorage.
+   */
+  autoApplyStoredDatePreset?: boolean;
 }
 
-export function EventFilters({ countries }: FilterProps) {
+export function EventFilters({
+  countries,
+  hideCategory,
+  hideLocation,
+  autoApplyStoredDatePreset = true,
+}: FilterProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -67,7 +89,10 @@ export function EventFilters({ countries }: FilterProps) {
 
   const clearAll = useCallback(() => router.push(pathname), [router, pathname]);
 
-  const hasFilters = searchParams.toString().length > 0;
+  // Ignore date range filter because it is persisted in local storage and won't be cleared anyway
+  const hasFilters = searchParams
+    .keys()
+    .some((k) => !["from", "to", "tzo"].includes(k));
   const hasLocation = !!searchParams.get("lat");
 
   // Secondary controls (collapsed into "Filters" popover on mobile)
@@ -80,7 +105,7 @@ export function EventFilters({ countries }: FilterProps) {
       options={CATEGORY_OPTIONS}
       placeholder="Category"
       onChange={(vs) => setFilter("category", vs.join(","))}
-      className="w-28"
+      className="w-48"
       panelWidth="w-full md:w-80"
     />
   );
@@ -112,13 +137,14 @@ export function EventFilters({ countries }: FilterProps) {
           ? "border-primary bg-primary text-primary-foreground"
           : "border-input bg-background hover:bg-accent"
       }`}
+      title="Filter by events that are free to attend"
     >
       Free
     </button>
   );
 
   const secondaryActiveCount =
-    (searchParams.get("category") ? 1 : 0) +
+    (!hideCategory && searchParams.get("category") ? 1 : 0) +
     (searchParams.get("type") ? 1 : 0) +
     (searchParams.get("size") ? 1 : 0) +
     (searchParams.get("free") === "1" ? 1 : 0);
@@ -126,44 +152,69 @@ export function EventFilters({ countries }: FilterProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* 1. Location / Online */}
-      <LocationFilter
-        countries={countries}
-        country={searchParams.get("country") ?? ""}
-        locationName={searchParams.get("loc") ?? ""}
-        latitude={searchParams.get("lat") ?? ""}
-        longitude={searchParams.get("lng") ?? ""}
-        radius={searchParams.get("radius") ?? ""}
-        isOnline={searchParams.get("online") === "1"}
-        onCountry={(code) =>
-          update({ country: code, loc: null, lat: null, lng: null, radius: null, online: null })
-        }
-        onLocation={(loc) =>
-          update({
-            loc: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius,
-            country: null, online: null,
-          })
-        }
-        onOnline={(on) =>
-          update({
-            online: on ? "1" : null,
-            loc: null, lat: null, lng: null, radius: null, country: null,
-          })
-        }
-        onClear={() =>
-          update({ country: null, loc: null, lat: null, lng: null, radius: null, online: null })
-        }
-      />
+      {!hideLocation && (
+        <LocationFilter
+          countries={countries}
+          country={searchParams.get("country") ?? ""}
+          locationName={searchParams.get("loc") ?? ""}
+          latitude={searchParams.get("lat") ?? ""}
+          longitude={searchParams.get("lng") ?? ""}
+          radius={searchParams.get("radius") ?? ""}
+          isOnline={searchParams.get("online") === "1"}
+          onCountry={(code) =>
+            update({
+              country: code,
+              loc: null,
+              lat: null,
+              lng: null,
+              radius: null,
+              online: null,
+            })
+          }
+          onLocation={(loc) =>
+            update({
+              loc: loc.name,
+              lat: loc.lat,
+              lng: loc.lng,
+              radius: loc.radius,
+              country: null,
+              online: null,
+            })
+          }
+          onOnline={(on) =>
+            update({
+              online: on ? "1" : null,
+              loc: null,
+              lat: null,
+              lng: null,
+              radius: null,
+              country: null,
+            })
+          }
+          onClear={() =>
+            update({
+              country: null,
+              loc: null,
+              lat: null,
+              lng: null,
+              radius: null,
+              online: null,
+            })
+          }
+        />
+      )}
 
       {/* 2. Timespan */}
       <DateRangeFilter
         from={searchParams.get("from") ?? ""}
         to={searchParams.get("to") ?? ""}
         onChange={setDateRange}
+        autoApplyStoredPreset={autoApplyStoredDatePreset}
       />
 
       {/* Secondary filters — inline on desktop */}
       <div className="hidden md:contents">
-        {categoryEl}
+        {!hideCategory && categoryEl}
         {typeEl}
         {sizeEl}
         {freeEl}
@@ -171,11 +222,21 @@ export function EventFilters({ countries }: FilterProps) {
 
       {/* Secondary filters — collapsed popover on mobile */}
       <MoreFilters className="md:hidden" activeCount={secondaryActiveCount}>
-        {categoryEl}
+        {!hideCategory && categoryEl}
         {typeEl}
         {sizeEl}
         {freeEl}
       </MoreFilters>
+
+      {/* Clear */}
+      {hasFilters && (
+        <button
+          onClick={clearAll}
+          className="flex items-center h-9 shrink-0 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          <X className="h-3.5 w-3.5 mr-1" /> Clear
+        </button>
+      )}
 
       {/* Spacer (desktop only — pushes Sort right) */}
       <div className="hidden flex-1 md:block" />
@@ -186,16 +247,6 @@ export function EventFilters({ countries }: FilterProps) {
         hasLocation={hasLocation}
         onChange={(v) => setFilter("sort", v === "date" ? "" : v)}
       />
-
-      {/* Clear */}
-      {hasFilters && (
-        <button
-          onClick={clearAll}
-          className="h-9 shrink-0 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
     </div>
   );
 }
@@ -216,10 +267,12 @@ function SortControl({
   value,
   hasLocation,
   onChange,
+  className,
 }: {
   value: string;
   hasLocation: boolean;
   onChange: (v: string) => void;
+  className?: string;
 }) {
   const { field, desc: isDesc } = parseSortParam(value);
   const isDistance = field === "distance";
@@ -238,7 +291,7 @@ function SortControl({
   };
 
   return (
-    <div className="flex items-center">
+    <div className={cn("flex items-center", className)}>
       <div className="w-24">
         <Dropdown
           value={field}
@@ -254,7 +307,11 @@ function SortControl({
           title={isDesc ? "Descending" : "Ascending"}
           className="h-9 rounded-r-md border border-input bg-background px-1.5 hover:bg-accent transition-colors"
         >
-          {isDesc ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
+          {isDesc ? (
+            <ArrowDown className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowUp className="h-3.5 w-3.5" />
+          )}
         </button>
       )}
     </div>
