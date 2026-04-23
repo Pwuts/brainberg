@@ -8,16 +8,18 @@ import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { eventFiltersFromSearchParams, getFilteredEvents } from "@/lib/events";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
 import { cityLanding, MIN_LANDING_EVENTS } from "@/lib/geo";
-import { findCityInCountry, getLandingCities } from "@/lib/landing-data";
+import { findCityInCountry } from "@/lib/landing-data";
 import { countryFlag } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { countries } from "@/lib/db/schema";
 
 export const revalidate = 600;
 
-export async function generateStaticParams() {
-  const all = await getLandingCities(60);
-  return all.map((c) => ({ country: c.countrySlug, city: c.citySlug }));
+// Don't prebuild. Pages render on first request and then sit in the
+// ISR cache for `revalidate` seconds. Keeping the build DB-free is
+// more important than a warm cache for landing pages.
+export function generateStaticParams() {
+  return [];
 }
 
 interface PageProps {

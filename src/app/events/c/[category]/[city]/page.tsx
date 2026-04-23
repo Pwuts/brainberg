@@ -1,17 +1,13 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { and, asc, eq, gte, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { InfiniteEventGrid } from "@/components/events/infinite-event-grid";
 import { EventFilters } from "@/components/events/event-filters";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { eventFiltersFromSearchParams, getFilteredEvents } from "@/lib/events";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
-import {
-  ALL_CATEGORY_LANDINGS,
-  CATEGORY_LANDING,
-  categoryFromSlug,
-} from "@/lib/categories";
+import { CATEGORY_LANDING, categoryFromSlug } from "@/lib/categories";
 import { cityLanding, MIN_LANDING_EVENTS, countrySlug } from "@/lib/geo";
 import { db } from "@/lib/db";
 import { cities, countries, events } from "@/lib/db/schema";
@@ -19,41 +15,11 @@ import { countryFlag } from "@/lib/utils";
 
 export const revalidate = 600;
 
-/**
- * Return every (category, city) pair that has at least
- * MIN_LANDING_EVENTS upcoming events, so we only prebuild combos that
- * aren't thin-content. Routes not enumerated here will 404.
- */
-export async function generateStaticParams() {
-  const rows = await db
-    .select({
-      category: events.category,
-      citySlug: cities.slug,
-    })
-    .from(events)
-    .innerJoin(cities, eq(events.cityId, cities.id))
-    .where(
-      and(
-        eq(events.status, "approved"),
-        // Include currently running multi-day events.
-        sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= now()`,
-      ),
-    )
-    .groupBy(events.category, cities.slug)
-    .having(sql`count(*) >= ${MIN_LANDING_EVENTS}`);
-
-  const knownCategorySlugs = new Set(
-    ALL_CATEGORY_LANDINGS.map(([, meta]) => meta.slug),
-  );
-
-  return rows
-    .map((r) => {
-      const catMeta = r.category !== "other" ? CATEGORY_LANDING[r.category] : null;
-      if (!catMeta) return null;
-      if (!knownCategorySlugs.has(catMeta.slug)) return null;
-      return { category: catMeta.slug, city: r.citySlug };
-    })
-    .filter((x): x is { category: string; city: string } => x !== null);
+// Don't prebuild. Pages render on first request and then sit in the
+// ISR cache for `revalidate` seconds. Keeping the build DB-free is
+// more important than a warm cache for landing pages.
+export function generateStaticParams() {
+  return [];
 }
 
 interface PageProps {

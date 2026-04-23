@@ -9,20 +9,18 @@ import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { eventFiltersFromSearchParams, getFilteredEvents } from "@/lib/events";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
 import { buildCountryLanding } from "@/lib/geo";
-import {
-  findCountryBySlug,
-  getCitiesInCountry,
-  getLandingCountries,
-} from "@/lib/landing-data";
+import { findCountryBySlug, getCitiesInCountry } from "@/lib/landing-data";
 import { countryFlag } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { countries } from "@/lib/db/schema";
 
 export const revalidate = 600;
 
-export async function generateStaticParams() {
-  const all = await getLandingCountries();
-  return all.map((c) => ({ country: c.slug }));
+// No prebuild — pages are ISR-generated on first request. The build
+// step doesn't need DB access this way, and sitemap + internal
+// linking still guide Google to every valid landing URL.
+export function generateStaticParams() {
+  return [];
 }
 
 interface PageProps {

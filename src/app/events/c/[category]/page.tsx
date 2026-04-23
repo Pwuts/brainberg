@@ -6,19 +6,18 @@ import { InfiniteEventGrid } from "@/components/events/infinite-event-grid";
 import { EventFilters } from "@/components/events/event-filters";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { eventFiltersFromSearchParams, getFilteredEvents } from "@/lib/events";
-import {
-  ALL_CATEGORY_LANDINGS,
-  categoryFromSlug,
-  CATEGORY_LANDING,
-} from "@/lib/categories";
+import { categoryFromSlug, CATEGORY_LANDING } from "@/lib/categories";
 import { buildMetadata, SITE_URL } from "@/lib/metadata";
 import { db } from "@/lib/db";
 import { countries } from "@/lib/db/schema";
 
 export const revalidate = 600;
 
+// Don't prebuild. Pages render on first request and then sit in the
+// ISR cache for `revalidate` seconds. Keeping the build DB-free is
+// more important than a warm cache for landing pages.
 export function generateStaticParams() {
-  return ALL_CATEGORY_LANDINGS.map(([, meta]) => ({ category: meta.slug }));
+  return [];
 }
 
 interface PageProps {

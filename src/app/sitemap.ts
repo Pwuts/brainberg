@@ -7,8 +7,8 @@ import { ALL_CATEGORY_LANDINGS, CATEGORY_LANDING } from "@/lib/categories";
 import { MIN_LANDING_EVENTS } from "@/lib/geo";
 import { getLandingCities, getLandingCountries } from "@/lib/landing-data";
 
-// Re-query at most hourly — crawlers don't hit sitemaps faster than that,
-// and new events only need to appear within an hour of approval.
+// Re-query at most hourly — crawlers don't hit sitemaps faster than
+// that, and new events only need to appear within an hour of approval.
 export const revalidate = 3600;
 
 const STATIC_ENTRIES: MetadataRoute.Sitemap = [
@@ -20,7 +20,31 @@ const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   // { url: `${SITE_URL}/events/submit`, changeFrequency: "monthly", priority: 0.3 },
 ];
 
+const CATEGORY_ENTRIES: MetadataRoute.Sitemap = ALL_CATEGORY_LANDINGS.map(
+  ([, meta]) => ({
+    url: `${SITE_URL}/events/c/${meta.slug}`,
+    changeFrequency: "daily",
+    priority: 0.8,
+  }),
+);
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Build-time calls may not have DB access (and that's fine — the
+  // ISR regen after deploy will fill in the dynamic entries on the
+  // first crawler hit). On any DB error, return just the static +
+  // category entries so the build keeps succeeding.
+  try {
+    return await buildFullSitemap();
+  } catch (err) {
+    console.warn(
+      "[sitemap] DB unavailable, returning static entries only:",
+      err instanceof Error ? err.message : err,
+    );
+    return [...STATIC_ENTRIES, ...CATEGORY_ENTRIES];
+  }
+}
+
+async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const eventRows = await db
     .select({
       slug: events.slug,
@@ -30,8 +54,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .where(
       and(
         eq(events.status, "approved"),
-        // Keep recently-past events in the index — they still pull traffic
-        // for "{Event Name} {year}" queries and carry accumulated link value.
+        // Keep recently-past events in the index — they still pull
+        // traffic for "{Event Name} {year}" queries and carry
+        // accumulated link value.
         gte(
           sql`COALESCE(${events.endsAt}, ${events.startsAt})`,
           sql`now() - interval '7 days'`,
@@ -45,14 +70,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
     priority: 0.8,
   }));
-
-  const categoryEntries: MetadataRoute.Sitemap = ALL_CATEGORY_LANDINGS.map(
-    ([, meta]) => ({
-      url: `${SITE_URL}/events/c/${meta.slug}`,
-      changeFrequency: "daily",
-      priority: 0.8,
-    }),
-  );
 
   const [landingCountries, landingCities] = await Promise.all([
     getLandingCountries(),
@@ -99,7 +116,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...STATIC_ENTRIES,
-    ...categoryEntries,
+    ...CATEGORY_ENTRIES,
     ...countryEntries,
     ...cityEntries,
     ...comboEntries,
