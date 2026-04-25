@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { Agent, fetch as undiciFetch } from "undici";
 import { isEuropean } from "../european-countries";
 import {
   DEVEVENTS_CATEGORY_MAP,
@@ -10,6 +11,27 @@ import { extractJsonLdEvents } from "../structured-data";
 import type { NormalizedEvent, Scraper, ScraperOptions, EventType } from "../types";
 
 const RSS_URL = "https://dev.events/rss.xml";
+
+// dev.events sits behind Cloudflare, which fingerprints Node's default TLS
+// ClientHello and returns 403. Advertising Chrome's cipher order bypasses
+// this without weakening security (same ciphers, different ordering).
+const BROWSER_CIPHERS = [
+  "TLS_AES_128_GCM_SHA256",
+  "TLS_CHACHA20_POLY1305_SHA256",
+  "TLS_AES_256_GCM_SHA384",
+  "ECDHE-ECDSA-AES128-GCM-SHA256",
+  "ECDHE-RSA-AES128-GCM-SHA256",
+  "ECDHE-ECDSA-CHACHA20-POLY1305",
+  "ECDHE-RSA-CHACHA20-POLY1305",
+  "ECDHE-ECDSA-AES256-GCM-SHA384",
+  "ECDHE-RSA-AES256-GCM-SHA384",
+].join(":");
+
+const cfDispatcher = new Agent({ connect: { ciphers: BROWSER_CIPHERS } });
+
+const REQUEST_HEADERS = {
+  "User-Agent": "Brainberg/1.0 (https://brainberg.eu)",
+};
 
 interface RssItem {
   title: string;
@@ -72,8 +94,9 @@ export const devEventsScraper: Scraper = {
 
   async *scrape(options?: ScraperOptions): AsyncGenerator<NormalizedEvent> {
     // Pass 1: Fetch RSS
-    const res = await fetch(RSS_URL, {
-      headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" },
+    const res = await undiciFetch(RSS_URL, {
+      dispatcher: cfDispatcher,
+      headers: REQUEST_HEADERS,
     });
     if (!res.ok) throw new Error(`Failed to fetch RSS: ${res.status}`);
 
@@ -81,8 +104,7 @@ export const devEventsScraper: Scraper = {
     const parser = new XMLParser({ ignoreAttributes: false });
     const feed = parser.parse(xml);
 
-    const items: RssItem[] =
-      feed?.rss?.channel?.item ?? feed?.channel?.item ?? [];
+    const items: RssItem[] = feed?.rss?.channel?.item ?? feed?.channel?.item ?? [];
 
     if (!Array.isArray(items)) {
       console.warn("[dev.events] No items found in RSS feed");
@@ -94,7 +116,7 @@ export const devEventsScraper: Scraper = {
     for (let i = 0; i < totalItems; i++) {
       const item = items[i];
       options?.onProgress?.(
-        Math.round(((i) / totalItems) * 100),
+        Math.round((i / totalItems) * 100),
         `Fetching detail ${i + 1}/${totalItems}`,
       );
       const categories = getCategories(item);
@@ -114,15 +136,18 @@ export const devEventsScraper: Scraper = {
       let jsonLd: JsonLdEvent | null = null;
       let meetupUrl: string | undefined;
       try {
-        const detailRes = await fetch(link, {
-          headers: { "User-Agent": "Brainberg/1.0 (https://brainberg.eu)" },
+        const detailRes = await undiciFetch(link, {
+          dispatcher: cfDispatcher,
+          headers: REQUEST_HEADERS,
         });
         if (detailRes.ok) {
           const html = await detailRes.text();
           jsonLd = extractJsonLd(html);
 
           // Extract Meetup URL if dev.events is a portal to a Meetup event
-          const meetupMatch = html.match(/https?:\/\/(?:www\.)?meetup\.com\/[^"'\s]+\/events\/[^"'\s]+/);
+          const meetupMatch = html.match(
+            /https?:\/\/(?:www\.)?meetup\.com\/[^"'\s]+\/events\/[^"'\s]+/,
+          );
           if (meetupMatch) {
             meetupUrl = meetupMatch[0].replace(/['">\s].*$/, "");
           }
@@ -144,10 +169,15 @@ export const devEventsScraper: Scraper = {
 
       const endsAt = jsonLd?.endDate ? new Date(jsonLd.endDate) : undefined;
 
-      const description = jsonLd?.description
-        ?? (item.description ? htmlToMarkdown(item.description) : undefined);
+      const description =
+        jsonLd?.description ??
+        (item.description ? htmlToMarkdown(item.description) : undefined);
 
-      const category = resolveCategoryFromTags(categories, DEVEVENTS_CATEGORY_MAP, title);
+      const category = resolveCategoryFromTags(
+        categories,
+        DEVEVENTS_CATEGORY_MAP,
+        title,
+      );
 
       // Schema.org's authoritative online-ness signal is eventAttendanceMode.
       // Some dev.events pages mark online events with OnlineEventAttendanceMode
@@ -155,8 +185,8 @@ export const devEventsScraper: Scraper = {
       // so checking only location["@type"] misses them.
       const attendanceMode = jsonLd?.eventAttendanceMode ?? "";
       const isOnline =
-        attendanceMode.includes("OnlineEventAttendanceMode")
-        || jsonLd?.location?.["@type"] === "VirtualLocation";
+        attendanceMode.includes("OnlineEventAttendanceMode") ||
+        jsonLd?.location?.["@type"] === "VirtualLocation";
       let cityName = jsonLd?.location?.address?.addressLocality;
       const countryCode = jsonLd?.location?.address?.addressCountry;
 
@@ -166,7 +196,9 @@ export const devEventsScraper: Scraper = {
 
       if (descText) {
         // Match "in City, Country, Continent" or "in City, Country, Continent and Online"
-        const locMatch = descText.match(/\bin ([^,]+),\s*([^,]+),\s*([\w\s]+?)(?:\s+and\s+Online)?\.?\s*More/);
+        const locMatch = descText.match(
+          /\bin ([^,]+),\s*([^,]+),\s*([\w\s]+?)(?:\s+and\s+Online)?\.?\s*More/,
+        );
         if (locMatch) {
           const parsedCity = locMatch[1].trim();
           const parsedCountry = locMatch[2].trim();
@@ -186,12 +218,13 @@ export const devEventsScraper: Scraper = {
       if (countryCode && !isEuropean(countryCode)) continue;
 
       const geo = jsonLd?.location?.geo;
-      const hasBothCoords = typeof geo?.latitude === "number" && typeof geo?.longitude === "number";
+      const hasBothCoords =
+        typeof geo?.latitude === "number" && typeof geo?.longitude === "number";
 
       const imageUrl =
         typeof jsonLd?.image === "string"
           ? jsonLd.image
-          : jsonLd?.image?.url ?? undefined;
+          : (jsonLd?.image?.url ?? undefined);
 
       const price = jsonLd?.offers?.price;
       const isFree = jsonLd?.isAccessibleForFree ?? (price === 0 || price === "0");
@@ -205,7 +238,9 @@ export const devEventsScraper: Scraper = {
         startsAt,
         endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
         timezone: "UTC", // Will be resolved from city
-        isMultiDay: !!(endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000),
+        isMultiDay: !!(
+          endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000
+        ),
         cityName,
         countryCode,
         venueName: jsonLd?.location?.name,
