@@ -12,6 +12,23 @@ interface ShareEventProps {
 }
 
 /**
+ * Append UTM parameters so Plausible can attribute share-driven traffic
+ * back to where the link was posted. `medium` follows the usual
+ * convention: `social`, `email`, or `link` for copy-paste.
+ */
+function taggedShareUrl(
+  url: string,
+  source: string,
+  medium: "social" | "email" | "link",
+): string {
+  const u = new URL(url);
+  u.searchParams.set("utm_source", source);
+  u.searchParams.set("utm_medium", medium);
+  u.searchParams.set("utm_campaign", "share");
+  return u.toString();
+}
+
+/**
  * Share button for event detail pages. On devices with the Web Share API
  * (most mobile browsers) it hands off to the native share sheet. Otherwise
  * it opens a small popover with per-destination share URLs.
@@ -42,7 +59,10 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
   const handlePrimaryClick = async () => {
     if (hasWebShare) {
       try {
-        await navigator.share({ title, text: shareText, url });
+        // We don't know which app the OS share sheet hands off to, so
+        // tag with a generic `web_share` source.
+        const taggedUrl = taggedShareUrl(url, "web_share", "social");
+        await navigator.share({ title, text: shareText, url: taggedUrl });
         return;
       } catch {
         // Either dismissed or unsupported in this context — fall through
@@ -54,7 +74,7 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(taggedShareUrl(url, "copy_link", "link"));
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -62,41 +82,54 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
     }
   };
 
-  const encoded = {
-    url: encodeURIComponent(url),
-    text: encodeURIComponent(shareText),
-    title: encodeURIComponent(title),
-    textWithUrl: encodeURIComponent(`${shareText} ${url}`),
-  };
+  const enc = (s: string) => encodeURIComponent(s);
+  const encTitle = enc(title);
 
   const destinations: Array<{
     label: string;
-    href: string;
+    source: string;
+    medium: "social" | "email";
+    buildHref: (taggedUrl: string) => string;
     icon: React.ReactNode;
   }> = [
     {
       label: "WhatsApp",
-      href: `https://wa.me/?text=${encoded.textWithUrl}`,
+      source: "whatsapp",
+      medium: "social",
+      buildHref: (taggedUrl) =>
+        `https://wa.me/?text=${enc(`${shareText} ${taggedUrl}`)}`,
       icon: <WhatsAppIcon />,
     },
     {
       label: "X (Twitter)",
-      href: `https://twitter.com/intent/tweet?text=${encoded.text}&url=${encoded.url}`,
+      source: "twitter",
+      medium: "social",
+      buildHref: (taggedUrl) =>
+        `https://twitter.com/intent/tweet?text=${enc(shareText)}&url=${enc(taggedUrl)}`,
       icon: <XIcon />,
     },
     {
       label: "LinkedIn",
-      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encoded.url}`,
+      source: "linkedin",
+      medium: "social",
+      buildHref: (taggedUrl) =>
+        `https://www.linkedin.com/sharing/share-offsite/?url=${enc(taggedUrl)}`,
       icon: <LinkedInIcon />,
     },
     {
       label: "Bluesky",
-      href: `https://bsky.app/intent/compose?text=${encoded.textWithUrl}`,
+      source: "bluesky",
+      medium: "social",
+      buildHref: (taggedUrl) =>
+        `https://bsky.app/intent/compose?text=${enc(`${shareText} ${taggedUrl}`)}`,
       icon: <BlueskyIcon />,
     },
     {
       label: "Email",
-      href: `mailto:?subject=${encoded.title}&body=${encoded.textWithUrl}`,
+      source: "email",
+      medium: "email",
+      buildHref: (taggedUrl) =>
+        `mailto:?subject=${encTitle}&body=${enc(`${shareText} ${taggedUrl}`)}`,
       icon: <Mail className="h-4 w-4" />,
     },
   ];
@@ -135,7 +168,7 @@ export function ShareEvent({ url, title, subtitle }: ShareEventProps) {
           {destinations.map((d) => (
             <a
               key={d.label}
-              href={d.href}
+              href={d.buildHref(taggedShareUrl(url, d.source, d.medium))}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setOpen(false)}
