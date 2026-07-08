@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/admin";
 import { runAllScrapers } from "@/lib/scraper/orchestrator";
+import { revalidateSitemap } from "@/lib/revalidate";
 
 export async function POST(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
@@ -9,10 +10,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const results = await runAllScrapers();
+    revalidateSitemap();
     return NextResponse.json({ success: true, results });
   } catch (error) {
     return NextResponse.json(
-      { error: "Scrape failed", message: error instanceof Error ? error.message : String(error) },
+      {
+        error: "Scrape failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

@@ -8,11 +8,21 @@ import { ALL_CATEGORY_LANDINGS, CATEGORY_LANDING } from "@/lib/categories";
 import { MIN_LANDING_EVENTS } from "@/lib/geo";
 import { getLandingCities, getLandingCountries } from "@/lib/landing-data";
 
-// Skip build-time prerender — the build has no DB access, so a
-// prerendered snapshot would be incomplete and cached for an hour
-// before ISR regen. With `force-dynamic` the first crawler hit after
-// deploy populates the data cache below against the live DB.
-export const dynamic = "force-dynamic";
+// Serve the sitemap from the ISR full-route cache instead of rendering it
+// per request. `force-dynamic` made every crawler hit stream a freshly
+// serialized ~470 KB body with `Transfer-Encoding: chunked` and no
+// `Content-Length`; if generation stalled or the connection reset
+// mid-stream, the client received a truncated 200 it couldn't detect as
+// incomplete (Search Console: "something went wrong", access log: 200).
+// With `revalidate` the body is materialized once, cached, and served with
+// a real `Content-Length`, so a short read can't slip through silently.
+//
+// The build has no DB access — the `db` host only resolves on the compose
+// network at runtime, not during `docker build` — so prerendering the full
+// sitemap at build would fail. We prerender the static + category entries
+// only (see the build-phase guard in `sitemap()`); the first runtime
+// revalidation after deploy fills in the DB-backed URLs against the live DB.
+export const revalidate = 3600;
 
 const SITEMAP_TTL_SECONDS = 3600;
 
@@ -34,8 +44,31 @@ const CATEGORY_ENTRIES: MetadataRoute.Sitemap = ALL_CATEGORY_LANDINGS.map(
 );
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = [...STATIC_ENTRIES, ...CATEGORY_ENTRIES];
+
+  // No DB during `next build` — return the static base so the build
+  // prerenders a valid (if reduced) sitemap; the first runtime
+  // revalidation fills in the DB-backed URLs.
+  if (process.env.NEXT_PHASE === "phase-production-build") return base;
+
   const dynamicEntries = await getCachedDynamicEntries();
-  return [...STATIC_ENTRIES, ...CATEGORY_ENTRIES, ...dynamicEntries];
+  return [...base, ...dynamicEntries].map((entry) => ({
+    ...entry,
+    url: xmlSafeURL(entry.url),
+  }));
+}
+
+// Defense-in-depth: guarantee every <loc> is valid XML 1.0 text so a
+// malformed slug can never produce a body external fetchers reject as
+// non-text. `toWellFormed()` rewrites any lone surrogate (the residue of
+// invalid UTF-8 in a scraped field) to U+FFFD; `\p{Cc}` strips control
+// characters, which are legal UTF-8 but illegal in XML 1.0 and never
+// legitimately appear in a URL. Event, city, and country slugs are already
+// `[a-z0-9-]` (slugify `strict`), so today this guards future free-text URL
+// sources rather than an observed leak. XML escaping of `&`, `<`, etc. is
+// handled by Next's sitemap serializer, not here.
+function xmlSafeURL(url: string): string {
+  return url.toWellFormed().replace(/\p{Cc}/gu, "");
 }
 
 async function buildDynamicEntries(): Promise<MetadataRoute.Sitemap> {
@@ -106,8 +139,13 @@ async function buildDynamicEntries(): Promise<MetadataRoute.Sitemap> {
   return [...countryEntries, ...cityEntries, ...comboEntries, ...eventEntries];
 }
 
+// `tags` lets the scrape cron bust this data cache the moment new events
+// land (`revalidateTag("sitemap")` in api/cron/scrape), so the sitemap
+// reflects fresh ingests immediately instead of on the hourly TTL — and the
+// reduced snapshot the DB-less build prerenders is replaced on the first
+// scrape after deploy rather than up to an hour later.
 const getCachedDynamicEntries = unstable_cache(
   buildDynamicEntries,
   ["sitemap-dynamic-entries"],
-  { revalidate: SITEMAP_TTL_SECONDS },
+  { revalidate: SITEMAP_TTL_SECONDS, tags: ["sitemap"] },
 );

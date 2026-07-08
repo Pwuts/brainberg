@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runScraper, getAvailableScrapers } from "@/lib/scraper/orchestrator";
+import { revalidateSitemap } from "@/lib/revalidate";
 import type { EventSource } from "@/lib/scraper/types";
 
 export async function POST(
@@ -22,11 +23,15 @@ export async function POST(
 
   try {
     const { runId, stats } = await runScraper(source as EventSource);
+    revalidateSitemap();
     return NextResponse.json({ success: true, runId, stats });
   } catch (error) {
     console.error(`Scrape ${source} failed:`, error);
     return NextResponse.json(
-      { error: "Scrape failed", message: error instanceof Error ? error.message : String(error) },
+      {
+        error: "Scrape failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

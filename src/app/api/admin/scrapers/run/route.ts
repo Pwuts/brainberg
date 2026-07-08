@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/admin";
 import { runScraper, getAvailableScrapers } from "@/lib/scraper/orchestrator";
+import { revalidateSitemap } from "@/lib/revalidate";
 import type { EventSource } from "@/lib/scraper/types";
 
 export async function POST(request: NextRequest) {
@@ -23,10 +24,14 @@ export async function POST(request: NextRequest) {
       dateFrom: dateFrom ? new Date(dateFrom) : undefined,
       dateTo: dateTo ? new Date(dateTo) : undefined,
     });
+    revalidateSitemap();
     return NextResponse.json({ success: true, runId, stats });
   } catch (error) {
     return NextResponse.json(
-      { error: "Scrape failed", message: error instanceof Error ? error.message : String(error) },
+      {
+        error: "Scrape failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

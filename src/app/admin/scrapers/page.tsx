@@ -93,11 +93,15 @@ const RUN_HISTORY_COLUMNS: TableColumn<ScraperRun>[] = [
     sortable: true,
     sortValue: (r) => r.status,
     cell: (r) => (
-      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        r.status === "completed" ? "bg-green-100 text-green-800"
-        : r.status === "failed" ? "bg-red-100 text-red-800"
-        : "bg-yellow-100 text-yellow-800"
-      }`}>
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+          r.status === "completed"
+            ? "bg-green-100 text-green-800"
+            : r.status === "failed"
+              ? "bg-red-100 text-red-800"
+              : "bg-yellow-100 text-yellow-800"
+        }`}
+      >
         {r.status === "running" ? `${r.progress}%` : r.status}
       </span>
     ),
@@ -164,11 +168,13 @@ export default function AdminScrapersPage() {
   const [lumaError, setLumaError] = useState<string | null>(null);
   const [lumaDialogOpen, setLumaDialogOpen] = useState(false);
   const [microdataSources, setMicrodataSources] = useState<MicrodataSource[]>([]);
-  const [microdataForm, setMicrodataForm] = useState<MicrodataForm>(EMPTY_MICRODATA_FORM);
+  const [microdataForm, setMicrodataForm] =
+    useState<MicrodataForm>(EMPTY_MICRODATA_FORM);
   const [microdataAdding, setMicrodataAdding] = useState(false);
   const [microdataError, setMicrodataError] = useState<string | null>(null);
   const [microdataDialogOpen, setMicrodataDialogOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [refreshingSitemap, setRefreshingSitemap] = useState(false);
 
   const load = useCallback(async () => {
     const [scrapersRes, lumaRes, microdataRes] = await Promise.all([
@@ -186,7 +192,9 @@ export default function AdminScrapersPage() {
   }, [fetchAdmin]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Poll for progress while any scraper is running (works across page reloads)
   const hasRunning = running !== null || runs.some((r) => r.status === "running");
@@ -244,9 +252,14 @@ export default function AdminScrapersPage() {
               });
               const data = await res.json();
               const mode = data.mode === "ai" ? "AI" : "regex";
-              const parts = [`${data.categoriesChanged} categories`, `${data.typesChanged} types`];
+              const parts = [
+                `${data.categoriesChanged} categories`,
+                `${data.typesChanged} types`,
+              ];
               if (data.statusesChanged) parts.push(`${data.statusesChanged} statuses`);
-              alert(`[${mode}] ${parts.join(", ")} updated (${data.total} events, ${data.skippedLocked} locked)`);
+              alert(
+                `[${mode}] ${parts.join(", ")} updated (${data.total} events, ${data.skippedLocked} locked)`,
+              );
             }}
           >
             Re-categorize All
@@ -257,23 +270,56 @@ export default function AdminScrapersPage() {
             onClick={async () => {
               setBackfilling(true);
               try {
-                const res = await fetchAdmin("/api/admin/events/backfill-eventbrite-descriptions", {
-                  method: "POST",
-                });
+                const res = await fetchAdmin(
+                  "/api/admin/events/backfill-eventbrite-descriptions",
+                  {
+                    method: "POST",
+                  },
+                );
                 const data = await res.json();
                 if (!res.ok) {
                   alert(`Failed: ${data.error ?? "Unknown"}`);
                   return;
                 }
-                alert(`Processed ${data.total}: ${data.updated} updated, ${data.unchanged} unchanged, ${data.failed} failed`);
+                alert(
+                  `Processed ${data.total}: ${data.updated} updated, ${data.unchanged} unchanged, ${data.failed} failed`,
+                );
               } catch {
-                alert("Request dropped (likely proxy timeout). Backfill continues in the background — re-click later to see 0 remaining.");
+                alert(
+                  "Request dropped (likely proxy timeout). Backfill continues in the background — re-click later to see 0 remaining.",
+                );
               } finally {
                 setBackfilling(false);
               }
             }}
           >
             {backfilling ? "Backfilling..." : "Backfill Eventbrite Descriptions"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={refreshingSitemap}
+            onClick={async () => {
+              setRefreshingSitemap(true);
+              try {
+                const res = await fetchAdmin("/api/admin/sitemap/revalidate", {
+                  method: "POST",
+                });
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  alert(`Failed: ${data.error ?? res.status}`);
+                  return;
+                }
+                alert(
+                  "Sitemap cache cleared. /sitemap.xml regenerates from the live database on the next request.",
+                );
+              } catch {
+                alert("Request failed.");
+              } finally {
+                setRefreshingSitemap(false);
+              }
+            }}
+          >
+            {refreshingSitemap ? "Refreshing..." : "Refresh Sitemap"}
           </Button>
         </div>
       </div>
@@ -287,11 +333,15 @@ export default function AdminScrapersPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{SOURCE_LABELS[s] ?? s}</h3>
                 {lastRun && (
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    lastRun.status === "completed" ? "bg-green-100 text-green-800"
-                    : lastRun.status === "failed" ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      lastRun.status === "completed"
+                        ? "bg-green-100 text-green-800"
+                        : lastRun.status === "failed"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
                     {lastRun.status}
                   </span>
                 )}
@@ -314,16 +364,15 @@ export default function AdminScrapersPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   Last: {new Date(lastRun.startedAt).toLocaleString()}
                   {lastRun.status === "completed" && (
-                    <> — {lastRun.eventsCreated} new, {lastRun.eventsUpdated} updated</>
+                    <>
+                      {" "}
+                      — {lastRun.eventsCreated} new, {lastRun.eventsUpdated} updated
+                    </>
                   )}
                 </p>
               )}
               <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => runNow(s)}
-                  disabled={running !== null}
-                >
+                <Button size="sm" onClick={() => runNow(s)} disabled={running !== null}>
                   {running === s ? "Running..." : "Run Now"}
                 </Button>
               </div>
@@ -735,10 +784,13 @@ function MicrodataSources({
         </Button>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Add any page that publishes Schema.org Event data — microdata
-        (<code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD
-        (<code className="rounded bg-muted px-1 text-xs">&lt;script type=&quot;application/ld+json&quot;&gt;</code>).
-        Fallback fields are used when the source doesn&apos;t carry that data (e.g. all Waag events are at the same venue).
+        Add any page that publishes Schema.org Event data — microdata (
+        <code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD (
+        <code className="rounded bg-muted px-1 text-xs">
+          &lt;script type=&quot;application/ld+json&quot;&gt;
+        </code>
+        ). Fallback fields are used when the source doesn&apos;t carry that data (e.g.
+        all Waag events are at the same venue).
       </p>
 
       <SortableTable
@@ -776,10 +828,12 @@ function MicrodataAddDialog({
       title="Add Microdata / JSON-LD Source"
       description={
         <>
-          Add any page that publishes Schema.org Event data — microdata
-          (<code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD
-          (<code className="rounded bg-muted px-1 text-xs">&lt;script type=&quot;application/ld+json&quot;&gt;</code>).
-          Fallback fields are used when the source doesn&apos;t carry that data.
+          Add any page that publishes Schema.org Event data — microdata (
+          <code className="rounded bg-muted px-1 text-xs">itemprop</code>) or JSON-LD (
+          <code className="rounded bg-muted px-1 text-xs">
+            &lt;script type=&quot;application/ld+json&quot;&gt;
+          </code>
+          ). Fallback fields are used when the source doesn&apos;t carry that data.
         </>
       }
       className="max-w-2xl"
@@ -808,7 +862,9 @@ function MicrodataAddDialog({
           Extraction
           <Select
             value={form.extraction}
-            onChange={(e) => update({ extraction: e.target.value as "microdata" | "jsonld" })}
+            onChange={(e) =>
+              update({ extraction: e.target.value as "microdata" | "jsonld" })
+            }
             disabled={adding}
           >
             <option value="microdata">Microdata (itemprop)</option>
@@ -837,7 +893,9 @@ function MicrodataAddDialog({
           Fallback country (ISO-2)
           <Input
             value={form.countryCode}
-            onChange={(e) => update({ countryCode: e.target.value.toUpperCase().slice(0, 2) })}
+            onChange={(e) =>
+              update({ countryCode: e.target.value.toUpperCase().slice(0, 2) })
+            }
             placeholder="NL"
             disabled={adding}
           />
@@ -869,7 +927,9 @@ function MicrodataAddDialog({
           >
             <option value="">— infer from title —</option>
             {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
+              <option key={val} value={val}>
+                {label}
+              </option>
             ))}
           </Select>
         </label>
@@ -878,7 +938,10 @@ function MicrodataAddDialog({
           <Button type="button" variant="outline" onClick={onClose} disabled={adding}>
             Cancel
           </Button>
-          <Button type="submit" disabled={adding || !form.url.trim() || !form.name.trim()}>
+          <Button
+            type="submit"
+            disabled={adding || !form.url.trim() || !form.name.trim()}
+          >
             {adding ? "Adding..." : "Add source"}
           </Button>
         </div>
