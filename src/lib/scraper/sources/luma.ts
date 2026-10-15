@@ -8,6 +8,8 @@ import type { NormalizedEvent, Scraper, ScraperOptions, EventType } from "../typ
 
 const LUMA_API = "https://api.lu.ma";
 const USER_AGENT = "Brainberg/1.0 (https://brainberg.eu)";
+/** Calendars without a vanity slug are only addressable by ID: `luma.com/calendar/cal-xxx`. */
+export const LUMA_CALENDAR_ID_PATH_REGEX = /^calendar\/(cal-[A-Za-z0-9]+)$/;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -70,10 +72,12 @@ function pmToMarkdown(node: PmNode): string {
     case "list_item":
       return "- " + children.trim() + "\n";
     case "blockquote":
-      return children
-        .split("\n")
-        .map((l) => "> " + l)
-        .join("\n") + "\n\n";
+      return (
+        children
+          .split("\n")
+          .map((l) => "> " + l)
+          .join("\n") + "\n\n"
+      );
     case "hardBreak":
     case "hard_break":
       return "\n";
@@ -104,7 +108,12 @@ interface LumaEvent {
   url: string; // slug for native events, full URL for external entries
   location_type?: string;
   cover_url?: string;
-  geo_address_info?: { mode?: string; address?: string; city?: string; [key: string]: unknown } | null;
+  geo_address_info?: {
+    mode?: string;
+    address?: string;
+    city?: string;
+    [key: string]: unknown;
+  } | null;
   coordinate?: { latitude: number; longitude: number } | null;
   visibility?: string;
 }
@@ -147,8 +156,21 @@ async function lumaFetch<T>(path: string): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
-async function resolveCalendar(slug: string): Promise<LumaCalendar | null> {
-  const data = await lumaFetch<{ data?: { calendar?: LumaCalendar } }>(`/url?url=${encodeURIComponent(slug)}`);
+/**
+ * Resolve a calendar reference as stored in `scraperSources.url`: either a
+ * vanity slug ("aitinkerers-berlin") or an ID path ("calendar/cal-xxx").
+ */
+export async function resolveCalendar(ref: string): Promise<LumaCalendar | null> {
+  const idMatch = ref.match(LUMA_CALENDAR_ID_PATH_REGEX);
+  if (idMatch) {
+    const data = await lumaFetch<{ calendar?: LumaCalendar }>(
+      `/calendar/get?api_id=${idMatch[1]}`,
+    );
+    return data?.calendar ?? null;
+  }
+  const data = await lumaFetch<{ data?: { calendar?: LumaCalendar } }>(
+    `/url?url=${encodeURIComponent(ref)}`,
+  );
   return data?.data?.calendar ?? null;
 }
 
@@ -164,9 +186,11 @@ async function listEvents(calendarApiId: string): Promise<LumaEntry[]> {
     });
     if (cursor) params.set("pagination_cursor", cursor);
 
-    const data = await lumaFetch<{ entries?: LumaEntry[]; has_more?: boolean; next_cursor?: string }>(
-      `/calendar/get-items?${params}`
-    );
+    const data = await lumaFetch<{
+      entries?: LumaEntry[];
+      has_more?: boolean;
+      next_cursor?: string;
+    }>(`/calendar/get-items?${params}`);
     if (!data?.entries) break;
 
     all.push(...data.entries);
@@ -189,25 +213,44 @@ async function getEventDetail(eventApiId: string): Promise<LumaEventDetail | nul
 
 /** Map common European timezones to country codes */
 const TIMEZONE_TO_COUNTRY: Record<string, string> = {
-  "Europe/London": "GB", "Europe/Dublin": "IE",
-  "Europe/Berlin": "DE", "Europe/Munich": "DE",
-  "Europe/Paris": "FR", "Europe/Amsterdam": "NL",
-  "Europe/Brussels": "BE", "Europe/Luxembourg": "LU",
-  "Europe/Zurich": "CH", "Europe/Vienna": "AT",
-  "Europe/Rome": "IT", "Europe/Madrid": "ES",
-  "Europe/Lisbon": "PT", "Europe/Stockholm": "SE",
-  "Europe/Oslo": "NO", "Europe/Copenhagen": "DK",
-  "Europe/Helsinki": "FI", "Europe/Tallinn": "EE",
-  "Europe/Riga": "LV", "Europe/Vilnius": "LT",
-  "Europe/Warsaw": "PL", "Europe/Prague": "CZ",
-  "Europe/Bratislava": "SK", "Europe/Budapest": "HU",
-  "Europe/Bucharest": "RO", "Europe/Sofia": "BG",
-  "Europe/Athens": "GR", "Europe/Istanbul": "TR",
-  "Europe/Zagreb": "HR", "Europe/Ljubljana": "SI",
-  "Europe/Belgrade": "RS", "Europe/Sarajevo": "BA",
-  "Europe/Podgorica": "ME", "Europe/Skopje": "MK",
-  "Europe/Tirana": "AL", "Europe/Kyiv": "UA",
-  "Europe/Chisinau": "MD", "Europe/Reykjavik": "IS",
+  "Europe/London": "GB",
+  "Europe/Dublin": "IE",
+  "Europe/Berlin": "DE",
+  "Europe/Munich": "DE",
+  "Europe/Paris": "FR",
+  "Europe/Amsterdam": "NL",
+  "Europe/Brussels": "BE",
+  "Europe/Luxembourg": "LU",
+  "Europe/Zurich": "CH",
+  "Europe/Vienna": "AT",
+  "Europe/Rome": "IT",
+  "Europe/Madrid": "ES",
+  "Europe/Lisbon": "PT",
+  "Europe/Stockholm": "SE",
+  "Europe/Oslo": "NO",
+  "Europe/Copenhagen": "DK",
+  "Europe/Helsinki": "FI",
+  "Europe/Tallinn": "EE",
+  "Europe/Riga": "LV",
+  "Europe/Vilnius": "LT",
+  "Europe/Warsaw": "PL",
+  "Europe/Prague": "CZ",
+  "Europe/Bratislava": "SK",
+  "Europe/Budapest": "HU",
+  "Europe/Bucharest": "RO",
+  "Europe/Sofia": "BG",
+  "Europe/Athens": "GR",
+  "Europe/Istanbul": "TR",
+  "Europe/Zagreb": "HR",
+  "Europe/Ljubljana": "SI",
+  "Europe/Belgrade": "RS",
+  "Europe/Sarajevo": "BA",
+  "Europe/Podgorica": "ME",
+  "Europe/Skopje": "MK",
+  "Europe/Tirana": "AL",
+  "Europe/Kyiv": "UA",
+  "Europe/Chisinau": "MD",
+  "Europe/Reykjavik": "IS",
   "Atlantic/Reykjavik": "IS",
 };
 
@@ -242,8 +285,8 @@ function parseGeoAddress(
   //   - Native offline events with obfuscated address and no coord: we've seen
   //     Amsterdam meetups with Europe/Brussels set as the TZ.
   // Only fall back to TZ→country when neither condition applies.
-  const canTrustTz = !isExternal
-    && (event.location_type !== "offline" || !!event.coordinate);
+  const canTrustTz =
+    !isExternal && (event.location_type !== "offline" || !!event.coordinate);
   if (!canTrustTz) return {};
 
   const cc = TIMEZONE_TO_COUNTRY[event.timezone];
@@ -358,7 +401,9 @@ export const lumaScraper: Scraper = {
           let currency: string | undefined;
           if (detail?.ticket_types?.length) {
             const prices = detail.ticket_types
-              .filter((t) => t.type !== "free" && typeof t.cents === "number" && t.cents > 0)
+              .filter(
+                (t) => t.type !== "free" && typeof t.cents === "number" && t.cents > 0,
+              )
               .map((t) => t.cents! / 100);
             if (prices.length === 0) {
               isFree = true;
@@ -382,9 +427,10 @@ export const lumaScraper: Scraper = {
 
           // External entries don't set `location_type`; infer online from the
           // event type for webinars, which are online by definition.
-          const isOnline = event.location_type === "online"
-            || event.location_type === "hybrid"
-            || (!event.location_type && eventType === "webinar");
+          const isOnline =
+            event.location_type === "online" ||
+            event.location_type === "hybrid" ||
+            (!event.location_type && eventType === "webinar");
 
           eventsFound++;
 
@@ -394,11 +440,15 @@ export const lumaScraper: Scraper = {
             shortDescription: description ? truncate(description, 500) : undefined,
             category,
             eventType,
-            tags: entry.tags?.map((t) => t.name).filter(Boolean) as string[] | undefined,
+            tags: entry.tags?.map((t) => t.name).filter(Boolean) as
+              | string[]
+              | undefined,
             startsAt,
             endsAt: endsAt && !isNaN(endsAt.getTime()) ? endsAt : undefined,
             timezone: event.timezone,
-            isMultiDay: !!(endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000),
+            isMultiDay: !!(
+              endsAt && endsAt.getTime() - startsAt.getTime() > 24 * 60 * 60 * 1000
+            ),
             cityName,
             countryCode,
             latitude: event.coordinate?.latitude,
@@ -430,7 +480,6 @@ export const lumaScraper: Scraper = {
           .update(scraperSources)
           .set({ lastScrapedAt: new Date(), eventsFound })
           .where(eq(scraperSources.id, source.id));
-
       } catch (err) {
         console.error(`[luma] Error scraping ${source.url}:`, err);
       }
