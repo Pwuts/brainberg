@@ -171,6 +171,34 @@ export const EVENTBRITE_CATEGORY_MAP: Record<string, EventCategory> = {
 };
 
 // ============================================================
+// EventsEye — industry listing → category
+// ============================================================
+
+// Keys are EventsEye industry slugs, and this map doubles as the scraper's
+// crawl list: it fetches the Europe listing of each industry here. A show
+// listed under several industries takes the category of the first one, so
+// keep the small, precise listings at the top (the AI listing is broad and
+// would otherwise claim every HPC and cloud show). Title-keyword overrides
+// (e.g. "cyber" → security) still win over the industry.
+//
+// Deliberately left out because they're mostly non-tech: security-risk-management
+// (physical security, defence), multimedia-technologies (AV, amusement rides),
+// rapid-prototyping-additive-manufacturing (metalworking), decision-helping-
+// tools-management-services, micro-nanotechnologies, spatial-information-systems.
+export const EVENTSEYE_CATEGORY_MAP: Record<string, EventCategory> = {
+  "high-performance-computing-big-data": "data_analytics",
+  "software-engineering": "software_dev",
+  "data-computing-services": "cloud_devops",
+  "knowledge-based-systems-artificial-intelligence": "ai_applied",
+  "real-time-systems-embedded-systems": "hardware_iot",
+  "electronic-design-components": "hardware_iot",
+  robotics: "hardware_iot",
+  "telecommunications-computers-networks": "hardware_iot",
+  computers: "software_dev",
+  "internet-intranet": "software_dev",
+};
+
+// ============================================================
 // Category resolution with title-based overrides
 // ============================================================
 
@@ -234,12 +262,32 @@ export function resolveCategoryFromTags(
 
 /** Infer event type from title keywords. Returns null if no match. */
 export function resolveEventType(title: string): EventType | null {
-  if (/\b(ISTQB|certification.(course|training|exam)|training.course|academy.(class|training)|Odoo.Academy|Foundation.Exam)\b/i.test(title)) return "training";
-  if (/\b(workshop|bootcamp|masterclass|hands.on|lab.day|coding.gym|dojo)\b/i.test(title)) return "workshop";
-  if (/\b(hackathon|hack.day|hack.night|CodeRetreat)\b/i.test(title)) return "hackathon";
-  if (/\b(coworking|co.?working|cowork|code.and.coffee|coding.and.coffee|coding.&.coffee)\b/i.test(title)) return "coworking";
+  if (
+    /\b(ISTQB|certification.(course|training|exam)|training.course|academy.(class|training)|Odoo.Academy|Foundation.Exam)\b/i.test(
+      title,
+    )
+  )
+    return "training";
+  if (
+    /\b(workshop|bootcamp|masterclass|hands.on|lab.day|coding.gym|dojo)\b/i.test(title)
+  )
+    return "workshop";
+  if (/\b(hackathon|hack.day|hack.night|CodeRetreat)\b/i.test(title))
+    return "hackathon";
+  if (
+    /\b(coworking|co.?working|cowork|code.and.coffee|coding.and.coffee|coding.&.coffee)\b/i.test(
+      title,
+    )
+  )
+    return "coworking";
   if (/\b(webinar|online.event)\b/i.test(title)) return "webinar";
-  if (/\b(networking|social|mixer|stammtisch|afterwork|drinks|breakfast|coffee|apéro|brunch|beer|club)\b/i.test(title)) return "networking";
-  if (/\b(conference|summit|congress|forum|expo|symposium|convention)\b/i.test(title)) return "conference";
+  if (
+    /\b(networking|social|mixer|stammtisch|afterwork|drinks|breakfast|coffee|apéro|brunch|beer|club)\b/i.test(
+      title,
+    )
+  )
+    return "networking";
+  if (/\b(conference|summit|congress|forum|expo|symposium|convention)\b/i.test(title))
+    return "conference";
   return null;
 }

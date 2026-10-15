@@ -192,16 +192,17 @@ ORDER BY category, title;
 
 ## Scrapers
 
-| Source       | Method                   | Rate Limit | Notes                                                        |
-| ------------ | ------------------------ | ---------- | ------------------------------------------------------------ |
-| `manual`     | Curated list             | None       | Hacker camps — update `hacker-camps.ts` annually             |
-| `confs_tech` | GitHub JSON              | None       | Fetches current + next year                                  |
-| `dev_events` | RSS + JSON-LD            | ~1 req/sec | JSON-LD often null, falls back to RSS description            |
-| `meetup`     | `__NEXT_DATA__` scraping | 2.5s/city  | Searches all cities in DB, uses `{cc}--{city}` URL format    |
-| `eventbrite` | API v3                   | 1 req/sec  | Requires `EVENTBRITE_API_TOKEN`, skips gracefully if missing |
-| `luma`       | Calendar scraping        | 1 req/sec  | Requires configured sources in admin UI                      |
+| Source       | Method                   | Rate Limit | Notes                                                                |
+| ------------ | ------------------------ | ---------- | -------------------------------------------------------------------- |
+| `manual`     | Curated list             | None       | Hacker camps — update `hacker-camps.ts` annually                     |
+| `confs_tech` | GitHub JSON              | None       | Fetches current + next year                                          |
+| `dev_events` | RSS + JSON-LD            | ~1 req/sec | JSON-LD often null, falls back to RSS description                    |
+| `eventseye`  | Industry listing HTML    | ~1 req/sec | Trade shows; crawls tech industries in `EVENTSEYE_CATEGORY_MAP` only |
+| `meetup`     | `__NEXT_DATA__` scraping | 2.5s/city  | Searches all cities in DB, uses `{cc}--{city}` URL format            |
+| `eventbrite` | API v3                   | 1 req/sec  | Requires `EVENTBRITE_API_TOKEN`, skips gracefully if missing         |
+| `luma`       | Calendar scraping        | 1 req/sec  | Requires configured sources in admin UI                              |
 
-**Run order:** `manual → confs_tech → dev_events → meetup → eventbrite → luma`
+**Run order:** `manual → confs_tech → eventseye → dev_events → meetup → eventbrite → luma`
 (lowest to highest priority for dedup merge).
 
 **City resolution:**

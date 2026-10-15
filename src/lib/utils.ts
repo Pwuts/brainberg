@@ -25,21 +25,29 @@ export const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  ai_ml_research: "Building models, training, MLOps, research papers, frameworks like PyTorch & Hugging Face",
-  ai_applied: "Applying AI — AI agents, Copilot, vibe coding, LLM API integration, AI in products & workflows",
-  software_dev: "Languages, frameworks, architecture, testing — the craft of building software",
+  ai_ml_research:
+    "Building models, training, MLOps, research papers, frameworks like PyTorch & Hugging Face",
+  ai_applied:
+    "Applying AI — AI agents, Copilot, vibe coding, LLM API integration, AI in products & workflows",
+  software_dev:
+    "Languages, frameworks, architecture, testing — the craft of building software",
   data_analytics: "Data engineering, BI, databases, pipelines, analytics platforms",
   cloud_devops: "Infrastructure, Kubernetes, AWS/Azure/GCP, platform engineering, SRE",
   security: "Cybersecurity, privacy, AppSec, pentesting, threat modeling",
   design_ux: "User experience, accessibility, design systems, usability",
   blockchain_web3: "Blockchain, DeFi, smart contracts, decentralization",
   entrepreneurship: "Startups, product management, leadership, fundraising, growth",
-  hardware_iot: "Robotics, IoT, embedded systems, 3D printing, electronics, Arduino, drones",
+  hardware_iot:
+    "Robotics, IoT, embedded systems, 3D printing, electronics, Arduino, drones",
   hacker_maker: "Hacker camps, hackerspaces, maker faires, community congresses",
-  game_dev: "Game development, engines (Unity, Unreal, Godot), indie dev, playtesting, game design",
-  policy_ethics: "AI governance, AI safety, tech regulation, digital ethics, compliance as a topic",
-  leadership_product: "Engineering leadership, CTO & tech-lead content, product management, agile & scrum practice",
-  bio_health: "Biotech, healthtech, medtech, digital health, bioinformatics, medical devices",
+  game_dev:
+    "Game development, engines (Unity, Unreal, Godot), indie dev, playtesting, game design",
+  policy_ethics:
+    "AI governance, AI safety, tech regulation, digital ethics, compliance as a topic",
+  leadership_product:
+    "Engineering leadership, CTO & tech-lead content, product management, agile & scrum practice",
+  bio_health:
+    "Biotech, healthtech, medtech, digital health, bioinformatics, medical devices",
   other: "Events that don't fit other categories",
 };
 
@@ -92,6 +100,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   meetup: "Meetup",
   confs_tech: "confs.tech",
   dev_events: "dev.events",
+  eventseye: "EventsEye",
   other: "Other",
 };
 
@@ -107,10 +116,15 @@ export function countryFlag(code: string): string {
 export function formatEventDate(
   startsAt: Date,
   endsAt: Date | null,
-  timezone: string
+  timezone: string,
 ): string {
   const start = new Date(startsAt);
-  const dateOpts = { weekday: "short", day: "numeric", month: "short", timeZone: timezone } as const;
+  const dateOpts = {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  } as const;
   const timeOpts = { hour: "2-digit", minute: "2-digit", timeZone: timezone } as const;
 
   const startDateStr = start.toLocaleDateString("en-GB", dateOpts);
@@ -123,7 +137,12 @@ export function formatEventDate(
 
   // Single-day event: same weekday+day+month in the event's timezone
   const dayKey = (d: Date) =>
-    d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric", timeZone: timezone });
+    d.toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: timezone,
+    });
   if (dayKey(start) === dayKey(end)) {
     return `${startDateStr} · ${startTimeStr} – ${endTimeStr}`;
   }

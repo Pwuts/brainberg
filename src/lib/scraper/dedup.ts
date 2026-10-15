@@ -11,6 +11,7 @@ const SOURCE_PRIORITY: Record<string, number> = {
   meetup: 3,
   dev_events: 2,
   confs_tech: 1,
+  eventseye: 1,
   manual: 5,
   community: 3,
   luma: 2,
@@ -42,7 +43,7 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
           and(
             eq(eventFingerprints.fingerprintType, "url"),
             eq(eventFingerprints.fingerprintValue, url),
-          )
+          ),
         )
         .limit(1);
 
@@ -71,7 +72,7 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
       and(
         eq(eventFingerprints.fingerprintType, "title_date_city"),
         eq(eventFingerprints.fingerprintValue, fp),
-      )
+      ),
     )
     .limit(1);
 
@@ -98,23 +99,30 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
     })
     .from(events)
     .leftJoin(cities, eq(events.cityId, cities.id))
-    .where(
-      and(
-        gte(events.startsAt, dateFrom),
-        lte(events.startsAt, dateTo),
-      )
-    )
+    .where(and(gte(events.startsAt, dateFrom), lte(events.startsAt, dateTo)))
     .limit(50);
 
   for (const candidate of candidates) {
     if (
       fuzzyMatch(
-        { title: event.title, startsAt: event.startsAt, city: event.cityName ?? null, isOnline: event.isOnline },
-        { title: candidate.title, startsAt: candidate.startsAt, city: candidate.cityName ?? null, isOnline: candidate.isOnline },
+        {
+          title: event.title,
+          startsAt: event.startsAt,
+          city: event.cityName ?? null,
+          isOnline: event.isOnline,
+        },
+        {
+          title: candidate.title,
+          startsAt: candidate.startsAt,
+          city: candidate.cityName ?? null,
+          isOnline: candidate.isOnline,
+        },
       )
     ) {
       const similarity = jaccardSimilarity(event.title, candidate.title);
-      console.log(`[dedup] Fuzzy match (${similarity.toFixed(2)}): "${event.title}" ≈ "${candidate.title}"`);
+      console.log(
+        `[dedup] Fuzzy match (${similarity.toFixed(2)}): "${event.title}" ≈ "${candidate.title}"`,
+      );
       return {
         existingEventId: candidate.id,
         matchLayer: "fuzzy",
@@ -127,7 +135,10 @@ export async function checkDuplicate(event: NormalizedEvent): Promise<DedupResul
 }
 
 /** Check if the new source has higher priority than existing sources. */
-async function shouldUpdateExisting(eventId: string, newSource: string): Promise<boolean> {
+async function shouldUpdateExisting(
+  eventId: string,
+  newSource: string,
+): Promise<boolean> {
   const existing = await db
     .select({ source: eventSources.source })
     .from(eventSources)
@@ -136,7 +147,7 @@ async function shouldUpdateExisting(eventId: string, newSource: string): Promise
   const newPriority = SOURCE_PRIORITY[newSource] ?? 0;
   const maxExisting = Math.max(
     0,
-    ...existing.map((e) => SOURCE_PRIORITY[e.source] ?? 0)
+    ...existing.map((e) => SOURCE_PRIORITY[e.source] ?? 0),
   );
 
   return newPriority >= maxExisting;

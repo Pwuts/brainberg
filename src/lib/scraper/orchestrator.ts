@@ -5,6 +5,7 @@ import { confsTechScraper } from "./sources/confstech";
 import { devEventsScraper } from "./sources/devevents";
 import { meetupScraper } from "./sources/meetup";
 import { eventbriteScraper } from "./sources/eventbrite";
+import { eventseyeScraper } from "./sources/eventseye";
 import { hackerCampsScraper } from "./sources/hacker-camps";
 import { lumaScraper } from "./sources/luma";
 import { microdataScraper } from "./sources/microdata";
@@ -16,6 +17,7 @@ const SCRAPERS: Record<string, Scraper> = {
   dev_events: devEventsScraper,
   meetup: meetupScraper,
   eventbrite: eventbriteScraper,
+  eventseye: eventseyeScraper,
   luma: lumaScraper,
   microdata: microdataScraper,
   manual: hackerCampsScraper,
@@ -84,7 +86,16 @@ export async function runAllScrapers(
   options?: ScraperOptions,
 ): Promise<Record<string, IngestStats>> {
   const results: Record<string, IngestStats> = {};
-  const order: EventSource[] = ["confs_tech", "dev_events", "meetup", "eventbrite", "luma", "microdata", "manual"];
+  const order: EventSource[] = [
+    "confs_tech",
+    "eventseye",
+    "dev_events",
+    "meetup",
+    "eventbrite",
+    "luma",
+    "microdata",
+    "manual",
+  ];
 
   for (const source of order) {
     try {
@@ -94,7 +105,15 @@ export async function runAllScrapers(
       console.log(`[orchestrator] ${source} done:`, stats);
     } catch (err) {
       console.error(`[orchestrator] ${source} failed:`, err);
-      results[source] = { found: 0, created: 0, updated: 0, deduplicated: 0, rejected: 0, pending: 0, errors: 1 };
+      results[source] = {
+        found: 0,
+        created: 0,
+        updated: 0,
+        deduplicated: 0,
+        rejected: 0,
+        pending: 0,
+        errors: 1,
+      };
     }
   }
 
