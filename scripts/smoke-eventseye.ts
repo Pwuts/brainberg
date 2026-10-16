@@ -8,6 +8,8 @@
  *   - events span at least 3 distinct European countries
  *   - at least one event has a non-empty description (validates that the
  *     detail-page enrichment path is working, not just the listing parse)
+ *   - no title is left in all caps unless it's a lone acronym ("ICC",
+ *     "IT-SA"), since EventsEye publishes names in all caps
  *
  * An earlier version asserted on specific recurring shows ("CIRED",
  * "Energy Storage Europe", later broadened to EUROSHOP / ALIMENTARIA /
@@ -17,10 +19,9 @@
  * "is the parser actually surfacing structured data?" — without the
  * dependency on which shows happen to be near today's date.
  *
- * Requires DATABASE_URL because the scraper reads its `knownSourceIds`
- * cache from `event_sources`. Use the local dev DB. On first run this
- * will be slow (~1.5 s/event for detail-page enrichment); the test
- * early-exits once the assertions are satisfied to keep that bounded.
+ * Doesn't touch the database. Slow-ish (~1.5 s/event for the detail-page
+ * fetch); the test early-exits once the assertions are satisfied to keep
+ * that bounded.
  */
 
 import { eventseyeScraper } from "../src/lib/scraper/sources/eventseye";
@@ -105,6 +106,16 @@ async function main() {
   if (withDescription < MIN_WITH_DESCRIPTION) {
     console.error(
       `FAIL: expected ≥${MIN_WITH_DESCRIPTION} event with a non-empty description, got ${withDescription}`,
+    );
+    ok = false;
+  }
+  // A lone acronym ("ICC", "IT-SA") may legitimately stay all caps.
+  const shouting = events.filter(
+    (e) => !/\p{Ll}/u.test(e.title) && /\p{L}{4,}.*\s/u.test(e.title),
+  );
+  if (shouting.length > 0) {
+    console.error(
+      `FAIL: ${shouting.length} title(s) still in all caps: ${shouting.map((e) => e.title).join(", ")}`,
     );
     ok = false;
   }

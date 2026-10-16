@@ -11,7 +11,9 @@ const SOURCE_PRIORITY: Record<string, number> = {
   meetup: 3,
   dev_events: 2,
   confs_tech: 1,
-  eventseye: 1,
+  // Below everything: EventsEye names are all caps and only title-cased
+  // heuristically, so it shouldn't overwrite another source's title.
+  eventseye: 0,
   manual: 5,
   community: 3,
   luma: 2,

@@ -1,10 +1,8 @@
 import { parse, HTMLElement } from "node-html-parser";
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { eventSources } from "@/lib/db/schema";
 import { EVENTSEYE_CATEGORY_MAP, resolveCategory } from "../category-map";
 import { toCountryCode } from "../european-countries";
 import { htmlToMarkdown, stripHtml, truncate } from "../html-utils";
+import { titleCaseAllCaps } from "../title-case";
 import type { NormalizedEvent, Scraper, ScraperOptions } from "../types";
 
 const BASE = "https://www.eventseye.com/fairs/";
@@ -87,11 +85,6 @@ export const eventseyeScraper: Scraper = {
     const dateFrom = options?.dateFrom ?? startOfTodayUTC();
     const dateTo = options?.dateTo;
 
-    // Known EventsEye source IDs — gate the per-event detail fetch so we only
-    // pay it for events we haven't seen before. Same pattern as eventbrite.ts.
-    const knownSourceIds = await loadKnownSourceIds();
-    console.log(`[eventseye] Known source IDs: ${knownSourceIds.size}`);
-
     // Most shows are listed under several industries; yield each once.
     const yielded = new Set<string>();
 
@@ -122,14 +115,20 @@ export const eventseyeScraper: Scraper = {
 
           yielded.add(row.sourceId);
 
-          let detail: DetailInfo = {};
-          if (!knownSourceIds.has(row.sourceId)) {
-            await sleep(DETAIL_PAGE_DELAY_MS);
-            const detailHtml = await fetchPage(detailUrl(row.detailHref));
-            if (detailHtml) detail = parseDetailPage(detailHtml);
-          }
+          // Fetched on every run, not just for new events: re-ingest
+          // overwrites venue fields, so yielding without the detail page's
+          // venue address would null it (and the geocoded coordinates) on
+          // the existing row. If the fetch fails, skip the event this run.
+          await sleep(DETAIL_PAGE_DELAY_MS);
+          const detailHtml = await fetchPage(detailUrl(row.detailHref));
+          if (!detailHtml) continue;
 
-          yield toNormalizedEvent(row, industry, countryCode, detail);
+          yield toNormalizedEvent(
+            row,
+            industry,
+            countryCode,
+            parseDetailPage(detailHtml),
+          );
         }
 
         // Listings are sorted by start date, so once a page ends past
@@ -152,7 +151,10 @@ function toNormalizedEvent(
 ): NormalizedEvent {
   const sourceUrl = detailUrl(row.detailHref);
   return {
-    title: row.name,
+    // EventsEye publishes names in all caps ("BIG DATA & AI WORLD - PARIS").
+    // The listing excerpt often spells the name normally, so use it as the
+    // casing reference; it's on every run, unlike detail-page fields.
+    title: titleCaseAllCaps(row.name, row.description),
     description: detail.description ?? (row.description || undefined),
     // Listing-page <i> excerpt is a sensible short description even if we
     // didn't enrich from the detail page.
@@ -209,13 +211,9 @@ function parseRow(tr: HTMLElement): ParsedRow | null {
   const sourceId = extractIdFromHref(detailHref);
   if (!sourceId) return null;
 
-  const name = decodeNumericEntities(
-    nameLink.querySelector("b")?.textContent ?? "",
-  ).trim();
+  const name = cleanText(nameLink.querySelector("b")?.textContent ?? "");
   if (!name) return null;
-  const description = decodeNumericEntities(
-    nameLink.querySelector("i")?.textContent ?? "",
-  ).trim();
+  const description = cleanText(nameLink.querySelector("i")?.textContent ?? "");
 
   // ── Cycle
   const cycle = (cycleTd.textContent ?? "").trim();
@@ -341,23 +339,19 @@ function extractIdFromHref(href: string): string | undefined {
 }
 
 /** Some titles are double-encoded at the source (`&amp;#268;`), leaving
- *  numeric entities behind after the parser's own decoding pass. */
-function decodeNumericEntities(s: string): string {
-  return s.replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)));
+ *  numeric entities behind after the parser's own decoding pass, and some
+ *  contain zero-width spaces ("CYBER \u200B\u200BSECURITY"). */
+function cleanText(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
 }
 
 /** EventsEye sometimes prefixes the country with a short code ("UK - United
  *  Kingdom", "USA - United States"); strip it before the country lookup. */
 function normalizeCountryName(name: string): string {
   return name.replace(/^[A-Z]{2,4}\s*-\s*/, "").trim();
-}
-
-async function loadKnownSourceIds(): Promise<Set<string>> {
-  const rows = await db
-    .select({ sourceId: eventSources.sourceId })
-    .from(eventSources)
-    .where(eq(eventSources.source, "eventseye"));
-  return new Set(rows.map((r) => r.sourceId));
 }
 
 function listingUrl(industry: string, pageIndex: number): string {
