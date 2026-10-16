@@ -79,6 +79,7 @@ export const eventSourceEnum = pgEnum("event_source", [
   "dev_events",
   "microdata",
   "eventseye",
+  "pocketgamer",
   "other",
 ]);
 

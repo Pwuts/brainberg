@@ -101,6 +101,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   confs_tech: "confs.tech",
   dev_events: "dev.events",
   eventseye: "EventsEye",
+  pocketgamer: "PocketGamer.biz",
   other: "Other",
 };
 

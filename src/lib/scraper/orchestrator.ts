@@ -6,6 +6,7 @@ import { devEventsScraper } from "./sources/devevents";
 import { meetupScraper } from "./sources/meetup";
 import { eventbriteScraper } from "./sources/eventbrite";
 import { eventseyeScraper } from "./sources/eventseye";
+import { pocketgamerScraper } from "./sources/pocketgamer";
 import { hackerCampsScraper } from "./sources/hacker-camps";
 import { lumaScraper } from "./sources/luma";
 import { microdataScraper } from "./sources/microdata";
@@ -18,6 +19,7 @@ const SCRAPERS: Record<string, Scraper> = {
   meetup: meetupScraper,
   eventbrite: eventbriteScraper,
   eventseye: eventseyeScraper,
+  pocketgamer: pocketgamerScraper,
   luma: lumaScraper,
   microdata: microdataScraper,
   manual: hackerCampsScraper,
@@ -89,6 +91,7 @@ export async function runAllScrapers(
   const order: EventSource[] = [
     "confs_tech",
     "eventseye",
+    "pocketgamer",
     "dev_events",
     "meetup",
     "eventbrite",

@@ -14,6 +14,11 @@ const SOURCE_PRIORITY: Record<string, number> = {
   // Below everything: EventsEye names are all caps and only title-cased
   // heuristically, so it shouldn't overwrite another source's title.
   eventseye: 0,
+  // Curated games-industry calendar with official URLs and full venue
+  // addresses: above confs.tech and EventsEye, below dev.events. Fractional
+  // so it doesn't tie with either (equal priorities overwrite each other on
+  // alternate runs).
+  pocketgamer: 1.5,
   manual: 5,
   community: 3,
   luma: 2,
