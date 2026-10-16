@@ -23,6 +23,13 @@ export interface ModerationResult {
 const CATEGORIES = eventCategoryEnum.enumValues;
 const EVENT_TYPES = eventTypeEnum.enumValues;
 
+// Claude Haiku 5.5 at low effort matched Sonnet 5.5 and Opus 5.5 on a
+// labelled sample of past moderation decisions, at a fraction of the cost.
+const MODEL = "claude-haiku-5-5";
+const EFFORT = "low";
+// Thinking counts toward max_tokens; the JSON answer itself is ~150 tokens.
+const MAX_TOKENS = 4000;
+
 const responseSchema = z.object({
   decision: z.enum(["approve", "pending", "reject"]),
   category: z.enum(CATEGORIES).nullable(),
@@ -30,6 +37,23 @@ const responseSchema = z.object({
   reason: z.string().transform((s) => s.slice(0, 500)),
   confidence: z.number().min(0).max(1),
 });
+
+/** Structured-output schema for the same fields, "reason" first so the
+ *  model writes its explanation before the verdict. */
+const OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    reason: { type: "string" },
+    decision: { type: "string", enum: ["approve", "pending", "reject"] },
+    category: { anyOf: [{ type: "string", enum: [...CATEGORIES] }, { type: "null" }] },
+    eventType: {
+      anyOf: [{ type: "string", enum: [...EVENT_TYPES] }, { type: "null" }],
+    },
+    confidence: { type: "number" },
+  },
+  required: ["reason", "decision", "category", "eventType", "confidence"],
+  additionalProperties: false,
+};
 
 // ============================================================
 // Client & guide caching
@@ -49,13 +73,11 @@ function getClient(): Anthropic | null {
 function getModerationGuide(): string {
   if (!cachedGuide) {
     try {
-      cachedGuide = readFileSync(
-        join(process.cwd(), "MODERATING.md"),
-        "utf-8",
-      );
+      cachedGuide = readFileSync(join(process.cwd(), "MODERATING.md"), "utf-8");
     } catch {
       // Fallback for Docker where MODERATING.md may not be at process.cwd()
-      cachedGuide = "Use your best judgment to determine if this is a European tech event.";
+      cachedGuide =
+        "Use your best judgment to determine if this is a European tech event.";
     }
   }
   return cachedGuide;
@@ -113,7 +135,9 @@ function buildEventPrompt(event: NormalizedEvent): string {
   }
 
   if (event.cityName || event.countryCode) {
-    parts.push(`Location: ${[event.cityName, event.countryCode].filter(Boolean).join(", ")}${event.isOnline ? " (+ online)" : ""}`);
+    parts.push(
+      `Location: ${[event.cityName, event.countryCode].filter(Boolean).join(", ")}${event.isOnline ? " (+ online)" : ""}`,
+    );
   } else if (event.isOnline) {
     parts.push("Location: Online");
   }
@@ -166,8 +190,12 @@ export async function moderateEvent(
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 200,
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        output_config: {
+          effort: EFFORT,
+          format: { type: "json_schema", schema: OUTPUT_SCHEMA },
+        },
         system: [
           {
             type: "text",
@@ -178,21 +206,22 @@ export async function moderateEvent(
         messages: [{ role: "user", content: userPrompt }],
       });
 
-      const text = response.content[0]?.type === "text"
-        ? response.content[0].text.trim()
-        : null;
-
-      if (!text) {
-        console.warn(`[ai-moderate] Empty response for "${event.title}"`);
+      if (response.stop_reason === "refusal") {
+        console.warn(
+          `[ai-moderate] Model declined "${event.title}" (${response.stop_details?.category ?? "no category"})`,
+        );
         return null;
       }
 
-      // Parse JSON — handle potential markdown code blocks
-      const jsonStr = text.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
-      const parsed = JSON.parse(jsonStr);
-      const result = responseSchema.parse(parsed);
+      // The response can start with thinking blocks; the JSON is in the text block.
+      const textBlock = response.content.find(
+        (b): b is Anthropic.TextBlock => b.type === "text",
+      );
+      if (!textBlock) {
+        throw new Error(`No text in response (stop_reason: ${response.stop_reason})`);
+      }
 
-      return result;
+      return responseSchema.parse(JSON.parse(textBlock.text));
     } catch (err) {
       const isLastAttempt = attempt === 2;
       const isRateLimit = err instanceof Anthropic.RateLimitError;
@@ -209,9 +238,9 @@ export async function moderateEvent(
         console.warn("[ai-moderate] Rate limited, retrying in 2s...");
         await sleep(2000);
       }
-      // Non-rate-limit errors (bad JSON, schema violation, transient API
-      // failure) — retry immediately. The model often emits a valid
-      // response on the second try.
+      // Non-rate-limit errors (out-of-range confidence, output cut off at
+      // max_tokens, transient API failure) — retry immediately. The model
+      // usually emits a valid response on the second try.
     }
   }
 
