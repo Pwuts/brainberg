@@ -206,6 +206,15 @@ ORDER BY category, title;
 **Run order:** `manual → confs_tech → eventseye → pocketgamer → dev_events → meetup → eventbrite → luma`
 (lowest to highest priority for dedup merge).
 
+**Schedule:** production triggers `POST /api/cron/scrape` (auth:
+`Bearer $CRON_SECRET`) from a cron job on the Docker host, outside this
+repo: every other day at a random time between 00:00 and 03:00 UTC. A
+full run takes 3.5–5 hours (mostly Meetup), so it can last until ~08:00
+UTC. Deploys restart the app and kill a running scrape, so don't push to
+`master` while `scraper_runs` has a `running` row. Both full-run
+endpoints (cron and admin "Run all") return 409 when a scrape is already
+running.
+
 **City resolution:**
 
 - DB lookup first (seeded + geocoded cities).

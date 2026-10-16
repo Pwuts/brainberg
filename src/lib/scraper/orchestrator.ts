@@ -123,6 +123,20 @@ export async function runAllScrapers(
   return results;
 }
 
+/**
+ * Whether any scraper run is in progress. Runs left "running" by an app
+ * restart are marked failed on startup (see migrate.ts), so a running row
+ * means a live run.
+ */
+export async function isScrapeRunning(): Promise<boolean> {
+  const [run] = await db
+    .select({ id: scraperRuns.id })
+    .from(scraperRuns)
+    .where(eq(scraperRuns.status, "running"))
+    .limit(1);
+  return !!run;
+}
+
 export function getAvailableScrapers(): string[] {
   return Object.keys(SCRAPERS);
 }

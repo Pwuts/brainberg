@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/admin";
-import { runAllScrapers } from "@/lib/scraper/orchestrator";
+import { isScrapeRunning, runAllScrapers } from "@/lib/scraper/orchestrator";
 import { revalidateSitemap } from "@/lib/revalidate";
 
 export async function POST(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Don't stack a second full run on one in progress, e.g. the scheduled
+  // run (docker/scheduler.sh) firing during a manual one.
+  if (await isScrapeRunning()) {
+    return NextResponse.json({ error: "A scrape is already running" }, { status: 409 });
   }
 
   try {
