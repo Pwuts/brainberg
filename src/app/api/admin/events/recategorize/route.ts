@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
   };
 
   const useAi = !!process.env.ANTHROPIC_API_KEY;
-  console.log(`[recategorize] Starting (mode: ${useAi ? "AI" : "regex"}, scope: ${eventIds?.length ? `${eventIds.length} events` : dateFrom || dateTo ? `${dateFrom ?? "…"} to ${dateTo ?? "…"}` : "all"})`);
+  console.log(
+    `[recategorize] Starting (mode: ${useAi ? "AI" : "regex"}, scope: ${eventIds?.length ? `${eventIds.length} events` : dateFrom || dateTo ? `${dateFrom ?? "…"} to ${dateTo ?? "…"}` : "all"})`,
+  );
 
   try {
     const conditions = [];
@@ -69,7 +71,9 @@ export async function POST(request: NextRequest) {
     for (const event of allEvents) {
       processed++;
       if (processed % 50 === 0 || processed === allEvents.length) {
-        console.log(`[recategorize] Progress: ${processed}/${allEvents.length} (${categoriesChanged} cat, ${typesChanged} type, ${statusesChanged} status changes so far)`);
+        console.log(
+          `[recategorize] Progress: ${processed}/${allEvents.length} (${categoriesChanged} cat, ${typesChanged} type, ${statusesChanged} status changes so far)`,
+        );
       }
 
       if (event.categoryLocked && !bypassLock) {
@@ -98,11 +102,13 @@ export async function POST(request: NextRequest) {
       }
 
       if (useAi) {
-        // Build description with moderation context for the AI
+        // Build description with moderation context for the AI. The current
+        // status is deliberately left out: it anchors the model to the old
+        // verdict, which defeats re-moderating after a guide change.
         const descParts = [];
         if (event.description) descParts.push(event.description);
-        if (event.status !== "approved") descParts.push(`[Current status: ${event.status}]`);
-        if (event.rejectionReason) descParts.push(`[Human moderator note: ${event.rejectionReason}]`);
+        if (event.rejectionReason)
+          descParts.push(`[Human moderator note: ${event.rejectionReason}]`);
 
         const normalized: NormalizedEvent = {
           title: event.title,
@@ -125,20 +131,29 @@ export async function POST(request: NextRequest) {
         const result = await moderateEvent(normalized);
         if (result) {
           if (result.category && result.category !== event.category) {
-            console.log(`[recategorize] Category: "${event.title}" ${event.category} → ${result.category}`);
+            console.log(
+              `[recategorize] Category: "${event.title}" ${event.category} → ${result.category}`,
+            );
             updates.category = result.category;
             categoriesChanged++;
           }
           if (result.eventType && result.eventType !== event.eventType) {
-            console.log(`[recategorize] Type: "${event.title}" ${event.eventType} → ${result.eventType}`);
+            console.log(
+              `[recategorize] Type: "${event.title}" ${event.eventType} → ${result.eventType}`,
+            );
             updates.eventType = result.eventType;
             typesChanged++;
           }
           const newStatus =
-            result.decision === "reject" ? "rejected" :
-            result.decision === "pending" ? "pending" : "approved";
+            result.decision === "reject"
+              ? "rejected"
+              : result.decision === "pending"
+                ? "pending"
+                : "approved";
           if (newStatus !== event.status) {
-            console.log(`[recategorize] Status: "${event.title}" ${event.status} → ${newStatus} (${result.reason})`);
+            console.log(
+              `[recategorize] Status: "${event.title}" ${event.status} → ${newStatus} (${result.reason})`,
+            );
             updates.status = newStatus;
             statusesChanged++;
           }
@@ -148,14 +163,18 @@ export async function POST(request: NextRequest) {
       } else {
         const newCategory = resolveCategory(undefined, {}, event.title);
         if (newCategory !== "software_dev" && newCategory !== event.category) {
-          console.log(`[recategorize] Category: "${event.title}" ${event.category} → ${newCategory}`);
+          console.log(
+            `[recategorize] Category: "${event.title}" ${event.category} → ${newCategory}`,
+          );
           updates.category = newCategory;
           categoriesChanged++;
         }
 
         const newType = resolveEventType(event.title);
         if (newType && newType !== event.eventType) {
-          console.log(`[recategorize] Type: "${event.title}" ${event.eventType} → ${newType}`);
+          console.log(
+            `[recategorize] Type: "${event.title}" ${event.eventType} → ${newType}`,
+          );
           updates.eventType = newType;
           typesChanged++;
         }
@@ -182,7 +201,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[recategorize] Failed:", error);
     return NextResponse.json(
-      { error: "Failed", message: error instanceof Error ? error.message : String(error) },
+      {
+        error: "Failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }
