@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   MapContainer,
@@ -19,36 +19,36 @@ import {
   formatEventDate,
 } from "@/lib/utils";
 import type { MapEvent } from "@/lib/events";
+import { parseMapView, withoutMapView, writeMapView } from "./map-view-params";
 
 // Fix Leaflet default marker icons (broken in bundlers)
 import "leaflet/dist/leaflet.css";
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
 // Category → marker color mapping
 const MARKER_COLORS: Record<string, string> = {
-  ai_ml_research: "#9333ea",  // purple
-  ai_applied: "#7c3aed",  // violet
-  software_dev: "#475569",    // slate
-  data_analytics: "#16a34a",  // green
-  cloud_devops: "#0891b2",    // cyan
-  security: "#dc2626",        // red
-  design_ux: "#ec4899",       // pink
+  ai_ml_research: "#9333ea", // purple
+  ai_applied: "#7c3aed", // violet
+  software_dev: "#475569", // slate
+  data_analytics: "#16a34a", // green
+  cloud_devops: "#0891b2", // cyan
+  security: "#dc2626", // red
+  design_ux: "#ec4899", // pink
   blockchain_web3: "#ea580c", // orange
-  entrepreneurship: "#4f46e5",// indigo
-  hardware_iot: "#d97706",    // amber
-  hacker_maker: "#65a30d",    // lime
-  game_dev: "#c026d3",        // fuchsia
-  policy_ethics: "#78716c",   // stone
+  entrepreneurship: "#4f46e5", // indigo
+  hardware_iot: "#d97706", // amber
+  hacker_maker: "#65a30d", // lime
+  game_dev: "#c026d3", // fuchsia
+  policy_ethics: "#78716c", // stone
   leadership_product: "#2563eb", // blue
-  bio_health: "#0d9488",      // teal
-  other: "#6b7280",           // gray
+  bio_health: "#0d9488", // teal
+  other: "#6b7280", // gray
 };
 
 // Size → scale factor for markers
@@ -100,7 +100,7 @@ function createClusterIcon(count: number): L.DivIcon {
 // Simple client-side clustering
 function clusterMarkers(
   events: MapEvent[],
-  map: L.Map
+  map: L.Map,
 ): { clusters: { lat: number; lng: number; events: MapEvent[] }[] } {
   const zoom = map.getZoom();
   const clusterRadius = Math.max(20, 80 - zoom * 5);
@@ -117,10 +117,7 @@ function clusterMarkers(
     for (let j = i + 1; j < events.length; j++) {
       if (assigned.has(j)) continue;
       const other = events[j];
-      const otherPoint = map.latLngToContainerPoint([
-        other.latitude,
-        other.longitude,
-      ]);
+      const otherPoint = map.latLngToContainerPoint([other.latitude, other.longitude]);
       const dist = point.distanceTo(otherPoint);
       if (dist < clusterRadius) {
         cluster.push(other);
@@ -128,10 +125,8 @@ function clusterMarkers(
       }
     }
 
-    const avgLat =
-      cluster.reduce((s, e) => s + e.latitude, 0) / cluster.length;
-    const avgLng =
-      cluster.reduce((s, e) => s + e.longitude, 0) / cluster.length;
+    const avgLat = cluster.reduce((s, e) => s + e.latitude, 0) / cluster.length;
+    const avgLng = cluster.reduce((s, e) => s + e.longitude, 0) / cluster.length;
     clusters.push({ lat: avgLat, lng: avgLng, events: cluster });
   }
 
@@ -144,11 +139,16 @@ const DEFAULT_ZOOM = 5;
 
 function MapEvents({
   onMoveEnd,
+  onViewChange,
 }: {
   onMoveEnd: () => void;
+  onViewChange: () => void;
 }) {
   useMapEvents({
-    moveend: onMoveEnd,
+    moveend: () => {
+      onMoveEnd();
+      onViewChange();
+    },
     zoomend: onMoveEnd,
   });
   return null;
@@ -160,9 +160,7 @@ function FitBounds({ events }: { events: MapEvent[] }) {
 
   useEffect(() => {
     if (events.length > 0 && !hasFitted.current) {
-      const bounds = L.latLngBounds(
-        events.map((e) => [e.latitude, e.longitude])
-      );
+      const bounds = L.latLngBounds(events.map((e) => [e.latitude, e.longitude]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
       hasFitted.current = true;
     }
@@ -177,9 +175,17 @@ export function EventMap({
   onVisibleEventsChange?: (events: MapEvent[]) => void;
 }) {
   const searchParams = useSearchParams();
+  // A view from the URL (shared link, reload) wins over fitting to the events.
+  const [initialView] = useState(() => parseMapView(searchParams));
+  // The view params change on every pan; only the filters should refetch.
+  const filterQuery = useMemo(
+    () => withoutMapView(searchParams).toString(),
+    [searchParams],
+  );
   const [events, setEvents] = useState<MapEvent[]>([]);
-  const [clusters, setClusters] =
-    useState<{ lat: number; lng: number; events: MapEvent[] }[]>([]);
+  const [clusters, setClusters] = useState<
+    { lat: number; lng: number; events: MapEvent[] }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
   const onVisibleRef = useRef(onVisibleEventsChange);
@@ -192,15 +198,14 @@ export function EventMap({
   // Fetch events whenever filters change
   useEffect(() => {
     setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- data fetch
-    const params = new URLSearchParams(searchParams.toString());
-    fetch(`/api/events/map?${params.toString()}`)
+    fetch(`/api/events/map?${filterQuery}`)
       .then((r) => r.json())
       .then((data) => {
         setEvents(data.events ?? []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [searchParams]);
+  }, [filterQuery]);
 
   // Recluster + compute visible events when map moves or events change
   const recluster = useCallback(() => {
@@ -214,15 +219,20 @@ export function EventMap({
 
     // Filter to events within current viewport
     const bounds = mapRef.current.getBounds();
-    const visible = events.filter((e) =>
-      bounds.contains([e.latitude, e.longitude])
-    );
+    const visible = events.filter((e) => bounds.contains([e.latitude, e.longitude]));
     onVisibleRef.current?.(visible);
   }, [events]);
 
   useEffect(() => {
     recluster();
   }, [recluster]);
+
+  // Keep the current center and zoom in the URL, so reloads and shared
+  // links open the same view.
+  const saveView = useCallback(() => {
+    const map = mapRef.current;
+    if (map) writeMapView(map.getCenter().wrap(), map.getZoom());
+  }, []);
 
   return (
     <div className="relative h-full w-full">
@@ -234,8 +244,8 @@ export function EventMap({
         </div>
       )}
       <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
+        center={initialView?.center ?? DEFAULT_CENTER}
+        zoom={initialView?.zoom ?? DEFAULT_ZOOM}
         className="h-full w-full"
         ref={mapRef}
         zoomControl={true}
@@ -244,8 +254,8 @@ export function EventMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapEvents onMoveEnd={recluster} />
-        <FitBounds events={events} />
+        <MapEvents onMoveEnd={recluster} onViewChange={saveView} />
+        {!initialView && <FitBounds events={events} />}
 
         {clusters.map((cluster, i) =>
           cluster.events.length === 1 ? (
@@ -257,7 +267,7 @@ export function EventMap({
               lng={cluster.lng}
               events={cluster.events}
             />
-          )
+          ),
         )}
       </MapContainer>
       <div className="absolute bottom-4 left-4 z-1000 rounded-lg bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-md backdrop-blur-sm">
@@ -270,8 +280,7 @@ export function EventMap({
 function SingleMarker({ event }: { event: MapEvent }) {
   const icon = createCategoryIcon(event.category, event.size);
   const categoryLabel = CATEGORY_LABELS[event.category] ?? event.category;
-  const categoryColor =
-    CATEGORY_COLORS[event.category] ?? "bg-gray-100 text-gray-800";
+  const categoryColor = CATEGORY_COLORS[event.category] ?? "bg-gray-100 text-gray-800";
   const typeLabel = EVENT_TYPE_LABELS[event.eventType] ?? event.eventType;
 
   return (
@@ -337,18 +346,14 @@ function ClusterMarker({
       icon={icon}
       eventHandlers={{
         click: () => {
-          const bounds = L.latLngBounds(
-            events.map((e) => [e.latitude, e.longitude])
-          );
+          const bounds = L.latLngBounds(events.map((e) => [e.latitude, e.longitude]));
           map.fitBounds(bounds, { padding: [50, 50] });
         },
       }}
     >
       <Popup maxWidth={280} minWidth={200}>
         <div className="space-y-1">
-          <p className="text-sm font-semibold">
-            {events.length} events in this area
-          </p>
+          <p className="text-sm font-semibold">{events.length} events in this area</p>
           <div className="max-h-48 space-y-1.5 overflow-y-auto">
             {events.slice(0, 8).map((event) => (
               <a

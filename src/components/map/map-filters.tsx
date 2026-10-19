@@ -7,7 +7,13 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { MoreFilters } from "@/components/ui/more-filters";
 import { X } from "lucide-react";
-import { CATEGORY_LABELS, CATEGORY_DESCRIPTIONS, EVENT_TYPE_LABELS, SIZE_LABELS } from "@/lib/utils";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_DESCRIPTIONS,
+  EVENT_TYPE_LABELS,
+  SIZE_LABELS,
+} from "@/lib/utils";
+import { onlyMapView, withoutMapView } from "./map-view-params";
 
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
   value,
@@ -40,14 +46,16 @@ export function MapFilters() {
       }
       router.push(`${pathname}?${params.toString()}`);
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams],
   );
 
   const setDateRange = useCallback(
     (from: string, to: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (from) params.set("from", from); else params.delete("from");
-      if (to) params.set("to", to); else params.delete("to");
+      if (from) params.set("from", from);
+      else params.delete("from");
+      if (to) params.set("to", to);
+      else params.delete("to");
       // Tag with the user's local TZ offset so the server interprets the
       // YYYY-MM-DD bounds as start/end of that local day.
       if (from || to) {
@@ -57,14 +65,16 @@ export function MapFilters() {
       }
       router.push(`${pathname}?${params.toString()}`);
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams],
   );
 
+  // Clearing filters keeps the map where it is.
   const clearAll = useCallback(() => {
-    router.push(pathname);
-  }, [router, pathname]);
+    const view = onlyMapView(searchParams).toString();
+    router.push(view ? `${pathname}?${view}` : pathname);
+  }, [router, pathname, searchParams]);
 
-  const hasFilters = searchParams.toString().length > 0;
+  const hasFilters = withoutMapView(searchParams).toString().length > 0;
 
   // Secondary controls (collapsed into "Filters" popover on mobile)
   const categoryValues = (searchParams.get("category") ?? "")
@@ -102,9 +112,7 @@ export function MapFilters() {
   );
   const freeEl = (
     <button
-      onClick={() =>
-        setFilter("free", searchParams.get("free") === "1" ? "" : "1")
-      }
+      onClick={() => setFilter("free", searchParams.get("free") === "1" ? "" : "1")}
       className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
         searchParams.get("free") === "1"
           ? "border-primary bg-primary text-primary-foreground"
@@ -116,9 +124,7 @@ export function MapFilters() {
   );
   const onlineEl = (
     <button
-      onClick={() =>
-        setFilter("online", searchParams.get("online") === "1" ? "" : "1")
-      }
+      onClick={() => setFilter("online", searchParams.get("online") === "1" ? "" : "1")}
       className={`h-9 shrink-0 rounded-md border px-3 text-sm transition-colors ${
         searchParams.get("online") === "1"
           ? "border-primary bg-primary text-primary-foreground"
