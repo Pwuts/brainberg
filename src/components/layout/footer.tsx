@@ -20,42 +20,91 @@ export function Footer() {
               <span className="font-bold">Brainberg</span>
             </Link>
             <p className="mt-3 text-sm text-muted-foreground">
-              Discover AI &amp; tech events across Europe. Never miss the next
-              big meetup, conference, or hackathon.
+              Discover AI &amp; tech events across Europe. Never miss the next big
+              meetup, conference, or hackathon.
             </p>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold">Explore</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/events" className="hover:text-foreground">All Events</Link></li>
-              <li><Link href="/map" className="hover:text-foreground">Map View</Link></li>
-              <li><Link href="/calendar" className="hover:text-foreground">Calendar</Link></li>
+              <li>
+                <Link href="/events" className="hover:text-foreground">
+                  All Events
+                </Link>
+              </li>
+              <li>
+                <Link href="/map" className="hover:text-foreground">
+                  Map View
+                </Link>
+              </li>
+              <li>
+                <Link href="/calendar" className="hover:text-foreground">
+                  Calendar
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold">Categories</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/events?category=ai_applied" className="hover:text-foreground">AI Integration & Application</Link></li>
-              <li><Link href="/events?category=entrepreneurship" className="hover:text-foreground">Entrepreneurship</Link></li>
-              <li><Link href="/events?category=design_ux" className="hover:text-foreground">Design & UX</Link></li>
-              <li><Link href="/events?type=hackathon" className="hover:text-foreground">Hackathons</Link></li>
+              <li>
+                <Link href="/events/c/applying-ai" className="hover:text-foreground">
+                  AI Integration & Application
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/events/c/entrepreneurship"
+                  className="hover:text-foreground"
+                >
+                  Entrepreneurship
+                </Link>
+              </li>
+              <li>
+                <Link href="/events/c/design-ux" className="hover:text-foreground">
+                  Design & UX
+                </Link>
+              </li>
+              <li>
+                <Link href="/events?type=hackathon" className="hover:text-foreground">
+                  Hackathons
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold">Community</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-foreground">About & Join the Network</Link></li>
-              <li><Link href="/events/submit" className="hover:text-foreground">Submit Event</Link></li>
-              <li><Link href="https://github.com/Pwuts/brainberg" className="hover:text-foreground" target="_blank" rel="noopener noreferrer">GitHub</Link></li>
+              <li>
+                <Link href="/about" className="hover:text-foreground">
+                  About & Join the Network
+                </Link>
+              </li>
+              <li>
+                <Link href="/events/submit" className="hover:text-foreground">
+                  Submit Event
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="https://github.com/Pwuts/brainberg"
+                  className="hover:text-foreground"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Brainberg, by Reinier van der Leer (Pwuts). Open source under MIT.
+          © {new Date().getFullYear()} Brainberg, by Reinier van der Leer (Pwuts). Open
+          source under MIT.
         </div>
       </div>
     </footer>

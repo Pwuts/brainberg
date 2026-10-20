@@ -8,6 +8,7 @@ interface BubbleItem {
   label: string;
   count: number;
   color: string;
+  href: string;
 }
 
 interface Bubble extends BubbleItem {
@@ -168,7 +169,8 @@ export function AnimatedBubbles({ items }: { items: BubbleItem[] }) {
       // 1. Compute orbital target for each bubble
       const targets = bs.map((b) => ({
         x: b.baseX + Math.cos(time * b.orbitSpeed + b.orbitPhase) * b.orbitR,
-        y: b.baseY + Math.sin(time * b.orbitSpeed * 1.3 + b.orbitPhase) * b.orbitR * 0.7,
+        y:
+          b.baseY + Math.sin(time * b.orbitSpeed * 1.3 + b.orbitPhase) * b.orbitR * 0.7,
       }));
 
       // 2. Compute repulsion forces between overlapping/close pairs
@@ -210,10 +212,10 @@ export function AnimatedBubbles({ items }: { items: BubbleItem[] }) {
   }, []);
 
   const handleClick = useCallback(
-    (category: string) => {
-      router.push(`/events?category=${category}`);
+    (href: string) => {
+      router.push(href);
     },
-    [router]
+    [router],
   );
 
   return (
@@ -226,7 +228,7 @@ export function AnimatedBubbles({ items }: { items: BubbleItem[] }) {
           return (
             <g
               key={b.category}
-              onClick={() => handleClick(b.category)}
+              onClick={() => handleClick(b.href)}
               className="cursor-pointer"
               role="link"
             >

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import { eq, lte, and, count, sql } from "drizzle-orm";
 import { CATEGORY_LABELS } from "@/lib/utils";
+import { categoryToSlug } from "@/lib/categories";
 import { AnimatedBubbles } from "./animated-bubbles";
 
 const BUBBLE_COLORS: Record<string, string> = {
@@ -42,12 +43,18 @@ export async function CategoryBubbles() {
 
   const items = categoryCounts
     .filter((c) => c.count > 0 && c.category in CATEGORY_LABELS)
-    .map((c) => ({
-      category: c.category,
-      label: CATEGORY_LABELS[c.category] ?? c.category,
-      count: c.count,
-      color: BUBBLE_COLORS[c.category] ?? "#6b7280",
-    }));
+    .map((c) => {
+      const slug = categoryToSlug(c.category);
+      return {
+        category: c.category,
+        label: CATEGORY_LABELS[c.category] ?? c.category,
+        count: c.count,
+        color: BUBBLE_COLORS[c.category] ?? "#6b7280",
+        // The category's landing page; "other" has none, so it falls back
+        // to the filtered event list.
+        href: slug ? `/events/c/${slug}` : `/events?category=${c.category}`,
+      };
+    });
 
   if (items.length === 0) return null;
 
