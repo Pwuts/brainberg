@@ -42,6 +42,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      # loopback only, for admin access through an SSH tunnel
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brainberg -d brainberg"]
       interval: 5s
