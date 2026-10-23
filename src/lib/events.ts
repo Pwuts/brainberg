@@ -306,49 +306,60 @@ export async function getFilteredEvents(filters: EventFilters) {
 
   const limit = Math.min(filters.limit || 20, 100);
 
-  if (filters.cursor) {
-    conditions.push(
-      sql`(${events.startsAt}, ${events.id}) > (
-        SELECT starts_at, id FROM events WHERE id = ${filters.cursor}
-      )`,
-    );
-  }
-
   // Sorting — supports "-field" prefix for descending
   const sortRaw = filters.sort ?? "date";
   const sortDesc = sortRaw.startsWith("-");
   const sortField = sortDesc ? sortRaw.slice(1) : sortRaw;
-  const dir = sortDesc ? "DESC" : "ASC";
 
-  let orderExpr: SQL;
+  // Each sort is a tuple of keys that all run in the same direction and end
+  // in events.id, so ties have a stable order. The cursor continues after
+  // the cursor event's own key tuple, which keeps paging correct for every
+  // sort, not just the default one.
+  let sortKeys: SQL[];
+  let keysDescending = false;
   if (sortField === "size") {
-    // Map size enum to numeric order; flip for desc
-    const sizeOrder = sortDesc
-      ? sql`CASE ${events.size}
+    // Map size enum to numeric order; desc is negated to keep one direction
+    const sizeRank = sortDesc
+      ? sql`-(CASE ${events.size}
           WHEN 'small' THEN 1 WHEN 'medium' THEN 2
           WHEN 'large' THEN 3 WHEN 'major' THEN 4 ELSE 0
-        END DESC, ${events.startsAt} ASC`
+        END)`
       : sql`CASE ${events.size}
           WHEN 'major' THEN 1 WHEN 'large' THEN 2
           WHEN 'medium' THEN 3 WHEN 'small' THEN 4 ELSE 5
-        END ASC, ${events.startsAt} ASC`;
-    orderExpr = sizeOrder;
+        END`;
+    sortKeys = [sizeRank, sql`${events.startsAt}`, sql`${events.id}`];
   } else if (
     sortField === "distance" &&
     filters.latitude != null &&
     filters.longitude != null
   ) {
-    orderExpr = sql`ST_Distance(
+    // Events without coordinates sort last
+    const distance = sql`COALESCE(ST_Distance(
       ST_SetSRID(ST_MakePoint(
         COALESCE(${events.longitude}, ${cities.longitude}),
         COALESCE(${events.latitude}, ${cities.latitude})
       ), 4326)::geography,
       ST_SetSRID(ST_MakePoint(${filters.longitude}, ${filters.latitude}), 4326)::geography
-    ) ASC NULLS LAST`;
+    ), 'Infinity'::float8)`;
+    sortKeys = [distance, sql`${events.startsAt}`, sql`${events.id}`];
   } else {
     // date (default)
-    orderExpr =
-      dir === "DESC" ? sql`${events.startsAt} DESC` : sql`${events.startsAt} ASC`;
+    sortKeys = [sql`${events.startsAt}`, sql`${events.id}`];
+    keysDescending = sortDesc;
+  }
+  const keyTuple = sql.join(sortKeys, sql`, `);
+
+  if (filters.cursor) {
+    // Inside the subquery, "events" and "cities" refer to its own FROM
+    // items, so the same key expressions evaluate for the cursor event.
+    conditions.push(
+      sql`(${keyTuple}) ${keysDescending ? sql`<` : sql`>`} (
+        SELECT ${keyTuple} FROM ${events}
+        LEFT JOIN ${cities} ON ${events.cityId} = ${cities.id}
+        WHERE ${events.id} = ${filters.cursor}
+      )`,
+    );
   }
 
   const results = await db
@@ -361,7 +372,9 @@ export async function getFilteredEvents(filters: EventFilters) {
     .leftJoin(cities, eq(events.cityId, cities.id))
     .leftJoin(countries, eq(events.countryId, countries.id))
     .where(and(...conditions))
-    .orderBy(orderExpr)
+    .orderBy(
+      ...sortKeys.map((key) => (keysDescending ? sql`${key} DESC` : sql`${key} ASC`)),
+    )
     .limit(limit + 1);
 
   const hasMore = results.length > limit;
@@ -443,7 +456,8 @@ export async function getMapEvents(
     .leftJoin(cities, eq(events.cityId, cities.id))
     .leftJoin(countries, eq(events.countryId, countries.id))
     .where(and(...conditions))
-    .orderBy(asc(events.startsAt))
+    // id breaks ties, so which events make the cut-off is deterministic
+    .orderBy(asc(events.startsAt), asc(events.id))
     .limit(1337);
 
   return results as MapEvent[];
