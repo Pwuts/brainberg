@@ -12,6 +12,25 @@ const MAX_ZOOM = 19;
 /** ~11 m at the equator; plenty for a map view and keeps URLs short. */
 const COORD_DECIMALS = 4;
 
+/** Events-page params that the map's event API understands as-is. */
+const SHARED_FILTER_PARAMS = [
+  "country",
+  "city",
+  "category",
+  "type",
+  "size",
+  "from",
+  "to",
+  "tzo",
+  "free",
+  "online",
+  "q",
+];
+/** The events page's location-filter default (see LocationFilter). */
+const DEFAULT_RADIUS_KM = 100;
+/** Closest zoom a radius maps to; the smallest radius option is 25 km. */
+const MAX_RADIUS_ZOOM = 13;
+
 export interface MapView {
   center: [number, number];
   zoom: number;
@@ -65,6 +84,44 @@ export function onlyMapView(searchParams: SearchParamsLike): URLSearchParams {
     if (value !== null) params.set(p, value);
   }
   return params;
+}
+
+/**
+ * The /map URL for the selection on an events page. Filters both pages share
+ * carry over, URL params winning over a landing page's fixed `baseFilters`.
+ * The map has no radius filter, so a "near <place>" filter becomes the
+ * initial view instead: centered on the place, zoomed to roughly that
+ * radius. Sorting and paging have no map equivalent and are dropped.
+ */
+export function mapHrefFromEventFilters(
+  searchParams: SearchParamsLike,
+  baseFilters: Record<string, string> = {},
+): string {
+  const params = new URLSearchParams(baseFilters);
+  for (const p of SHARED_FILTER_PARAMS) {
+    const value = searchParams.get(p);
+    if (value) params.set(p, value);
+  }
+
+  const lat = Number(searchParams.get("lat") || NaN);
+  const lng = Number(searchParams.get("lng") || NaN);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    const radius = Number(searchParams.get("radius")) || DEFAULT_RADIUS_KM;
+    params.set("lat", String(roundCoord(lat)));
+    params.set("lng", String(roundCoord(lng)));
+    params.set("zoom", String(zoomForRadius(radius)));
+  }
+
+  const query = params.toString();
+  return query ? `/map?${query}` : "/map";
+}
+
+/** Roughly fits a circle of that radius in a typical viewport: each zoom
+ *  level halves the visible span, and zoom 9 shows about 50 km around the
+ *  center. */
+function zoomForRadius(radiusKm: number): number {
+  const zoom = Math.round(14 - Math.log2(radiusKm / 1.25));
+  return Math.min(MAX_RADIUS_ZOOM, Math.max(MIN_ZOOM, zoom));
 }
 
 function roundCoord(value: number): number {

@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { LocationFilter } from "@/components/ui/location-filter";
 import { Dropdown } from "@/components/ui/dropdown";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { MoreFilters } from "@/components/ui/more-filters";
-import { ArrowUp, ArrowDown, X } from "lucide-react";
+import { ArrowUp, ArrowDown, Globe, X } from "lucide-react";
 import {
   CATEGORY_LABELS,
   CATEGORY_DESCRIPTIONS,
@@ -15,6 +17,7 @@ import {
   SIZE_LABELS,
   cn,
 } from "@/lib/utils";
+import { mapHrefFromEventFilters } from "@/components/map/map-view-params";
 
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
   value,
@@ -45,6 +48,11 @@ interface FilterProps {
    * "Future events" regardless of what was stored in localStorage.
    */
   autoApplyStoredDatePreset?: boolean;
+  /**
+   * Filters fixed by a landing page's path (e.g. its category), so the map
+   * link shows the same selection. Same as InfiniteEventGrid's baseFilters.
+   */
+  baseFilters?: Record<string, string>;
 }
 
 export function EventFilters({
@@ -52,6 +60,7 @@ export function EventFilters({
   hideCategory,
   hideLocation,
   autoApplyStoredDatePreset = true,
+  baseFilters,
 }: FilterProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -238,8 +247,16 @@ export function EventFilters({
         </button>
       )}
 
-      {/* Spacer (desktop only — pushes Sort right) */}
+      {/* Spacer (desktop only — pushes Map and Sort right) */}
       <div className="hidden flex-1 md:block" />
+
+      {/* Same selection on the map */}
+      <Link href={mapHrefFromEventFilters(searchParams, baseFilters)}>
+        <Button variant="outline" size="sm" title="Show these events on the map">
+          <Globe className="mr-1.5 h-3.5 w-3.5" />
+          Map
+        </Button>
+      </Link>
 
       {/* Sort */}
       <SortControl

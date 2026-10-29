@@ -155,6 +155,7 @@ export default async function CategoryCityLandingPage({
             hideCategory
             hideLocation
             autoApplyStoredDatePreset={false}
+            baseFilters={{ category, city: city.slug }}
           />
         </Suspense>
       </div>

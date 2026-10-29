@@ -84,6 +84,7 @@ export default async function CategoryLandingPage({ params, searchParams }: Page
             countries={allCountries}
             hideCategory
             autoApplyStoredDatePreset={false}
+            baseFilters={{ category }}
           />
         </Suspense>
       </div>

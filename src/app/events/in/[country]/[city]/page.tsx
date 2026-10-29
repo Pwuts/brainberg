@@ -108,6 +108,7 @@ export default async function CityLandingPage({ params, searchParams }: PageProp
             countries={allCountries}
             hideLocation
             autoApplyStoredDatePreset={false}
+            baseFilters={{ country: country.code, city: city.slug }}
           />
         </Suspense>
       </div>

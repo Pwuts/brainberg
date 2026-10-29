@@ -107,6 +107,7 @@ export default async function CountryLandingPage({ params, searchParams }: PageP
             countries={allCountries}
             hideLocation
             autoApplyStoredDatePreset={false}
+            baseFilters={{ country: country.code }}
           />
         </Suspense>
       </div>
