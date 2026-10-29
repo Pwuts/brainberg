@@ -56,7 +56,9 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
   // Skip in-person events obviously outside Europe based on supplied coords.
   if (!event.isOnline && !isInEuropeBox(event.latitude, event.longitude)) {
-    console.log(`[ingest] Rejecting non-European event "${event.title}" at (${event.latitude}, ${event.longitude}) from ${event.source}`);
+    console.log(
+      `[ingest] Rejecting non-European event "${event.title}" at (${event.latitude}, ${event.longitude}) from ${event.source}`,
+    );
     return;
   }
 
@@ -67,7 +69,11 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
   let eventLat = event.latitude ?? location.latitude;
   let eventLng = event.longitude ?? location.longitude;
   if (!event.latitude && event.venueAddress) {
-    const precise = await geocodeAddress(event.venueAddress, event.cityName, event.countryCode);
+    const precise = await geocodeAddress(
+      event.venueAddress,
+      event.cityName,
+      event.countryCode,
+    );
     if (precise) {
       eventLat = precise.latitude;
       eventLng = precise.longitude;
@@ -79,7 +85,9 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
   if (dedup.existingEventId) {
     stats.deduplicated++;
-    console.log(`[dedup] Layer ${dedup.matchLayer}: "${event.title}" (${event.source}) → existing ${dedup.existingEventId}`);
+    console.log(
+      `[dedup] Layer ${dedup.matchLayer}: "${event.title}" (${event.source}) → existing ${dedup.existingEventId}`,
+    );
 
     // Always update the eventSources junction
     await upsertEventSource(dedup.existingEventId, event);
@@ -91,7 +99,13 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
 
     // Update existing event if new source has higher priority
     if (dedup.shouldUpdate) {
-      await updateExistingEvent(dedup.existingEventId, event, location, eventLat, eventLng);
+      await updateExistingEvent(
+        dedup.existingEventId,
+        event,
+        location,
+        eventLat,
+        eventLng,
+      );
       stats.updated++;
     }
 
@@ -193,7 +207,12 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
     [inserted] = await db.insert(events).values(values).returning({ id: events.id });
   } catch (err: unknown) {
     // Slug collision = same title + date + city → treat as duplicate
-    if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
       const existing = await db
         .select({ id: events.id })
         .from(events)
@@ -201,12 +220,17 @@ async function ingestOne(event: NormalizedEvent, stats: IngestStats) {
         .limit(1);
 
       if (existing.length > 0) {
-        console.log(`[dedup] Layer slug: "${event.title}" (${event.source}) → existing ${existing[0].id} (slug: ${slug})`);
+        console.log(
+          `[dedup] Layer slug: "${event.title}" (${event.source}) → existing ${existing[0].id} (slug: ${slug})`,
+        );
         await upsertEventSource(existing[0].id, event);
         stats.deduplicated++;
         return;
       }
-      console.error(`[dedup] Unique constraint violation on non-slug column for "${event.title}":`, (err as { detail?: string }).detail);
+      console.error(
+        `[dedup] Unique constraint violation on non-slug column for "${event.title}":`,
+        (err as { detail?: string }).detail,
+      );
       throw err;
     }
     throw err;
@@ -230,12 +254,13 @@ async function updateExistingEvent(
 ) {
   // Called only when dedup.shouldUpdate is true (new source has priority ≥
   // existing), so we can overwrite authoritative fields (dates, title,
-  // event type, online flags) — not just fill blanks. This lets improved
-  // scraper data heal existing rows on re-ingest.
+  // online flags) — not just fill blanks. This lets improved scraper data
+  // heal existing rows on re-ingest.
   const [existing] = await db
     .select({
       status: events.status,
       categoryLocked: events.categoryLocked,
+      moderatedByAI: events.moderatedByAI,
       title: events.title,
       description: events.description,
     })
@@ -268,18 +293,29 @@ async function updateExistingEvent(
         : "approved"
     : undefined;
 
+  // The scraper's category and event type are only priors (title regexes,
+  // topic maps). Once the AI moderator has classified the event, keep its
+  // decision on re-ingest instead of resetting it to the prior. A fresh
+  // re-moderation returns null for "the scraper's value is fine".
+  const classification = remoderation
+    ? {
+        category: remoderation.category ?? event.category,
+        eventType: remoderation.eventType ?? event.eventType,
+      }
+    : existing?.moderatedByAI
+      ? { category: undefined, eventType: undefined }
+      : { category: event.category, eventType: event.eventType };
+
   await db
     .update(events)
     .set({
       title: event.title,
       startsAt: event.startsAt,
       endsAt: event.endsAt ?? undefined,
-      eventType: remoderation?.eventType ?? event.eventType,
+      eventType: classification.eventType,
       isOnline: event.isOnline,
       isHybrid: event.isHybrid ?? false,
-      category: existing?.categoryLocked
-        ? undefined
-        : (remoderation?.category ?? event.category),
+      category: existing?.categoryLocked ? undefined : classification.category,
       description: event.description || undefined,
       shortDescription: event.shortDescription || undefined,
       // Venue/geo are authoritative from the new source — overwrite, including
@@ -313,10 +349,16 @@ async function updateExistingEvent(
 }
 
 async function createFingerprints(eventId: string, event: NormalizedEvent) {
-  const fingerprints: { eventId: string; fingerprintType: string; fingerprintValue: string }[] = [];
+  const fingerprints: {
+    eventId: string;
+    fingerprintType: string;
+    fingerprintValue: string;
+  }[] = [];
 
   // URL fingerprints
-  const urls = [event.websiteUrl, event.registrationUrl, event.sourceUrl].filter(Boolean);
+  const urls = [event.websiteUrl, event.registrationUrl, event.sourceUrl].filter(
+    Boolean,
+  );
   for (const url of urls) {
     fingerprints.push({
       eventId,
@@ -339,10 +381,7 @@ async function createFingerprints(eventId: string, event: NormalizedEvent) {
 
   for (const fp of fingerprints) {
     try {
-      await db
-        .insert(eventFingerprints)
-        .values(fp)
-        .onConflictDoNothing();
+      await db.insert(eventFingerprints).values(fp).onConflictDoNothing();
     } catch {
       // Ignore duplicate fingerprint errors
     }
@@ -354,10 +393,7 @@ async function upsertEventSource(eventId: string, event: NormalizedEvent) {
     .select({ id: eventSources.id })
     .from(eventSources)
     .where(
-      and(
-        eq(eventSources.eventId, eventId),
-        eq(eventSources.source, event.source),
-      )
+      and(eq(eventSources.eventId, eventId), eq(eventSources.source, event.source)),
     )
     .limit(1);
 
@@ -367,7 +403,7 @@ async function upsertEventSource(eventId: string, event: NormalizedEvent) {
       .set({
         lastSeenAt: new Date(),
         sourceUrl: event.sourceUrl,
-        rawData: event.rawData as Record<string, unknown> ?? undefined,
+        rawData: (event.rawData as Record<string, unknown>) ?? undefined,
       })
       .where(eq(eventSources.id, existing[0].id));
   } else {

@@ -116,7 +116,10 @@ data. Concrete implications:
 
 - `updateExistingEvent` should overwrite (not just fill blanks on) fields
   whose authoritative source is a higher-priority scraper: `startsAt`,
-  `endsAt`, `title`, `category`, `eventType`, venue, geo.
+  `endsAt`, `title`, venue, geo. `category` and `eventType` are different:
+  the scraper's values are only priors (title regexes, topic maps), so once
+  the AI moderator has classified an event, re-ingest keeps its decision.
+  Re-categorize after changing `MODERATING.md` to refresh classifications.
 - Fingerprints must be (re)recorded on every re-ingest, not only on insert,
   so cross-source dedup can pick up URLs/titles learned later.
 - Auto-moderation rules (e.g. auto-reject already-passed pending events)

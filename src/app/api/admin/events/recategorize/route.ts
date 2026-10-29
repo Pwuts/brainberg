@@ -14,11 +14,13 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { dateFrom, dateTo, eventIds, bypassLock } = body as {
+  const { dateFrom, dateTo, eventIds, bypassLock, categoryOnly } = body as {
     dateFrom?: string;
     dateTo?: string;
     eventIds?: string[];
     bypassLock?: boolean;
+    /** Only update category and event type; leave status and reason alone. */
+    categoryOnly?: boolean;
   };
 
   const useAi = !!process.env.ANTHROPIC_API_KEY;
@@ -87,7 +89,11 @@ export async function POST(request: NextRequest) {
       // should be rejected, not re-moderated. The AI only sees text fields and
       // can't infer location from "Rock Bottom, 28256 Diehl Rd" — it'd happily
       // re-approve based on content. Match the ingest-time check.
-      if (!event.isOnline && !isInEuropeBox(event.latitude, event.longitude)) {
+      if (
+        !categoryOnly &&
+        !event.isOnline &&
+        !isInEuropeBox(event.latitude, event.longitude)
+      ) {
         if (event.status !== "rejected") {
           console.log(
             `[recategorize] Geo-fence: "${event.title}" ${event.status} → rejected (${event.latitude}, ${event.longitude})`,
@@ -144,21 +150,26 @@ export async function POST(request: NextRequest) {
             updates.eventType = result.eventType;
             typesChanged++;
           }
-          const newStatus =
-            result.decision === "reject"
-              ? "rejected"
-              : result.decision === "pending"
-                ? "pending"
-                : "approved";
-          if (newStatus !== event.status) {
-            console.log(
-              `[recategorize] Status: "${event.title}" ${event.status} → ${newStatus} (${result.reason})`,
-            );
-            updates.status = newStatus;
-            statusesChanged++;
+          // categoryOnly backfills a classification without re-deciding
+          // whether the event belongs on the platform; the stored reason
+          // explains the stored status, so it stays too.
+          if (!categoryOnly) {
+            const newStatus =
+              result.decision === "reject"
+                ? "rejected"
+                : result.decision === "pending"
+                  ? "pending"
+                  : "approved";
+            if (newStatus !== event.status) {
+              console.log(
+                `[recategorize] Status: "${event.title}" ${event.status} → ${newStatus} (${result.reason})`,
+              );
+              updates.status = newStatus;
+              statusesChanged++;
+            }
+            updates.moderatedByAI = true;
+            updates.aiModerationReason = result.reason;
           }
-          updates.moderatedByAI = true;
-          updates.aiModerationReason = result.reason;
         }
       } else {
         const newCategory = resolveCategory(undefined, {}, event.title);
