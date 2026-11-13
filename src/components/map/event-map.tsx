@@ -257,12 +257,16 @@ export function EventMap({
         <MapEvents onMoveEnd={recluster} onViewChange={saveView} />
         {!initialView && <FitBounds events={events} />}
 
-        {clusters.map((cluster, i) =>
+        {/* Key clusters by their seed event, not their index: an open popup
+            follows its marker and pans the map along, so an index-keyed
+            marker reassigned to another cluster after a zoom would drag the
+            map to an unrelated city. */}
+        {clusters.map((cluster) =>
           cluster.events.length === 1 ? (
             <SingleMarker key={cluster.events[0].id} event={cluster.events[0]} />
           ) : (
             <ClusterMarker
-              key={`cluster-${i}`}
+              key={`cluster-${cluster.events[0].id}`}
               lat={cluster.lat}
               lng={cluster.lng}
               events={cluster.events}
